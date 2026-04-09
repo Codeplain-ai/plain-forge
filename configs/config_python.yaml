@@ -1,0 +1,4 @@
+verbose: false
+api: https://api.codeplain.ai
+conformance-tests-script: scripts/run_conformance_tests_python.sh
+unittests-script: scripts/run_unittests_python.sh

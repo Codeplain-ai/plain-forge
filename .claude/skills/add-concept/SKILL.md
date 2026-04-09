@@ -1,0 +1,57 @@
+---
+name: add-concept
+description: >-
+  Add a concept to the ***definitions*** section of a ***plain spec file. Use
+  when the user wants to define a new concept, entity, or domain term in a
+  .plain file.
+---
+
+# Add Concept
+
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE.md).
+
+## Workflow
+
+1. **Identify the target `.plain` file.** If ambiguous, ask the user.
+2. **Read the file** to understand existing definitions, imports, and concepts.
+3. **Validate the concept name** against the syntax rules below.
+4. **Check for uniqueness** — the concept name must not already exist in the file or its imports.
+5. **Check referenced concepts** — any `:ConceptName:` used in the definition must already be defined above it (in this file or via `import`/`requires`). Concept references must not form cycles (e.g., A references B and B references A).
+6. **Insert the concept** into the `***definitions***` section, after any concepts it references.
+7. **Read the file again** to confirm correct placement and syntax.
+
+## Concept Syntax Rules
+
+- Wrapped in colons: `:ConceptName:`
+- CamelCase, starting with an uppercase letter
+- Valid characters: letters, digits, `+`, `-`, `.`, `_`
+- Must be globally unique across the spec and all its imports
+- Exported concepts from `requires` modules are **not transitive** — if a concept needs to be shared across multiple `requires` modules, define it in a common import module instead
+
+## Definition Format
+
+A concept definition is a bullet in `***definitions***` that starts with the concept name:
+
+```plain
+***definitions***
+- :ConceptName: is a description of what it represents.
+```
+
+Attributes and constraints are nested sub-bullets:
+
+```plain
+- :Task: describes an activity that needs to be done by :User:. :Task: has:
+  - Name - a short description (required)
+  - Notes - additional details (optional)
+  - Due Date - completion deadline (optional)
+```
+
+## Validation Checklist
+
+- [ ] Name uses `:CamelCase:` notation
+- [ ] Name is globally unique (not defined elsewhere in the file or imports)
+- [ ] Definition starts with the concept name
+- [ ] All referenced concepts (`:OtherConcept:`) are already defined above
+- [ ] No circular references between concepts
+- [ ] Description is clear, concise, and language-agnostic
+- [ ] Placed inside a `***definitions***` section

@@ -1,0 +1,5 @@
+verbose: false
+api: https://api.codeplain.ai
+conformance-tests-script: scripts/run_conformance_tests_java.sh
+prepare-environment-script: scripts/prepare_environment_java.sh
+unittests-script: scripts/run_unittests_java.sh
