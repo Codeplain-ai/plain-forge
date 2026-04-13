@@ -17,8 +17,18 @@ For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE
 3. **Validate the concept name** against the syntax rules below.
 4. **Check for uniqueness** — the concept name must not already exist in the file or its imports.
 5. **Check referenced concepts** — any `:ConceptName:` used in the definition must already be defined above it (in this file or via `import`/`requires`). Concept references must not form cycles (e.g., A references B and B references A).
-6. **Insert the concept** into the `***definitions***` section, after any concepts it references.
-7. **Read the file again** to confirm correct placement and syntax.
+6. **Check for circular references** — if the new concept references `:B:`, then `:B:` must not reference the new concept (directly or indirectly). Example of a circular definition to avoid:
+   ```plain
+   - :Order: is placed by :Customer: and contains :OrderItem: entries.
+   - :Customer: is a user who has placed at least one :Order:.
+   ```
+   Fix by removing the back-reference:
+   ```plain
+   - :Customer: is a user of the system.
+   - :Order: is placed by :Customer: and contains :OrderItem: entries.
+   ```
+7. **Insert the concept** into the `***definitions***` section, after any concepts it references.
+8. **Read the file again** to confirm correct placement and syntax.
 
 ## Concept Syntax Rules
 

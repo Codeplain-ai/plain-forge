@@ -13,7 +13,7 @@ For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE
 
 ## What an Import Module Is
 
-An import module is a `.plain` file that contains **only** `***definitions***`, `***implementation reqs***`, and/or `***test reqs***`. It must **not** contain `***functional specs***` and must **not** use `requires` in its frontmatter. Other modules pull in its content via the `import` field in their YAML frontmatter, gaining access to its definitions and reqs.
+An import module is a `.plain` file that lives in the **`template/`** directory and contains **only** `***definitions***`, `***implementation reqs***`, and/or `***test reqs***`. It must **not** contain `***functional specs***` and must **not** use `requires` in its frontmatter. Other modules pull in its content via the `import` field in their YAML frontmatter, gaining access to its definitions and reqs.
 
 Use import modules for:
 - Sharing concept definitions across multiple modules
@@ -26,7 +26,7 @@ If the module needs functional specs (i.e., it describes what software should do
 ## Workflow
 
 1. **Determine what shared content this module should provide** — which definitions, implementation reqs, or test reqs will other modules need?
-2. **Create the `.plain` file** with YAML frontmatter. Use `required_concepts` to declare concepts that importing modules must define. It may optionally `import` other templates for layered reuse, but must **not** use `requires`.
+2. **Create the `.plain` file in the `template/` directory** with YAML frontmatter. Use `required_concepts` to declare concepts that importing modules must define. It may optionally `import` other templates for layered reuse, but must **not** use `requires`.
 3. **Add the shared content** — definitions, implementation reqs, and/or test reqs.
 4. **Do not add `***functional specs***`** — import modules must not contain functional specs.
 5. **Verify concept availability** — ensure all `:Concepts:` referenced are either defined in this module, provided by its own imports, declared as `required_concepts`, or are predefined concepts.
@@ -38,7 +38,7 @@ The `import` field is a list of module paths in the YAML frontmatter:
 ```plain
 ---
 import:
-  - template/base_template
+  - base_template
 required_concepts: [":AppName:"]
 description: Shared API definitions and reqs
 ---
@@ -55,7 +55,7 @@ description: Shared API definitions and reqs
 - :ConformanceTests: should mock all external HTTP calls made by :ApiClient:.
 ```
 
-Import paths are relative to the repository root, without the `.plain` extension. Note the absence of `***functional specs***` — import modules must not have them.
+The default import directory is `template/` — the `template/` prefix is not needed in import paths. The `.plain` extension is omitted. Note the absence of `***functional specs***` — import modules must not have them.
 
 ## Satisfying Required Concepts
 
@@ -64,7 +64,7 @@ If an imported template declares `required_concepts`, the importing module **mus
 ```plain
 ---
 import:
-  - template/auth_template
+  - auth_template
 ---
 
 > auth_template declares required_concepts: [":AuthSchema:", ":AuthApiSpec:"]
@@ -88,6 +88,7 @@ import:
 
 ## Validation Checklist
 
+- [ ] Module file is in the `template/` directory
 - [ ] Module does **not** contain `***functional specs***`
 - [ ] Module does **not** use `requires` in its frontmatter
 - [ ] Contains at least one of: definitions, implementation reqs, or test reqs

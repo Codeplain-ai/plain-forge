@@ -30,7 +30,7 @@ If you only need shared definitions and reqs (no functional specs, no generated 
 ## Workflow
 
 1. **Identify the dependency.** Determine which module this new module builds on. That module must already exist and be renderable.
-2. **Create the `.plain` file** with YAML frontmatter containing the `requires` field.
+2. **Create the `.plain` file at the repository root** with YAML frontmatter containing the `requires` field. Modules with functional specs live at the root, not in `template/`.
 3. **Review the required module's functional specs** — they will be treated as previous requirements. Your new functional specs must not conflict with them.
 4. **Review the required module's `exported_concepts`** — only those concepts are available to reference from the required module.
 5. **Add module-specific content** — definitions, implementation reqs, test reqs, and functional specs unique to this module.
@@ -45,7 +45,7 @@ The `requires` field is a list of module paths in the YAML frontmatter:
 requires:
   - base_module
 import:
-  - template/shared_template
+  - shared_template
 description: Extended module that builds on base_module
 ---
 
@@ -56,7 +56,7 @@ description: Extended module that builds on base_module
 - The system should support :NewFeature:.
 ```
 
-A module can use both `requires` and `import` together. `requires` brings in the build dependency chain; `import` brings in shared definitions and reqs from templates.
+A module can use both `requires` and `import` together. `requires` points to other root-level modules; `import` resolves from the default `template/` directory (no prefix needed).
 
 ## Exported Concepts
 
@@ -94,6 +94,7 @@ The current module may or may not be functionally related to the required module
 
 ## Validation Checklist
 
+- [ ] Module file is at the repository root (not in `template/`)
 - [ ] Required module exists and is renderable
 - [ ] Required module's `exported_concepts` provide the concepts you need
 - [ ] New functional specs do not conflict with the required module's specs

@@ -1,0 +1,69 @@
+---
+description: Rules for writing ***functional specs*** and ***acceptance tests*** in .plain files
+globs: "**/*.plain"
+---
+
+# Rules for writing `***functional specs***`
+
+When writing or editing a `***functional specs***` section in a `.plain` file, always follow these rules:
+
+## Complexity limit
+- Each functional spec must imply a **maximum of 200 changed lines of code**
+- If a spec is too large, break it into multiple smaller, independent specs
+- Use `analyze-if-func-spec-too-complex` to verify before inserting
+- Use `analyze-2-func-specs` to check pairs; use `resolve-spec-conflict` if a conflict is found
+
+## Chronological ordering
+- Specs are rendered incrementally, top to bottom
+- The renderer has **no knowledge of future specs** — only previously rendered specs are in context
+- A new spec can reference behavior from earlier specs but cannot assume anything about specs that come after it
+- Functional specs from `requires` modules are treated as previous requirements
+
+## No conflicts
+- The new spec must not contradict any existing functional spec
+- Before adding, review all existing specs and verify compatibility
+- If ambiguity exists, add explicit detail to eliminate any conflicting interpretation
+
+## Language agnosticism
+- Write in terms of behavior, concepts, and domain logic
+- Language-specific guidance belongs in `***implementation reqs***`
+
+## Disambiguation
+- Each functional spec must be unambiguous — the renderer should have only one reasonable interpretation
+- If a single line is not enough to fully disambiguate the behavior, use **nested sub-bullets** to add detail
+- Nested lines clarify the parent spec — they do not introduce separate functionality
+- Even with nested detail, the spec must still imply ≤ 200 lines of code
+
+## Deterministic interface
+- Specs must be detailed enough that a developer can use the built software without reading the generated code
+- All external interfaces must be explicit: REST endpoint paths and HTTP methods, CLI command names and arguments, file formats, message schemas, etc.
+- Never leave interface details up to the renderer's discretion
+
+## Encapsulation
+- Functionality must be self-contained in the spec text
+- `requires` modules only receive functional specs — do not rely on implementation reqs to convey behavior
+- Behavior that downstream modules need must be expressed in functional specs, not elsewhere
+
+## Acceptance tests
+- Nest `***acceptance tests***` under a functional spec when verification criteria are needed
+- Each acceptance test must be a **full workflow test** — a specific scenario that exercises the functional spec end-to-end, not a unit-level check of a single field or condition
+- Do not restate the obvious behavior from the functional spec — simple, direct verifications are already auto-generated as conformance tests. Acceptance tests must go beyond that: multi-step workflows, interactions between concepts, edge-case scenarios, or end-to-end sequences that prove the feature works in a realistic context
+- Each acceptance test must be a direct logical consequence of the parent spec — it illustrates, not extends
+- Acceptance tests must describe concrete, verifiable outcomes — not vague qualities
+- Acceptance tests must not contradict, narrow, or extend beyond the parent spec
+
+## Format
+
+```plain
+***functional specs***
+- Implement the entry point for :App:.
+- :User: should be able to add :Task:. Only valid :Task: items can be added.
+- :User: should be able to send a :Message: to a :Conversation:.
+  - A :Message: must have non-empty content.
+  - The :Message: is appended to the end of the :Conversation:.
+  - All :Participant: members of the :Conversation: can see the new :Message:.
+
+  ***acceptance tests***
+  - Sending a :Message: to a :Conversation: with three participants should
+    make the message visible to all three.
+```

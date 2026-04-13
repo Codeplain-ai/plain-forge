@@ -95,6 +95,7 @@ After all specs are written:
    - No conflicts between new and existing functional specs.
    - Each functional spec implies ≤ 200 LOC.
    - Functional specs are language-agnostic.
+   - All external interfaces are explicit (endpoint paths, methods, CLI args, formats, etc.).
    - Chronological ordering is correct.
    - Acceptance tests are consistent with their parent specs.
 3. Present the final changes to the user for approval.
@@ -113,5 +114,6 @@ After completing one feature, the user may immediately describe the next. Start 
 - [ ] Each functional spec implies ≤ 200 LOC (verified via `analyze-if-func-spec-too-complex`)
 - [ ] No conflicts with existing specs (verified via `analyze-2-func-specs`)
 - [ ] Functional specs are language-agnostic
+- [ ] All external interfaces are explicit (endpoint paths, methods, CLI args, formats, etc.)
 - [ ] Acceptance tests are consistent with their parent functional specs
 - [ ] User approved the final result

@@ -25,7 +25,7 @@ Templates use Liquid syntax (`{% include %}`) to reuse the same spec content acr
 Use `{% include %}` with the template path and parameters:
 
 ```plain
-{% include "template/console_app_template.plain", main_file_name: "app.py", app_name: "MyApp" %}
+{% include "console_app_template.plain", main_file_name: "app.py", app_name: "MyApp" %}
 ```
 
 Parameters are passed as key-value pairs after the template path. Inside the template, parameters are accessed using Liquid variable syntax (`{{ main_file_name }}`).
