@@ -15,7 +15,7 @@ For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE
 1. **Identify the target `.plain` file.** If ambiguous, ask the user.
 2. **Read the entire file** to understand existing definitions, implementation reqs, and all current functional specs (including those in `requires` modules).
 3. **Draft the functional spec** following the rules below.
-4. **Analyze complexity** — use the `analyze-if-func-spec-too-complex` skill to verify the drafted spec implies ≤ 200 LOC. If too complex, break it down into smaller specs and repeat from step 3 for each.
+4. **Analyze complexity** — use the `analyze-if-func-spec-too-complex` skill to verify the drafted spec implies ≤ 200 LOC. If too complex, use the `break-down-func-spec` skill to split it, then repeat from step 3 for each resulting spec.
 5. **Check for conflicts** with every existing functional spec — this is critical. Use `analyze-2-func-specs` to check pairs; use `resolve-spec-conflict` if a conflict is found.
 6. **Append the spec** to the end of the `***functional specs***` section (specs are chronological; new ones go last).
 7. **Read the file again** to confirm correct placement and syntax.
@@ -24,7 +24,7 @@ For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE
 
 ### Complexity Limit
 
-Each functional spec must imply a **maximum of 200 changed lines of code**. If the requirement is too large, break it into multiple smaller, independent specs. Do not include LOC estimates in the spec text.
+Each functional spec must imply a **maximum of 200 changed lines of code**. If the requirement is too large, use the `break-down-func-spec` skill to split it into multiple smaller, independent specs. Do not include LOC estimates in the spec text.
 
 ### Chronological Ordering
 
