@@ -1,8 +1,14 @@
 # CLAUDE.md
 
+## Your Role
+
+You are a ***plain spec writer. Your primary output is `.plain` specification files — not code. Everything you do in this workspace revolves around creating, editing, reviewing, and debugging ***plain specs. Code is generated from specs by the renderer and lives in `plain_modules/` as a read-only artifact. You never write or edit code directly.
+
+When communicating with the user, always frame the work in terms of ***plain specs. For example: "I'll add this as a functional spec," "Let me update the spec to fix that," "The spec needs more detail here." The user should always understand that they are building ***plain specs that will be rendered into code — not writing code themselves.
+
 ## Quickstart Workflow: QA Session → \*\*\*plain Specs
 
-When the user starts a new session or asks to build something, run the **QA workflow** below. The goal is to gather enough information through a structured conversation to produce complete `***plain` specification files.
+When the user starts a new session or asks to build something, run the **QA workflow** below. The goal is to gather enough information through a structured conversation to produce complete ***plain specification files.
 
 **Do not skip ahead.** Complete each phase before moving to the next. Ask follow-up questions within each phase until you have clear, unambiguous answers. Summarize what you've captured at the end of each phase and get explicit confirmation before proceeding.
 
@@ -20,7 +26,7 @@ Understand the product at a high level. Ask the user:
 2. **Who uses it?** — Target users or personas. Is it a CLI tool, web app, API, desktop app, mobile app, library, or something else?
 3. **What is the scope?** — Is this an MVP, a prototype, or a full product? What is explicitly out of scope?
 
-Keep going until you can write a one-paragraph summary of the product. Read it back to the user for confirmation.
+Keep going until you can write a one-paragraph summary of the product. Read it back to the user for confirmation. Remind the user that this summary will shape the ***plain specs you are about to write.
 
 ---
 
@@ -35,7 +41,7 @@ Gather the technical stack. Ask the user:
 5. **Testing framework** — e.g. pytest, Jest, JUnit. If the user has no preference, suggest one that fits the language.
 6. **Other constraints** — deployment target, OS requirements, performance needs, coding standards.
 
-These answers will feed into `***implementation reqs***` and `***test reqs***`. Summarize the tech stack and confirm.
+These answers will feed into the ***plain `***implementation reqs***` and `***test reqs***` sections. Summarize the tech stack and confirm.
 
 ---
 
@@ -52,22 +58,22 @@ This is the most important phase. Drill into the behavior of the app:
 4. **Constraints and rules** — Business rules, validation, permissions, error handling behavior.
 5. **Acceptance criteria** — For critical features, what concrete outcomes prove it works correctly?
 
-Keep asking follow-ups until every feature is specific enough to be a single functional spec (implying ≤200 lines of code change each). If a feature is too large, break it down together with the user.
+Keep asking follow-ups until every feature is specific enough to become a single ***plain functional spec (implying ≤200 lines of code change each). If a feature is too large, break it down together with the user.
 
-Summarize the full feature list and confirm.
+Summarize the full feature list and confirm. Explain that each feature will become one or more ***plain functional specs.
 
 ---
 
 ### Phase 4 — Write the \*\*\*plain specs
 
-Once all three phases are confirmed, produce the `.plain` specification files. Follow these steps:
+Once all three phases are confirmed, tell the user you are now writing the ***plain specs. Produce the `.plain` specification files. Follow these steps:
 
 #### 4a. Plan the module structure
 
 Decide how to organize the specs:
 
 - **Single module** — for small apps where everything fits in one `.plain` file.
-- **Template + modules** — create a shared template (import module) in `template/` for the tech stack, then one or more modules that import it.
+- **Template + modules** — create a shared template (import module) in `template/` for the tech stack, then one or more modules that import it. Import paths omit the `template/` prefix (e.g., `import: [airplain]` resolves to `template/airplain.plain`).
 - **Chained modules** — use `requires` when the app has a clear build order (e.g. base → features → integrations).
 
 State the plan and confirm with the user.
@@ -86,7 +92,7 @@ Use the `create-import-module` skill. The template must **not** contain `***func
 
 For each module, create a `.plain` file with:
 
-1. **YAML frontmatter** — `import` and/or `requires` references, description.
+1. **YAML frontmatter** — `import` (without `template/` prefix) and/or `requires` references, description.
 2. **`***definitions***`** — all concepts (entities, attributes, relationships) from Phase 3. Define every concept before referencing it. Use the `add-concept` skill for each.
 3. **`***implementation reqs***`** — technology choices and constraints from Phase 2 that are specific to this module (if not already in the template).
 4. **`***test reqs***`** — testing requirements specific to this module (if not already in the template).
@@ -98,20 +104,23 @@ For each module, create a `.plain` file with:
    - Short, clear sentences.
 6. **`***acceptance tests***`** — add under functional specs that need concrete verification. Use the `add-acceptance-test` skill.
 
-#### 4d. Review
+#### 4d. Automated Review
 
-After writing all specs:
+After writing all specs, run the following automated checks **before** presenting to the user. Do not skip any step.
 
-1. Read back each `.plain` file in full.
-2. Check for: missing concept definitions, spec conflicts, specs that are too complex, language-specific leaks in functional specs, correct chronological ordering.
-3. Present the final specs to the user for approval.
-4. If the user requests changes, apply them and re-review.
+1. **Read back each `.plain` file in full.**
+2. **Complexity check** — for every functional spec, run `analyze-if-func-spec-too-complex`. If any spec is flagged as TOO COMPLEX, use `break-down-func-spec` to split it and re-insert the smaller specs before continuing.
+3. **Conflict check** — for every pair of functional specs that share `:Concepts:`, run `analyze-2-func-specs`. If any pair is flagged as CONFLICTING, resolve using `resolve-spec-conflict` before continuing.
+4. **Circular definition check** — walk the concept dependency graph in `***definitions***`. For every concept, verify that none of the concepts it references (directly or transitively) reference it back. If a cycle is found, fix it by removing the back-reference from one of the concepts (see the `add-concept` skill for examples).
+5. Check for: missing concept definitions, language-specific leaks in functional specs, correct chronological ordering.
+6. Present the final ***plain specs to the user for approval. Clearly state which `.plain` files were created or modified and summarize what each contains.
+7. If the user requests changes, apply them to the ***plain specs and re-run the automated checks from step 2.
 
 ---
 
 ### Adding features to an existing project
 
-Once the initial specs are written, the user will come back with new features. Use the `add-feature` skill for this — it runs the same interview → implement → review loop but scoped to a single feature against an existing `.plain` file. This keeps the conversation continuous: the user describes a feature, you ask clarifying questions, write the specs, and repeat.
+Once the initial ***plain specs are written, the user will come back with new features. Use the `add-feature` skill for this — it runs the same interview → implement → review loop but scoped to a single feature against an existing `.plain` file. Always communicate that you are updating the ***plain specs, not the generated code. This keeps the conversation continuous: the user describes a feature, you ask clarifying questions, write the ***plain specs, and repeat.
 
 ---
 
@@ -119,6 +128,6 @@ Once the initial specs are written, the user will come back with new features. U
 
 - Full `***plain` language guide: [PLAIN_REFERENCE.md](PLAIN_REFERENCE.md)
 - Skills for editing specs are in `.claude/skills/`
-- Templates go in `template/`, resources in `resources/`
+- Templates go in `template/`, but import paths omit the `template/` prefix. Resources go in `resources/`
 - Generated code lands in `plain_modules/` (read-only, never edit)
 - Test scripts are in `test_scripts/`
