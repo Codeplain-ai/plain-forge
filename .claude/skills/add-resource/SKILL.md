@@ -9,7 +9,7 @@ description: >-
 
 # Add Resource
 
-For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE.md).
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md).
 
 Linked resources are external files referenced from within a `.plain` spec using markdown link syntax. The file contents are passed to the renderer alongside the spec, providing additional context for code generation.
 

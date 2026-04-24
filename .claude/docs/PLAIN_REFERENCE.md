@@ -105,6 +105,16 @@ The renderer has **no knowledge of future functional requirements**. When a func
 - :User: should be able to delete :Task:.
 ```
 
+Each functional spec must be unambiguous. If a single line is not enough to fully disambiguate the behavior, use nested sub-bullets to add detail. Nested lines clarify the parent spec — they do not introduce separate functionality. Even with nested detail, the spec must still respect the complexity limit.
+
+```plain
+***functional specs***
+- :User: should be able to send a :Message: to a :Conversation:.
+  - A :Message: must have non-empty content.
+  - The :Message: is appended to the end of the :Conversation:.
+  - All :Participant: members of the :Conversation: can see the new :Message:.
+```
+
 ### Acceptance Tests
 
 Nested under individual functional requirements to specify how to verify correct implementation. They extend conformance tests and are implemented according to the `***test reqs***` specification.
@@ -122,8 +132,8 @@ Nested under individual functional requirements to specify how to verify correct
 
 The frontmatter is enclosed between `---` markers and supports:
 
-- **`import`** — includes definitions, implementation reqs, and test reqs from other modules/templates. Imported modules should not contain functional specs.
-- **`requires`** — specifies dependencies on other modules that must be built first. Unlike `import`, required modules can contain functional specs and represent complete software modules.
+- **`import`** — includes definitions, implementation reqs, and test reqs from templates. Imported modules must not contain functional specs. The default import directory is `template/` — the `template/` prefix is not needed (e.g., `airplain` resolves to `template/airplain.plain`).
+- **`requires`** — specifies dependencies on other root-level modules that must be built first. Unlike `import`, required modules can contain functional specs and represent complete software modules. Requires paths point to root-level modules (e.g., `auth`, `messaging`).
 - **`description`** — optional description of the specification.
 - **`required_concepts`** — concepts that must be defined by any module that imports this spec.
 - **`exported_concepts`** — concepts made available to modules that `require` this one.
@@ -187,9 +197,9 @@ There are two types of modules:
 
 ### Import Modules
 
-An import module contains **only** `***definitions***`, `***implementation reqs***`, and/or `***test reqs***`. It must **not** contain `***functional specs***` and must **not** use `requires`. It may optionally `import` other templates for layered reuse.
+An import module lives in the **`template/`** directory and contains **only** `***definitions***`, `***implementation reqs***`, and/or `***test reqs***`. It must **not** contain `***functional specs***` and must **not** use `requires`. It may optionally `import` other templates for layered reuse.
 
-When a module **`import`s** another, it gains access to the imported module's definitions, implementation reqs, and test reqs — but not its functional specs. Template imports reference files in the `template/` directory.
+When a module **`import`s** another, it gains access to the imported module's definitions, implementation reqs, and test reqs — but not its functional specs. The default import directory is `template/`, so the `template/` prefix is not needed (e.g., `airplain`).
 
 ### Requires Modules
 
@@ -200,7 +210,7 @@ When a module **`requires`** another:
 - The required module's `***functional specs***` become visible as **previous functional requirements**.
 - Only `exported_concepts` from the required module are available (not its full definitions).
 
-A module can use both `requires` and `import` together. `requires` brings in the build dependency chain; `import` brings in shared definitions and reqs from templates.
+A module can use both `requires` and `import` together. `requires` points to other root-level modules (e.g., `auth`, `messaging`); `import` resolves from the default `template/` directory without needing the prefix (e.g., `airplain`). Modules with functional specs live at the repository root. Import modules (templates) live in `template/`.
 
 ### Contracts Between Modules
 
@@ -227,9 +237,9 @@ Test scripts live in `test_scripts/` and are run from the repo root:
 
 - Each functional requirement must imply a **maximum of 200 changed lines of code**. This is a hard limit — if a requirement would result in more than 200 lines of changes, it must be broken down into smaller, independent requirements. This limit also helps avoid "Functional spec too complex!" errors from the renderer.
 - **Conflicting requirements must be avoided at all costs.** Functional specs should be written so that no conflicts exist between them. If two specs appear to conflict, they must be clarified by adding more detail and context to the specs until all possible conflicts are resolved. Prevention is always preferable to debugging conflicts after rendering.
-- **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types) in functional specs and definitions. Write requirements in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
-- **Keep sentences short and clear.** Spec lines should be easy to read and understand at a glance. Prefer several short, concise sentences over long, complex ones. If a sentence requires re-reading to understand, break it apart.
-- **No redundancy, no unnecessary detail.** Functional specs should not contain redundant information or unnecessary details. They should, however, contain all the information needed to disambiguate what is intended to be built. A good rule of thumb is to look at the functional specs that the current one references and exclude obvious details — those specs will be included in context during rendering time. Only add detail that resolves ambiguity or provides information not already present in referenced specs.
+- **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types) in functional specs and definitions. Write requirements in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes, REST api endpoints etc.). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
+- **Keep sentences short and clear.** Spec lines should be easy to read and understand at a glance. Prefer several short, concise sentences over long, complex ones.
+- **Specs must be deterministic enough to use the software without reading the generated code.** A developer should be able to know exactly how to interact with the built software solely from the specs. For example, if the software is a REST API, the specs must include endpoint paths, HTTP methods, request/response formats, and status codes. If it is a CLI tool, the specs must include command names, arguments, and expected output. Never leave interface details up to the renderer's discretion.
 - **Encapsulate functionality in functional specs.** `requires` modules import only functional specs. It is therefore important that the functionality is encapsulated in the functional specs and not in implementation reqs, as those will not be in the context of future functional specs when fixing previous conformance tests of previous functional requirements.
 
 ## Working with Specs

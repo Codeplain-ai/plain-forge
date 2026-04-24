@@ -9,7 +9,7 @@ description: >-
 
 # Analyze If Functional Spec Is Too Complex
 
-For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE.md).
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md).
 
 ## Why This Matters
 

@@ -10,7 +10,7 @@ description: >-
 
 # Add Feature
 
-For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE.md).
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md).
 
 This skill is the continuous-loop counterpart of the full QA workflow in [CLAUDE.md](../../CLAUDE.md). Where the QA workflow bootstraps an entire project from scratch, `add-feature` adds a single feature to an **existing** set of `.plain` specs through the same interview-then-implement pattern.
 

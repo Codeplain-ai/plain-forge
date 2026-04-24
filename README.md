@@ -25,27 +25,35 @@ Each phase uses structured questions to eliminate ambiguity. You confirm the out
 
 ### Usage
 
-1. Clone this repo and `cd` into it.
-2. Run `claude` to start a Claude Code session.
-3. Tell Claude what you want to build — the QA workflow starts automatically.
+1. Install the Plain Forge plugin in Claude Code.
+2. Open your project folder and start a Claude Code session.
+3. Invoke `/forge-plain` to start the QA workflow.
 4. Answer the questions. Plain Forge writes the `.plain` files for you.
 5. Render specs into code using the Codeplain renderer.
 
 ## Repository Structure
 
 ```
-CLAUDE.md                # Instructions that drive the QA workflow
-PLAIN_REFERENCE.md       # Full ***plain language reference
-.claude                  # Skills that are used during ***plain spec writing
+.claude/
+  docs/PLAIN_REFERENCE.md    # Full ***plain language reference
+  skills/                    # All skills used during spec writing
+  rules/                     # Workspace rules for spec validation
+  hooks/                     # Git hooks for spec checks
 ```
 
-## Available Slash Commands
+## Available Skills
 
-Plain Forge ships with Claude Code skills for editing specs directly:
+### Core Workflow
 
-| Command | Description |
-|---------|-------------|
-| `/add-feature` | End-to-end: interview the user about a feature, then write all the specs |
+| Skill | Description |
+|-------|-------------|
+| `/forge-plain` | End-to-end QA interview that produces complete `.plain` spec files for a new project |
+| `/add-feature` | Interview the user about a single feature, then write all the specs for it |
+
+### Spec Authoring
+
+| Skill | Description |
+|-------|-------------|
 | `/add-functional-requirement` | Add a feature spec to `***functional specs***` |
 | `/add-implementation-requirement` | Add a non-functional requirement to `***implementation reqs***` |
 | `/add-test-requirement` | Add a testing requirement to `***test reqs***` |
@@ -53,9 +61,28 @@ Plain Forge ships with Claude Code skills for editing specs directly:
 | `/add-acceptance-test` | Add verification criteria under a functional spec |
 | `/add-resource` | Link an external file (schema, API spec) to a spec |
 | `/add-template` | Create or include a reusable Liquid template |
+
+### Module Management
+
+| Skill | Description |
+|-------|-------------|
 | `/create-import-module` | Create a shared template module (definitions + reqs, no functional specs) |
 | `/create-requires-module` | Create a module that depends on a previously built module |
+| `/refactor-module` | Split a large module into smaller modules connected via a requires chain |
+| `/consolidate-concepts` | Gather scattered concept definitions into a single shared import module |
+
+### Analysis and Quality
+
+| Skill | Description |
+|-------|-------------|
 | `/analyze-if-func-spec-too-complex` | Check if a spec exceeds the 200-line complexity limit |
 | `/analyze-2-func-specs` | Check two specs for conflicts |
+| `/break-down-func-spec` | Split an overly complex spec into smaller specs (each ≤ 200 LOC) |
 | `/resolve-spec-conflict` | Resolve a conflict between two functional specs |
 
+### Debugging and Testing
+
+| Skill | Description |
+|-------|-------------|
+| `/debug-specs` | Investigate a bug by tracing generated code back to specs and fixing only the `.plain` files |
+| `/implement-testing-scripts` | Create run_unittests, run_conformance_tests, and prepare_environment scripts for a language |

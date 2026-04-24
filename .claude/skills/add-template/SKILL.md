@@ -8,7 +8,7 @@ description: >-
 
 # Add Template
 
-For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE.md).
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md).
 
 Templates use Liquid syntax (`{% include %}`) to reuse the same spec content across multiple `.plain` files. Each inclusion can pass different parameters, producing tailored output from a single source. This is distinct from `import` and `requires` — templates are about textual reuse with parameterization, not module dependencies.
 

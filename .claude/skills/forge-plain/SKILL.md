@@ -1,4 +1,15 @@
-# CLAUDE.md
+---
+name: forge-plain
+description: >-
+  End-to-end ***plain spec authoring workflow: runs a structured QA interview
+  (product, tech stack, behavior) then produces complete .plain specification
+  files with automated review. Use when the user wants to build something new
+  from scratch or asks to start a new project.
+---
+
+# Forge Plain
+
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md).
 
 ## Your Role
 
@@ -84,9 +95,8 @@ If using a template, create an import module in `template/` containing:
 
 - `***definitions***` — shared concepts used across modules.
 - `***implementation reqs***` — language, framework, architecture, coding standards.
-- `***test reqs***` — testing framework, execution commands, testing constraints.
 
-Use the `create-import-module` skill. The template must **not** contain `***functional specs***`.
+Use the `create-import-module` skill. The template must **not** contain `***functional specs***`. Do **not** add `***test reqs***` here — they are added later in step 4f, only if conformance testing is selected.
 
 #### 4c. Create the module(s)
 
@@ -95,14 +105,14 @@ For each module, create a `.plain` file with:
 1. **YAML frontmatter** — `import` (without `template/` prefix) and/or `requires` references, description.
 2. **`***definitions***`** — all concepts (entities, attributes, relationships) from Phase 3. Define every concept before referencing it. Use the `add-concept` skill for each.
 3. **`***implementation reqs***`** — technology choices and constraints from Phase 2 that are specific to this module (if not already in the template).
-4. **`***test reqs***`** — testing requirements specific to this module (if not already in the template).
-5. **`***functional specs***`** — the features from Phase 3, translated into chronological, incremental specs. Use the `add-functional-requirement` skill for each. Follow these rules:
+4. **`***functional specs***`** — the features from Phase 3, translated into chronological, incremental specs. Use the `add-functional-requirement` skill for each. Follow these rules:
    - Each spec implies ≤200 lines of code change.
    - Specs are in chronological build order (entry point first, then features layer by layer).
    - No conflicts between specs.
    - Language-agnostic — behavior only, no implementation constructs.
    - Short, clear sentences.
-6. **`***acceptance tests***`** — add under functional specs that need concrete verification. Use the `add-acceptance-test` skill.
+
+Do **not** add `***test reqs***` or `***acceptance tests***` at this stage. They are added later in step 4f, only if the user chooses conformance testing.
 
 #### 4d. Automated Review
 
@@ -116,6 +126,42 @@ After writing all specs, run the following automated checks **before** presentin
 6. Present the final ***plain specs to the user for approval. Clearly state which `.plain` files were created or modified and summarize what each contains.
 7. If the user requests changes, apply them to the ***plain specs and re-run the automated checks from step 2.
 
+#### 4e. Create testing scripts
+
+After specs are approved, invoke the `implement-testing-scripts` skill. This will ask the user which script types to create (run_unittests, run_conformance_tests, prepare_environment), detect the OS, and generate the scripts matching the language chosen in Phase 2.
+
+#### 4f. Add test reqs and acceptance tests (conformance testing only)
+
+This step runs **only if the user chose to create conformance test scripts** in step 4e. If they did not, skip this step entirely — do not add `***test reqs***` or `***acceptance tests***` sections to the `.plain` files.
+
+If conformance testing was selected:
+
+1. Add `***test reqs***` to each module using the `add-test-requirement` skill. The test reqs should reference the conformance test scripts created in 4e (execution command, testing framework, any constraints).
+2. For functional specs that need concrete verification, add `***acceptance tests***` using the `add-acceptance-test` skill.
+3. Re-read the modified `.plain` files and verify the new sections are consistent with the functional specs.
+
+#### 4g. Next steps
+
+Once all specs, testing scripts, and (optionally) test reqs / acceptance tests are in place, tell the user they are ready to render. Identify the **last module in the dependency chain** — the module that is not `requires`-ed by any other module. If there is only one module, use that.
+
+Present the command:
+
+```
+codeplain <module>.plain
+```
+
+Where `<module>` is the name of that final module (without the `.plain` extension in the explanation, but included in the command). For example, if the chain is `base.plain → features.plain → integrations.plain`, the command is:
+
+```
+codeplain integrations.plain
+```
+
+If there is a single module with no chain (e.g., `my_app.plain`):
+
+```
+codeplain my_app.plain
+```
+
 ---
 
 ### Adding features to an existing project
@@ -126,7 +172,7 @@ Once the initial ***plain specs are written, the user will come back with new fe
 
 ### Reference
 
-- Full `***plain` language guide: [PLAIN_REFERENCE.md](PLAIN_REFERENCE.md)
+- Full `***plain` language guide: [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md)
 - Skills for editing specs are in `.claude/skills/`
 - Templates go in `template/`, but import paths omit the `template/` prefix. Resources go in `resources/`
 - Generated code lands in `plain_modules/` (read-only, never edit)

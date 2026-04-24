@@ -9,7 +9,7 @@ description: >-
 
 # Create Requires Module
 
-For full ***plain syntax details, see [PLAIN_REFERENCE.md](../../PLAIN_REFERENCE.md).
+For full ***plain syntax details, see [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md).
 
 ## What Requires Does
 
