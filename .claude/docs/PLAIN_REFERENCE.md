@@ -212,6 +212,8 @@ When a module **`requires`** another:
 
 A module can use both `requires` and `import` together. `requires` points to other root-level modules (e.g., `auth`, `messaging`); `import` resolves from the default `template/` directory without needing the prefix (e.g., `airplain`). Modules with functional specs live at the repository root. Import modules (templates) live in `template/`.
 
+**`requires` modules must share the same tech stack.** Because the required module's generated code is copied as the starting point and the renderer continues building on top of it with one language/framework toolchain, two modules can only be linked with `requires` when they target the same language, framework, and runtime. A runtime/network dependency between systems is **not** a reason to use `requires`. For example, a React frontend that talks to a Python/FastAPI backend over HTTP must **not** `requires: [backend]` — the stacks differ. Model that pair as two independent root modules (each with its own `config.yaml` and test scripts), and express the contract between them through a shared API schema in `resources/` or shared concepts in an `import`ed template, not through `requires`.
+
 ### Contracts Between Modules
 
 Modules can use `required_concepts` and `exported_concepts` to enforce contracts between them. A template declaring `required_concepts` means any module that imports it must define those concepts. A module declaring `exported_concepts` controls which concepts are visible to modules that `require` it.
