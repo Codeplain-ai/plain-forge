@@ -1,0 +1,15 @@
+{
+    "name": "plain-forge",
+    "version": "1.0.3",
+    "description": "Conversational spec-writing tool for ***plain specification language",
+    "homepage": "https://github.com/Codeplain-ai/plain-forge",
+    "skills": "./forge/skills/",
+    "interface": {
+        "displayName": "Plain Forge",
+        "shortDescription": "Conversational ***plain spec writing",
+        "longDescription": "Plain Forge turns a structured QA conversation into complete .plain specification files that the Codeplain renderer can turn into production code.",
+        "developerName": "Codeplain-ai",
+        "category": "Productivity",
+        "websiteURL": "https://codeplain.ai"
+    }
+}

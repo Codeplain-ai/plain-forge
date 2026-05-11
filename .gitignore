@@ -1,0 +1,16 @@
+node_modules
+dist
+bun.lock
+resources
+*.yaml
+test_scripts
+plain_modules
+conformance_tests
+.tmp
+.venv
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+codeplain.log

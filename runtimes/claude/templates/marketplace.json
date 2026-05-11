@@ -1,0 +1,17 @@
+{
+    "name": "plain-forge",
+    "owner": {
+        "name": "Codeplain-ai",
+        "email": "support@codeplain.ai"
+    },
+    "description": "***plain spec writing tool powered by Claude Code",
+    "plugins": [
+        {
+            "name": "plain-forge",
+            "source": {
+                "source": "github",
+                "repo": "Codeplain-ai/plain-forge"
+            }
+        }
+    ]
+}

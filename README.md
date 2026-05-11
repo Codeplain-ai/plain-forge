@@ -19,27 +19,116 @@ Each phase uses structured questions to eliminate ambiguity. You confirm the out
 
 ## Getting Started
 
-### Prerequisites
+Plain Forge ships as a set of skills that plug into your AI coding tool of choice. Install it once, then invoke `/forge-plain` (or `/add-feature`) from any project.
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and configured
+### Install with the `skills` CLI (any runtime)
+
+The fastest way to add Plain Forge to whatever runtime you have installed locally:
+
+```bash
+npx skills add https://github.com/Codeplain-ai/plain-forge
+```
+
+The `skills` CLI walks you through an interactive setup. When it asks:
+
+```
+◇  Installation method
+│  Copy to all agents
+```
+
+pick **Copy to all agents** so the skills are installed into every runtime (Claude Code, Codex, OpenCode) you have on the machine.
+
+To skip the prompts and install into specific runtimes non-interactively:
+
+```bash
+npx skills add https://github.com/Codeplain-ai/plain-forge --agent opencode --agent codex --agent claude
+```
+
+If you'd rather use the native install flow for a specific runtime, the per-tool instructions below still work.
+
+### Install in Claude Code
+
+Requires the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and configured. Run the following inside any Claude Code session:
+
+```text
+/plugin marketplace add Codeplain-ai/plain-forge
+/plugin install plain-forge@plain-forge
+```
+
+The first command registers this repository as a plugin marketplace; the second installs the `plain-forge` plugin from it. All Plain Forge skills become available in that session.
+
+### Install in Codex
+
+Requires the [OpenAI Codex CLI](https://developers.openai.com/codex/cli/reference) installed and signed in. Run the following from your shell:
+
+```bash
+codex plugin marketplace add Codeplain-ai/plain-forge
+```
+
+This registers the repository as a Codex marketplace and exposes the `plain-forge` plugin in Codex's plugin directory. Open the plugin directory inside Codex, pick the `plain-forge` marketplace, and install the plugin from there.
+
+### Install in OpenCode
+
+Plain Forge also ships an OpenCode-compatible skill set under `.opencode/`. To use it, point OpenCode at this repository — for example by telling the agent:
+
+> "Use the skills in `github.com/Codeplain-ai/plain-forge` (the `.opencode/` directory)."
+
+OpenCode picks up the skills automatically once the repo is in its context.
 
 ### Usage
 
-1. Install the Plain Forge plugin in Claude Code.
-2. Open your project folder and start a Claude Code session.
-3. Invoke `/forge-plain` to start the QA workflow.
-4. Answer the questions. Plain Forge writes the `.plain` files for you.
-5. Render specs into code using the Codeplain renderer.
+1. Open your project folder and start a session in Claude Code or OpenCode.
+2. Make sure the plugin is available
+2. Invoke `/forge-plain` to start the QA workflow for a new project, or `/add-feature` to add a feature to an existing one.
+3. Answer the questions. Plain Forge writes the `.plain` files for you.
+4. Render specs into code using the [Codeplain](https://codeplain.ai) renderer.
 
 ## Repository Structure
 
+Plain Forge keeps a single canonical source of truth under `forge/` and uses tiny per-runtime adapters to regenerate the directory layout each AI tool expects. The generated outputs are committed so existing install commands keep working — no build step is needed for end users.
+
 ```
-.claude/
-  docs/PLAIN_REFERENCE.md    # Full ***plain language reference
-  skills/                    # All skills used during spec writing
-  rules/                     # Workspace rules for spec validation
-  hooks/                     # Git hooks for spec checks
+forge/                       # canonical, runtime-neutral content
+  skills/                    # all skills used during spec writing
+  rules/                     # workspace rules for spec validation
+  docs/                      # shared docs (PLAIN_REFERENCE.md, etc.)
+
+runtimes/                    # per-runtime adapters
+  claude/
+    build.ts                 # generates .claude/ + .claude-plugin/ from forge/
+    templates/               # Claude-specific files: settings.json, hook script, plugin manifests
+  codex/
+    build.ts                 # generates .codex-plugin/ and .agents/plugins/ (manifest points at forge/skills/)
+    templates/               # Codex-specific files: plugin.json, marketplace catalog
+  opencode/
+    build.ts                 # generates .opencode/ from forge/
+    templates/               # OpenCode-specific files: package.json, .gitignore
+
+bin/
+  forge-build.ts             # orchestrator: runs every runtimes/*/build.ts
+  lib.ts                     # shared symlink/copy helpers
+
+# Generated outputs (committed, do not edit by hand):
+.claude/                     # Claude Code plugin layout
+.claude-plugin/              # Claude Code plugin manifests
+.codex-plugin/               # Codex plugin manifest (its "skills" field points at forge/skills/)
+.agents/plugins/             # Codex marketplace catalog
+.opencode/                   # OpenCode plugin layout
 ```
+
+### Contributing
+
+After editing anything under `forge/` or `runtimes/*/templates/`, regenerate the runtime outputs:
+
+```bash
+npm install        # required after every fresh clone (node_modules/ is gitignored)
+npm run build      # regenerate runtime outputs for Claude, Codex, OpenCode
+npm run clean      # remove generated outputs and rebuild from scratch
+```
+
+If `npm run build` errors with `sh: tsx: command not found`, it means `node_modules/` is missing — run `npm install` first.
+
+The build is idempotent — re-running it produces no `git diff`.
 
 ## Available Skills
 

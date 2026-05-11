@@ -1,0 +1,16 @@
+{
+  "name": "plain-forge",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Conversational spec-writing tool for ***plain specification language",
+  "type": "module",
+  "scripts": {
+    "build": "tsx bin/forge-build.ts",
+    "clean": "tsx bin/forge-build.ts --clean"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
