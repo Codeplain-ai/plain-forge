@@ -5,9 +5,9 @@
     "homepage": "https://github.com/Codeplain-ai/plain-forge",
     "skills": "./forge/skills/",
     "interface": {
-        "displayName": "Plain Forge",
+        "displayName": "plain-forge",
         "shortDescription": "Conversational ***plain spec writing",
-        "longDescription": "Plain Forge turns a structured QA conversation into complete .plain specification files that the Codeplain renderer can turn into production code.",
+        "longDescription": "plain-forge turns a structured QA conversation into complete .plain specification files that the Codeplain renderer can turn into production code.",
         "developerName": "Codeplain-ai",
         "category": "Productivity",
         "websiteURL": "https://codeplain.ai"

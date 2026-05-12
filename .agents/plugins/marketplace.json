@@ -1,7 +1,7 @@
 {
     "name": "plain-forge",
     "interface": {
-        "displayName": "Plain Forge"
+        "displayName": "plain-forge"
     },
     "plugins": [
         {

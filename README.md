@@ -1,29 +1,29 @@
 <p align="center">
-  <img src="assets/plain-forge.png" alt="Plain Forge" width="600" />
+  <img src="assets/plain-forge.png" alt="plain-forge" width="600" />
 </p>
 
 # plain-forge
 
-A conversational spec-writing tool powered by [Claude Code](https://claude.ai/claude-code) and the [***plain](https://plainlang.org) specification language. Describe what you want to build in plain English, and Plain Forge guides you through a structured interview to produce complete `.plain` spec files — which then generate production-ready code via the [Codeplain](https://codeplain.ai) renderer.
+A conversational spec-writing tool that runs in any AI coding agent (Claude Code, Codex, OpenCode, and more) and is built on the [***plain](https://plainlang.org) specification language. Describe what you want to build in plain English, and plain-forge guides you through a structured interview to produce complete `.plain` spec files — which then generate production-ready code via the [Codeplain](https://codeplain.ai) renderer.
 
 ## How It Works
 
-Plain Forge turns a conversation into software specs through four phases:
+The main entry point is `/forge-plain`. It turns a conversation into ***plain specs through four phases:
 
-1. **What are we building?** — Define the product, users, and scope.
-2. **What technologies?** — Choose language, framework, storage, and testing tools.
-3. **How does it work?** — Detail entities, features, user flows, and business rules.
-4. **Write the specs** — Plain Forge produces `.plain` files from your answers.
+1. **What are we building?** — Walk through the product: description, users, scope, core entities, key features, user flows, business rules, and (if applicable) UI behavior. Produces the `***definitions***` and `***functional specs***` for each module.
+2. **What technologies should it use?** — Pick the stack and architecture: language, frameworks, data storage, external services, project structure, and any other stack-wide constraints. Produces the `***implementation reqs***`.
+3. **How should testing be done?** — Decide the testing strategy: framework, test types in scope, conformance/acceptance tests, environment-preparation scripts, layout, and execution. Produces the `***test reqs***`, any `***acceptance tests***`, the runnable scripts under `test_scripts/`, and the `config.yaml`(s) wiring them in. plain-forge then probes your machine to confirm everything those scripts need is actually installed.
+4. **Next steps** — plain-forge identifies the final module in the dependency chain and gives you the exact `codeplain <module>.plain` command to render the specs into code.
 
-Each phase uses structured questions to eliminate ambiguity. You confirm the output of each phase before moving on.
+Each phase is **incremental**, not a single long questionnaire. plain-forge walks one topic at a time, runs an **ask → author → review** loop on every topic — structured questions, immediate edits to the `.plain` files (and `test_scripts/` / `config.yaml` in Phase 3), then snippet-by-snippet confirmation — and only moves on once every flagged snippet is explicitly approved.
 
 ## Getting Started
 
-Plain Forge ships as a set of skills that plug into your AI coding tool of choice. Install it once, then invoke `/forge-plain` (or `/add-feature`) from any project.
+plain-forge ships as a set of skills that plug into your AI coding tool of choice. Install it once, then invoke `/forge-plain` (or `/add-feature` to add a feature to an existing ***plain project) from any project.
 
 ### Install with the `skills` CLI (any runtime)
 
-The fastest way to add Plain Forge to whatever runtime you have installed locally:
+The fastest way to add plain-forge to whatever runtime you have installed locally:
 
 ```bash
 npx skills add https://github.com/Codeplain-ai/plain-forge
@@ -55,7 +55,7 @@ Requires the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) i
 /plugin install plain-forge@plain-forge
 ```
 
-The first command registers this repository as a plugin marketplace; the second installs the `plain-forge` plugin from it. All Plain Forge skills become available in that session.
+The first command registers this repository as a plugin marketplace; the second installs the `plain-forge` plugin from it. All plain-forge skills become available in that session.
 
 ### Install in Codex
 
@@ -69,23 +69,51 @@ This registers the repository as a Codex marketplace and exposes the `plain-forg
 
 ### Install in OpenCode
 
-Plain Forge also ships an OpenCode-compatible skill set under `.opencode/`. To use it, point OpenCode at this repository — for example by telling the agent:
+plain-forge also ships an OpenCode-compatible skill set under `.opencode/`. To use it, point OpenCode at this repository — for example by telling the agent:
 
 > "Use the skills in `github.com/Codeplain-ai/plain-forge` (the `.opencode/` directory)."
 
 OpenCode picks up the skills automatically once the repo is in its context.
 
-### Usage
+## Usage
 
-1. Open your project folder and start a session in Claude Code or OpenCode.
-2. Make sure the plugin is available
-2. Invoke `/forge-plain` to start the QA workflow for a new project, or `/add-feature` to add a feature to an existing one.
-3. Answer the questions. Plain Forge writes the `.plain` files for you.
-4. Render specs into code using the [Codeplain](https://codeplain.ai) renderer.
+### Prerequisites
+
+1. Open your project folder and start a session in your favorite AI coding agent (Claude Code, OpenCode, Codex, …).
+2. Make sure the plain-forge skills are available in that session.
+
+### Starting a new project
+
+1. Invoke `/forge-plain` to launch the structured QA workflow.
+2. Answer the questions. plain-forge writes the `.plain` files for you as you go through the four phases.
+3. Render the specs into code with the [Codeplain](https://codeplain.ai) renderer:
+
+   ```bash
+   codeplain <module>.plain
+   ```
+
+   plain-forge prints the exact command (with the right final module name) at the end of Phase 4.
+
+### Adding a feature to an existing project
+
+1. Invoke `/add-feature`.
+2. Describe the feature in plain English. plain-forge runs the same **ask → author → review** loop scoped to that feature and updates the relevant `.plain` file(s).
+3. Re-render with `codeplain <module>.plain` to regenerate the code.
+
+### Debugging specs
+
+Hit a bug in the rendered app, a failing test, or behavior that doesn't match what you specified?
+
+1. Invoke `/debug-specs`. plain-forge reads the generated code in `plain_modules/` (and the failing tests, if any), traces the issue back to the responsible `.plain` spec, and diagnoses the root cause — **ambiguous spec**, **missing spec**, **conflicting specs**, **incorrect spec**, or a **missing implementation req**.
+2. plain-forge applies the fix in the `.plain` file(s) only and summarizes what changed.
+3. Re-render with `codeplain <module>.plain` to regenerate the code.
+
+> **Important:** Never edit generated code under `plain_modules/` or `conformance_tests/` directly — your changes will be overwritten on the next render. Always fix the spec and re-render.
+
 
 ## Repository Structure
 
-Plain Forge keeps a single canonical source of truth under `forge/` and uses tiny per-runtime adapters to regenerate the directory layout each AI tool expects. The generated outputs are committed so existing install commands keep working — no build step is needed for end users.
+plain-forge keeps a single canonical source of truth under `forge/` and uses tiny per-runtime adapters to regenerate the directory layout each AI tool expects. The generated outputs are committed so existing install commands keep working — no build step is needed for end users.
 
 ```
 forge/                       # canonical, runtime-neutral content
