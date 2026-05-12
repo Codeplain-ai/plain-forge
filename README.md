@@ -8,18 +8,18 @@ A conversational spec-writing tool that runs in any AI coding agent (Claude Code
 
 ## How It Works
 
-The main entry point is `/forge-plain`. It turns a conversation into ***plain specs through four phases:
+The main entry point is `forge-plain`. It turns a conversation into ***plain specs through four phases:
 
 1. **What are we building?** — Walk through the product: description, users, scope, core entities, key features, user flows, business rules, and (if applicable) UI behavior. Produces the `***definitions***` and `***functional specs***` for each module.
 2. **What technologies should it use?** — Pick the stack and architecture: language, frameworks, data storage, external services, project structure, and any other stack-wide constraints. Produces the `***implementation reqs***`.
 3. **How should testing be done?** — Decide the testing strategy: framework, test types in scope, conformance/acceptance tests, environment-preparation scripts, layout, and execution. Produces the `***test reqs***`, any `***acceptance tests***`, the runnable scripts under `test_scripts/`, and the `config.yaml`(s) wiring them in. plain-forge then probes your machine to confirm everything those scripts need is actually installed.
-4. **Next steps** — plain-forge identifies the final module in the dependency chain and gives you the exact `codeplain <module>.plain` command to render the specs into code.
+4. **Validate and hand off** — plain-forge identifies the final module in the dependency chain and runs `codeplain <module>.plain --dry-run` itself to catch any static errors (syntax, undefined concepts, broken `import`/`requires` chains, complexity violations, conflicts). It fixes the `.plain` files until the dry-run passes, then hands you the exact `codeplain <module>.plain` command (plus any test scripts) so the real render starts from a clean spec.
 
 Each phase is **incremental**, not a single long questionnaire. plain-forge walks one topic at a time, runs an **ask → author → review** loop on every topic — structured questions, immediate edits to the `.plain` files (and `test_scripts/` / `config.yaml` in Phase 3), then snippet-by-snippet confirmation — and only moves on once every flagged snippet is explicitly approved.
 
 ## Getting Started
 
-plain-forge ships as a set of skills that plug into your AI coding tool of choice. Install it once, then invoke `/forge-plain` (or `/add-feature` to add a feature to an existing ***plain project) from any project.
+plain-forge ships as a set of skills that plug into your AI coding tool of choice. Install it once, then invoke `forge-plain` (or `add-feature` to add a feature to an existing ***plain project) from any project.
 
 ### Install with the `skills` CLI (any runtime)
 
@@ -84,7 +84,7 @@ OpenCode picks up the skills automatically once the repo is in its context.
 
 ### Starting a new project
 
-1. Invoke `/forge-plain` to launch the structured QA workflow.
+1. Invoke `forge-plain` to launch the structured QA workflow.
 2. Answer the questions. plain-forge writes the `.plain` files for you as you go through the four phases.
 3. Render the specs into code with the [Codeplain](https://codeplain.ai) renderer:
 
@@ -96,7 +96,7 @@ OpenCode picks up the skills automatically once the repo is in its context.
 
 ### Adding a feature to an existing project
 
-1. Invoke `/add-feature`.
+1. Invoke `add-feature`.
 2. Describe the feature in plain English. plain-forge runs the same **ask → author → review** loop scoped to that feature and updates the relevant `.plain` file(s).
 3. Re-render with `codeplain <module>.plain` to regenerate the code.
 
@@ -104,7 +104,7 @@ OpenCode picks up the skills automatically once the repo is in its context.
 
 Hit a bug in the rendered app, a failing test, or behavior that doesn't match what you specified?
 
-1. Invoke `/debug-specs`. plain-forge reads the generated code in `plain_modules/` (and the failing tests, if any), traces the issue back to the responsible `.plain` spec, and diagnoses the root cause — **ambiguous spec**, **missing spec**, **conflicting specs**, **incorrect spec**, or a **missing implementation req**.
+1. Invoke `debug-specs`. plain-forge reads the generated code in `plain_modules/` (and the failing tests, if any), traces the issue back to the responsible `.plain` spec, and diagnoses the root cause — **ambiguous spec**, **missing spec**, **conflicting specs**, **incorrect spec**, or a **missing implementation req**.
 2. plain-forge applies the fix in the `.plain` file(s) only and summarizes what changed.
 3. Re-render with `codeplain <module>.plain` to regenerate the code.
 
@@ -164,42 +164,44 @@ The build is idempotent — re-running it produces no `git diff`.
 
 | Skill | Description |
 |-------|-------------|
-| `/forge-plain` | End-to-end QA interview that produces complete `.plain` spec files for a new project |
-| `/add-feature` | Interview the user about a single feature, then write all the specs for it |
+| `forge-plain` | End-to-end QA interview that produces complete `.plain` spec files for a new project |
+| `add-feature` | Interview the user about a single feature, then write all the specs for it |
 
 ### Spec Authoring
 
 | Skill | Description |
 |-------|-------------|
-| `/add-functional-requirement` | Add a feature spec to `***functional specs***` |
-| `/add-implementation-requirement` | Add a non-functional requirement to `***implementation reqs***` |
-| `/add-test-requirement` | Add a testing requirement to `***test reqs***` |
-| `/add-concept` | Define a new concept in `***definitions***` |
-| `/add-acceptance-test` | Add verification criteria under a functional spec |
-| `/add-resource` | Link an external file (schema, API spec) to a spec |
-| `/add-template` | Create or include a reusable Liquid template |
+| `add-functional-requirement` | Add a feature spec to `***functional specs***` |
+| `add-implementation-requirement` | Add a non-functional requirement to `***implementation reqs***` |
+| `add-test-requirement` | Add a testing requirement to `***test reqs***` |
+| `add-concept` | Define a new concept in `***definitions***` |
+| `add-acceptance-test` | Add verification criteria under a functional spec |
+| `add-resource` | Link an external file (schema, API spec) to a spec |
+| `add-template` | Create or include a reusable Liquid template |
 
 ### Module Management
 
 | Skill | Description |
 |-------|-------------|
-| `/create-import-module` | Create a shared template module (definitions + reqs, no functional specs) |
-| `/create-requires-module` | Create a module that depends on a previously built module |
-| `/refactor-module` | Split a large module into smaller modules connected via a requires chain |
-| `/consolidate-concepts` | Gather scattered concept definitions into a single shared import module |
+| `create-import-module` | Create a shared template module (definitions + reqs, no functional specs) |
+| `create-requires-module` | Create a module that depends on a previously built module |
+| `refactor-module` | Split a large module into smaller modules connected via a requires chain |
+| `consolidate-concepts` | Gather scattered concept definitions into a single shared import module |
 
 ### Analysis and Quality
 
 | Skill | Description |
 |-------|-------------|
-| `/analyze-if-func-spec-too-complex` | Check if a spec exceeds the 200-line complexity limit |
-| `/analyze-2-func-specs` | Check two specs for conflicts |
-| `/break-down-func-spec` | Split an overly complex spec into smaller specs (each ≤ 200 LOC) |
-| `/resolve-spec-conflict` | Resolve a conflict between two functional specs |
+| `analyze-if-func-spec-too-complex` | Check if a spec exceeds the 200-line complexity limit |
+| `analyze-2-func-specs` | Check two specs for conflicts |
+| `break-down-func-spec` | Split an overly complex spec into smaller specs (each ≤ 200 LOC) |
+| `resolve-spec-conflict` | Resolve a conflict between two functional specs |
 
 ### Debugging and Testing
 
 | Skill | Description |
 |-------|-------------|
-| `/debug-specs` | Investigate a bug by tracing generated code back to specs and fixing only the `.plain` files |
-| `/implement-testing-scripts` | Create run_unittests, run_conformance_tests, and prepare_environment scripts for a language |
+| `debug-specs` | Investigate a bug by tracing generated code back to specs and fixing only the `.plain` files |
+| `implement-unit-testing-script` | Generate a per-language unit-test runner (`run_unittests_<lang>.sh` / `.ps1`) |
+| `implement-conformance-testing-script` | Generate a per-language conformance-test runner; picks the install-inline or activate-only variant based on whether `prepare_environment_<lang>` exists |
+| `implement-prepare-environment-script` | Generate a per-language one-time setup script (`prepare_environment_<lang>.sh` / `.ps1`) that stages the build and pre-warms dependencies so conformance tests start cold; reconciles any existing conformance script to remove its now-redundant install step |

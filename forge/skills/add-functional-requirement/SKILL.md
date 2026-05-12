@@ -2,8 +2,11 @@
 name: add-functional-requirement
 description: >-
   Add a functional requirement to the ***functional specs*** section of a
-  ***plain spec file. Use when the user wants to add new behavior, a feature,
-  or a "what the software should do" requirement to a .plain file.
+  ***plain spec file. Use whenever a new functional spec is being added to a
+  .plain file — whether the user explicitly asks, or another skill/workflow
+  (e.g. forge-plain, add-feature) needs to author a new functional spec.
+  Every new entry under ***functional specs*** must go through this skill;
+  never bulk-write or hand-author functional specs without invoking it.
 ---
 
 # Add Functional Requirement

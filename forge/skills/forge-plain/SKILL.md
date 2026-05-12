@@ -25,8 +25,13 @@ When the user starts a new session or asks to build something, run the **QA work
 
 - **Phase 1** is finished when the new `***definitions***` and `***functional specs***` for this session are on disk and approved.
 - **Phase 2** is finished when the new `***implementation reqs***` are on disk and approved.
-- **Phase 3** is finished when the new `***test reqs***` (and, if conformance testing is enabled, `***acceptance tests***`) are on disk, the testing scripts and `config.yaml` files exist, and the environment verification has passed or each gap has been explicitly acknowledged by the user.
-- **Phase 4** is finished when the user has the render command and the full list of side-channel commands they need to run.
+- **Phase 3** is finished when the new `***test reqs***` (and, if conformance testing is enabled, `***acceptance tests***`) are on disk, the testing scripts and `config.yaml` files exist, and the environment verification has passed or each gap has been explicitly acknowledged by the user. Make sure to add the template_dir field to the config.yaml if any import modules or templates have been added eg. 
+
+```yaml
+template_dir: template
+```
+
+- **Phase 4** is finished when `codeplain <module>.plain --dry-run` has been run by you (the agent) against the final render target and it exits successfully, and the user has been given the render command plus the full list of side-channel commands they need to run.
 
 If you find yourself drafting later-phase content (e.g. picking a framework while still in Phase 1, or writing test reqs while still in Phase 2), stop and finish the current phase first. The same rule applies to **questions**: do not ask the user about anything that belongs to a later phase. While a phase is still open, only ask questions whose answers shape that phase's deliverable. If a user answer drifts into later-phase territory, acknowledge it briefly, note it for later, and steer back to the current phase — do **not** branch into a multi-question detour about, say, the testing framework while you are still nailing down functional specs. Each phase's output is a concrete change to the `.plain` files (and, in Phase 3, to `test_scripts/` and `config.yaml`). Talk is not output — the specs are.
 
@@ -46,7 +51,7 @@ This phase is **incremental**. Do **not** ask everything up front and then write
 2. **Author** — immediately translate the new answers into `.plain` content. Depending on the topic, that means:
    - **Module structure** — create or update the `.plain` file(s) (single module, template + modules, or chained modules). Set up YAML frontmatter (`import`, `requires`, description). If you use a template, create it in `template/` without `***functional specs***`. Use the `create-import-module` skill where applicable.
    - **`***definitions***`** — add or refine concepts (entities, attributes, relationships). Define every concept before it is referenced. Use the `add-concept` skill.
-   - **`***functional specs***`** — translate features, flows, constraints, and (if applicable) UI behavior into chronological, incremental specs (each implying ≤200 lines of code change, language-agnostic, no conflicts). Use the `add-functional-requirement` skill.
+   - **`***functional specs***`** — translate features, flows, constraints, and (if applicable) UI behavior into chronological, incremental specs (each implying ≤200 lines of code change, language-agnostic, no conflicts). Add them **one at a time** using the `add-functional-requirement` skill — invoke the skill once per spec, never bulk-write multiple specs in a single pass.
    Do **not** add `***implementation reqs***`, `***test reqs***`, or `***acceptance tests***` in this phase — they belong to later phases.
 3. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored. Apply the user's responses back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
 
@@ -138,7 +143,10 @@ This phase is **incremental**, just like Phase 1 and Phase 2. Do **not** ask eve
 2. **Author** — immediately translate the new answers into the right place:
    - **`***test reqs***`** for testing rules and expectations (framework, layout, conventions, coverage, constraints). Use `add-test-requirement`. Put shared reqs on the template module if one exists; module-specific reqs (e.g. integration tests bound to a particular external service) go on the module that needs them.
    - **`***acceptance tests***`** under the relevant functional spec, authored via `add-acceptance-test`. Only author these when conformance testing is opted in (see topic 3).
-   - **Scripts under `test_scripts/`** via `implement-testing-scripts`. The skill detects the OS and produces scripts matching the language chosen in Phase 2. Generate each script the moment its enabling decision is made (`run_unittests` after the framework topic, `run_conformance_tests` after the conformance topic if yes, `prepare_environment` after the prepare-environment topic if yes).
+   - **Scripts under `test_scripts/`** 
+      - Use skill `implement-unit-testing-script` to implement the unit testing script (Determine during 1. **Ask**)
+      - Use skill `implement-prepare-environment-script` to implement prepare environment script (Determine during 1. **Ask**)
+      - Use skill `implement-conformance-testing-script` to implement conformance testing script (Determine during 1. **Ask**)
    - **`config.yaml`** entries — every time a script is generated, update the relevant `config.yaml`(s) to point at it. Only include entries for scripts that were actually generated.
 3. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored. Apply the user's responses back to the `.plain` files, the scripts, and the `config.yaml`(s), and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
 
@@ -158,12 +166,12 @@ conformance-tests-script: test_scripts/run_conformance_tests_<language>.<sh|ps1>
 prepare-environment-script: test_scripts/prepare_environment_<language>.<sh|ps1>
 ```
 
-Use `.sh` on macOS/Linux and `.ps1` on Windows, matching what `implement-testing-scripts` produces. Preserve any existing fields in a `config.yaml` you are updating.
+Use `.sh` on macOS/Linux and `.ps1` on Windows, matching what testing scripts. Preserve any existing fields in a `config.yaml` you are updating.
 
 Walk through these topics in order, running ask → author → review for each. Skip a topic only if it genuinely doesn't apply, and say so explicitly:
 
 1. **Testing framework** — e.g. pytest, Jest, JUnit, Go's `testing` package. If the user has no preference, suggest one that fits the language chosen in Phase 2.
-   - Author: a framework requirement in `***test reqs***` at the appropriate scope (template if shared, otherwise on the module). Generate `run_unittests` (and any framework config files it needs, e.g. `pytest.ini`, `jest.config.js`) via `implement-testing-scripts`. Add the `unittests-script:` entry to the relevant `config.yaml`(s), creating each file if it doesn't exist yet.
+   - Author: a framework requirement in `***test reqs***` at the appropriate scope (template if shared, otherwise on the module). Generate `run_unittests` (and any framework config files it needs, e.g. `pytest.ini`, `jest.config.js`) via `implement-unit-testing-script`. Add the `unittests-script:` entry to the relevant `config.yaml`(s), creating each file if it doesn't exist yet.
    - Review: the framework req, the generated script paths, and the new `config.yaml` entry.
 2. **Test types in scope** — unit tests and integration tests. Which combinations does the user want? How do tests map to the architectural layers established in Phase 2 (e.g. one test module per service, repository tests with an in-memory store, etc.)?
    - Author: a test-types/scope requirement in `***test reqs***` describing which types are in scope and how they map to the architecture.
@@ -171,13 +179,13 @@ Walk through these topics in order, running ask → author → review for each. 
 3. **Conformance testing** — explicitly ask whether conformance/end-to-end tests should be part of the project. Conformance testing drives whether `run_conformance_tests` is generated and whether `***acceptance tests***` are authored. If the user is unsure, briefly explain the tradeoff (extra scripts + per-spec acceptance tests vs. lighter setup) and let them choose.
    - Author (if yes):
      - A conformance-testing requirement in `***test reqs***` (framework, execution command, any constraints).
-     - `run_conformance_tests` via `implement-testing-scripts`.
+     - `run_conformance_tests` via `implement-conformance-testing-script`.
      - The `conformance-tests-script:` entry in the relevant `config.yaml`(s).
      - **Walk every functional spec authored in Phase 1.** For each spec, ask the user (via **AskUserQuestion**) whether it needs concrete verification. If yes, author one acceptance test under that spec via `add-acceptance-test`, then review the new acceptance test as a snippet (Missing parts / Possible extensions / Ambiguities) before moving on. Do this per spec — do not bulk-write acceptance tests.
    - Author (if no): record the decision; skip the conformance script, the conformance config entry, and acceptance-test authoring entirely.
    - Review: the conformance req (if any), the new script and config entry (if any), and each acceptance test snippet (if any).
 4. **Environment preparation script** — explicitly ask whether a `prepare_environment` script should be generated. This is the single entry point for installing dependencies and setting up fixtures/services before tests run. If the user is unsure, briefly explain that it's recommended when there are dependencies to install or services to start, and skippable when the project genuinely has nothing to prepare.
-   - Author (if yes): `prepare_environment` via `implement-testing-scripts`; add the `prepare-environment-script:` entry to the relevant `config.yaml`(s); if the script's responsibilities are non-trivial and worth pinning in the spec, also add a brief `***test reqs***` entry describing what `prepare_environment` is responsible for.
+   - Author (if yes): `prepare_environment` via `implement-prepare-environment-script`; add the `prepare-environment-script:` entry to the relevant `config.yaml`(s); if the script's responsibilities are non-trivial and worth pinning in the spec, also add a brief `***test reqs***` entry describing what `prepare_environment` is responsible for.
    - Author (if no): record the decision; skip the script and the config entry.
    - Review: the script (if any), the new config entry (if any), and the test req (if any).
 5. **Test layout & conventions** — directory layout for tests, naming conventions, fixtures/mocks strategy, anything that constrains the *shape* of test code beyond what topics 1 and 2 already established.
@@ -228,26 +236,148 @@ Do not move on to Phase 4 until either every requirement passes, or the user has
 
 --- 
 
-### Phase 4 — Next steps
+### Phase 4 — Validate and hand off
 
-Once all specs, testing scripts, and (optionally) test reqs / acceptance tests are in place, tell the user they are ready to render. Identify the **last module in the dependency chain** — the module that is not `requires`-ed by any other module. If there is only one module, use that.
+Phase 4 has two halves. First, **you** (the agent) validate every spec end-to-end with a dry-run of the `codeplain` CLI so the user doesn't waste a real render — or any debugging time — on a fixable static error. Only after that passes do you **hand off** the render command (plus any side-channel commands) to the user.
 
-Present the render command:
+#### 4a. Identify the render target
+
+Find the **last module in the dependency chain** — the module that is not `requires`-ed by any other module. If there is only one module, use it. Call this module `<module>`.
+
+Examples:
+
+- Chain `base.plain → features.plain → integrations.plain` → render target is `integrations.plain`.
+- Single module `my_app.plain` → render target is `my_app.plain`.
+
+#### 4b. Validate the specs with `codeplain --dry-run`
+
+Before handing off to the user, run a dry-run yourself. The dry-run executes the full ***plain pipeline up to but not including the actual code-generation step, so it surfaces every static issue the renderer would otherwise reject at render time — syntax errors, undefined concepts, broken `import` / `requires` chains, cyclic definitions, missing templates, complexity violations ("Functional spec too complex!"), conflicting reqs, etc.
+
+The minimal invocation, run from the project root via the `terminal` tool, is:
+
+```bash
+codeplain <module>.plain --dry-run
+```
+
+**Match the dry-run to how the user will actually render.** Pass the same flags they would pass for the real render so what you validate is what they will run. The flags that matter most in Phase 4:
+
+- **`--config-name <name>`** — use whenever the project's config file is not the default `config.yaml`. `--config-name` takes a *file name*, not a path; the CLI searches the plain file's directory and the current working directory. If Phase 3 split the project into multiple parts (e.g. `backend/config.yaml`, `frontend/config.yaml`), either `cd` into the directory that contains the right `config.yaml` before running the dry-run, or pass `--config-name` explicitly to disambiguate.
+- **`--template-dir <path>`** — use only when templates live outside `template/` **and** `template_dir` is not already set in the relevant `config.yaml`. If `template_dir` is in the config, this is redundant.
+- **`--verbose` / `-v`** — strongly recommended on a failed dry-run. The extra log output usually makes it obvious which `.plain` file and which functional spec triggered the error.
+- **`--full-plain`** — useful when an `import` / `requires` chain is suspect. It prints the fully assembled ***plain specification (all imported definitions, required modules, templates) so you can confirm the renderer actually sees what you think it sees before fixing anything.
+
+If Phase 3 produced **multiple `config.yaml`s**, treat each render target as its own validation: run a separate `codeplain <module>.plain --dry-run` for every part, each with the right working directory or `--config-name`. Step 4c is not unlocked until **every** dry-run exits successfully.
+
+Then:
+
+- **Dry-run exits successfully** → move on to step 4c.
+- **Dry-run fails** → do **not** ask the user to render. Work the failure to completion before handing off:
+  1. Read the error output. If the first run was not verbose, immediately re-run with `--verbose` to get more context. Identify the offending `.plain` file, the line (if reported), and the kind of issue (missing concept, syntax error, cyclic definition, complexity violation, conflicting reqs, missing template, broken `import`/`requires`, missing config field, …).
+  2. Fix only the `.plain` files (or the relevant `config.yaml` / template) using the appropriate edit skill — `add-concept`, `add-functional-requirement`, `add-implementation-requirement`, `resolve-spec-conflict`, `break-down-func-spec`, `consolidate-concepts`, or an inline edit. **Never modify generated code in `plain_modules/` or `conformance_tests/`.**
+  3. If you are uncertain about ***plain syntax for the failing construct, re-load `load-plain-reference` before fixing.
+  4. Re-run the same `codeplain <module>.plain --dry-run …` command (with the same flags). Repeat until it exits successfully.
+- **`codeplain` is not on PATH, or `CODEPLAIN_API_KEY` is not set** → stop and tell the user what's missing and how to fix it (install the CLI, export the env var) before continuing. Do not pretend the dry-run passed.
+
+For the full list of `codeplain` flags, see the CLI reference at the end of this section.
+
+#### 4c. Present the render command
+
+Only after the dry-run passes, tell the user their specs are ready and present the render command:
 
 ```
 codeplain <module>.plain
 ```
 
-Where `<module>` is the name of that final module (without the `.plain` extension in the explanation, but included in the command). For example, if the chain is `base.plain → features.plain → integrations.plain`, the command is:
+Examples:
 
-```
-codeplain integrations.plain
-```
+- Chain `base.plain → features.plain → integrations.plain`:
 
-If there is a single module with no chain (e.g., `my_app.plain`):
+  ```
+  codeplain integrations.plain
+  ```
 
-```
-codeplain my_app.plain
+- Single module with no chain (e.g. `my_app.plain`):
+
+  ```
+  codeplain my_app.plain
+  ```
+
+Also remind the user of any **side-channel commands** they may want to run themselves per the testing strategy locked in during Phase 3 — for example `./test_scripts/run_unittests.sh <module>`, `./test_scripts/prepare_environment.sh <module>`, or `./test_scripts/run_conformance_tests.sh <module> <conformance_tests_folder>`. Only mention the scripts that were actually generated in Phase 3.
+
+#### `codeplain` CLI reference
+
+```txt
+Render plain code to target code.
+
+positional arguments:
+  filename              Path to the plain file to render. The directory containing this file has highest precedence for template loading, so
+                        you can place custom templates here to override the defaults. See --template-dir for more details about template
+                        loading.
+
+options:
+  -h, --help            show this help message and exit
+  --verbose, -v         Enable verbose output
+  --base-folder BASE_FOLDER
+                        Base folder for the build files
+  --build-folder BUILD_FOLDER
+                        Folder for build files
+  --log-to-file, --no-log-to-file
+                        Enable logging to a file. Defaults to True. Set to False to disable.
+  --log-file-name LOG_FILE_NAME
+                        Name of the log file. Defaults to 'codeplain.log'.Always resolved relative to the plain file directory.If file on
+                        this path already exists, the already existing log file will be overwritten by the current logs.
+  --render-range RENDER_RANGE
+                        Specify a range of functionalities to render (e.g. `1` , `2`, `3`). Use comma to separate start and end IDs. If only
+                        one functionality ID is provided, only that functionality is rendered. Range is inclusive of both start and end IDs.
+  --render-from RENDER_FROM
+                        Continue generation starting from this specific functionality (e.g. `2`). The functionality with this ID will be
+                        included in the output. The functionality ID must match one of the functionalities in your plain file.
+  --force-render        Force re-render of all the required modules.
+  --unittests-script UNITTESTS_SCRIPT
+                        Shell script to run unit tests on generated code. Receives the build folder path as its first argument (default:
+                        'plain_modules').
+  --conformance-tests-folder CONFORMANCE_TESTS_FOLDER
+                        Folder for conformance test files
+  --conformance-tests-script CONFORMANCE_TESTS_SCRIPT
+                        Path to conformance tests shell script. Every conformance test script should accept two arguments: 1) Path to a
+                        folder (e.g. `plain_modules/module_name`) containing generated source code, 2) Path to a subfolder of the conformance
+                        tests folder (e.g. `conformance_tests/subfoldername`) containing test files.
+  --prepare-environment-script PREPARE_ENVIRONMENT_SCRIPT
+                        Path to a shell script that prepares the testing environment. The script should accept the source code folder path as
+                        its first argument.
+  --test-script-timeout TEST_SCRIPT_TIMEOUT
+                        Timeout for test scripts in seconds. If not provided, the default timeout of 120 seconds is used.
+  --api [API]           Alternative base URL for the API. Default: `https://api.codeplain.ai`
+  --api-key API_KEY     API key used to access the API. If not provided, the `CODEPLAIN_API_KEY` environment variable is used.
+  --full-plain          Full preview ***plain specification before code generation.Use when you want to preview context of all ***plain
+                        primitives that are going to be included in order to render the given module.
+  --dry-run             Dry run preview of the code generation (without actually making any changes).
+  --replay-with REPLAY_WITH
+  --template-dir TEMPLATE_DIR
+                        Path to a custom template directory. Templates are searched in the following order: 1) Directory containing the plain
+                        file, 2) Custom template directory (if provided through this argument), 3) Built-in standard_template_library
+                        directory
+  --copy-build          If set, copy the rendered contents of code in `--base-folder` folder to `--build-dest` folder after successful
+                        rendering.
+  --build-dest BUILD_DEST
+                        Target folder to copy rendered contents of code to (used only if --copy-build is set).
+  --copy-conformance-tests
+                        If set, copy the conformance tests of code in `--conformance-tests-folder` folder to `--conformance-tests-dest`
+                        folder successful rendering. Requires --conformance-tests-script.
+  --conformance-tests-dest CONFORMANCE_TESTS_DEST
+                        Target folder to copy conformance tests of code to (used only if --copy-conformance-tests is set).
+  --render-machine-graph
+                        If set, render the state machine graph.
+  --logging-config-path LOGGING_CONFIG_PATH
+                        Path to the logging configuration file.
+  --headless            Run in headless mode: no TUI, no terminal output except a single render-started message. All logs are written to the
+                        log file.
+
+configuration:
+  --config-name CONFIG_NAME
+                        Name of the config file to look for. Looked up in the plain file directory and the current working directory.
+                        Defaults to config.yaml.
+
 ```
 
 ---
