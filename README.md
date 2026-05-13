@@ -26,7 +26,7 @@ plain-forge ships as a set of skills that plug into your AI coding tool of choic
 The fastest way to add plain-forge to whatever runtime you have installed locally:
 
 ```bash
-npx skills add https://github.com/Codeplain-ai/plain-forge
+npx skills add https://github.com/Codeplain-ai/plain-forge --all
 ```
 
 The `skills` CLI walks you through an interactive setup. When it asks:
@@ -41,7 +41,7 @@ pick **Copy to all agents** so the skills are installed into every runtime (Clau
 To skip the prompts and install into specific runtimes non-interactively:
 
 ```bash
-npx skills add https://github.com/Codeplain-ai/plain-forge --agent opencode --agent codex --agent claude
+npx skills add https://github.com/Codeplain-ai/plain-forge --all --agent opencode --agent codex --agent claude
 ```
 
 If you'd rather use the native install flow for a specific runtime, the per-tool instructions below still work.
@@ -171,7 +171,8 @@ The build is idempotent — re-running it produces no `git diff`.
 
 | Skill | Description |
 |-------|-------------|
-| `add-functional-requirement` | Add a feature spec to `***functional specs***` |
+| `add-functional-spec` | Add a single feature spec to `***functional specs***` |
+| `add-functional-specs` | Add multiple feature specs to `***functional specs***` in one pass (same per-spec checks as `add-functional-spec`) |
 | `add-implementation-requirement` | Add a non-functional requirement to `***implementation reqs***` |
 | `add-test-requirement` | Add a testing requirement to `***test reqs***` |
 | `add-concept` | Define a new concept in `***definitions***` |

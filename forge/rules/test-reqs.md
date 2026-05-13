@@ -26,7 +26,7 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 |-----------|-----------------|---------|
 | Unit tests | `***implementation reqs***` | Test individual functionalities in isolation |
 | Conformance tests | `***test reqs***` | Verify implementation conforms to the full spec |
-| Acceptance tests | `***acceptance tests***` under a functional spec | Verify a specific functional requirement |
+| Acceptance tests | `***acceptance tests***` under a functional spec | Verify a specific functional spec |
 
 ## No duplication
 - Do not duplicate guidance already present in the file or its imports

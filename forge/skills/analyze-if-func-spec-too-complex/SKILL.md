@@ -3,8 +3,9 @@ name: analyze-if-func-spec-too-complex
 description: >-
   Analyze a functional spec to determine if it is too complex for the renderer.
   A spec is too complex if it would produce more than 200 lines of code changes.
-  Use after drafting a new functional requirement (during add-functional-requirement)
-  to verify it fits within the complexity limit before inserting it.
+  Use after drafting a new functional spec (during `add-functional-spec`, or
+  per spec during `add-functional-specs`) to verify it fits within the
+  complexity limit before inserting it.
 ---
 
 # Analyze If Functional Spec Is Too Complex
@@ -143,9 +144,9 @@ TOO COMPLEX
 
 The internal analysis (checklist, LOC estimation, reasoning) informs the verdict but must not appear in the output. The caller decides what to do with the result.
 
-## Integration with add-functional-requirement
+## Integration with add-functional-spec / add-functional-specs
 
-This skill is called during step 3 of the `add-functional-requirement` workflow, after drafting the spec but **before** inserting it into the file. The caller acts on the one-word verdict:
+This skill is called during step 3 of the `add-functional-spec` workflow (or per spec during `add-functional-specs`), after drafting a spec but **before** inserting it into the file. The caller acts on the one-word verdict:
 
 - **ACCEPTABLE** — proceed to insert the spec.
 - **TOO COMPLEX** — invoke `break-down-func-spec` to produce smaller specs, then insert each one individually (running conflict checks on each).

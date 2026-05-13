@@ -1,15 +1,17 @@
 ---
-name: add-functional-requirement
+name: add-functional-spec
 description: >-
-  Add a functional requirement to the ***functional specs*** section of a
-  ***plain spec file. Use whenever a new functional spec is being added to a
-  .plain file — whether the user explicitly asks, or another skill/workflow
+  Add a single functional spec to the ***functional specs*** section of a
+  ***plain spec file. Use whenever exactly one new functional spec is being
+  added — whether the user explicitly asks, or another skill/workflow
   (e.g. forge-plain, add-feature) needs to author a new functional spec.
-  Every new entry under ***functional specs*** must go through this skill;
-  never bulk-write or hand-author functional specs without invoking it.
+  Every new entry under ***functional specs*** must go through either this
+  skill or `add-functional-specs` (the bulk variant for adding multiple specs
+  in one pass); hand-authoring functional specs without invoking one of these
+  skills is forbidden.
 ---
 
-# Add Functional Requirement
+# Add Functional Spec
 
 Always use the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet.
 
@@ -42,7 +44,7 @@ Write in terms of behavior, concepts, and domain logic — not implementation co
 
 ### No Conflicts
 
-The new spec must not contradict any existing functional spec. Conflicting requirements are the most costly outcome. Before adding, review all existing specs and verify the new one is compatible. Use `analyze-2-func-specs` to determine if 2 specs are compatible or not. If ambiguity exists, add explicit detail to eliminate any conflicting interpretation. If a conflict is detected, use the `resolve-spec-conflict` skill to diagnose and fix it before proceeding.
+The new spec must not contradict any existing functional spec. Conflicting specs are the most costly outcome. Before adding, review all existing specs and verify the new one is compatible. Use `analyze-2-func-specs` to determine if 2 specs are compatible or not. If ambiguity exists, add explicit detail to eliminate any conflicting interpretation. If a conflict is detected, use the `resolve-spec-conflict` skill to diagnose and fix it before proceeding.
 
 ### Disambiguation
 
@@ -65,7 +67,7 @@ Functionality must be self-contained in the spec text. `requires` modules only i
 
 ## Acceptance Tests
 
-If the functional requirement needs verification, use the `add-acceptance-test` skill to add acceptance tests after inserting the spec.
+If the functional spec needs verification, use the `add-acceptance-test` skill to add acceptance tests after inserting the spec.
 
 ## Validation Checklist
 

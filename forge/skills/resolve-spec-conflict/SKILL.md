@@ -4,7 +4,7 @@ description: >-
   Resolve a conflict between two functional specs in a ***plain spec file. Use
   when conformance tests for a previously passing spec start failing after a new
   spec is rendered, or when a potential conflict is detected while adding a new
-  functional requirement.
+  functional spec (via `add-functional-spec` or `add-functional-specs`).
 ---
 
 # Resolve Spec Conflict
@@ -15,7 +15,7 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 
 A conflict exists (or is suspected) when:
 - Conformance tests for a **previously passing** functional spec begin to fail after a new spec is rendered.
-- A new spec being added (via the `add-functional-requirement` skill) appears to contradict an existing spec.
+- A new spec being added (via the `add-functional-spec` or `add-functional-specs` skill) appears to contradict an existing spec.
 - Two specs make incompatible assertions about the same behavior, data, or state.
 
 ## Workflow
@@ -69,7 +69,7 @@ After editing:
 3. Check that chronological ordering still makes sense (earlier specs should not depend on later ones).
 4. If resolving via test adjustments, verify the `***test reqs***` or `***acceptance tests***` changes are appropriate.
 
-## Prevention (for use during add-functional-requirement)
+## Prevention (for use during add-functional-spec / add-functional-specs)
 
 Before adding a new spec, run through this quick conflict check:
 

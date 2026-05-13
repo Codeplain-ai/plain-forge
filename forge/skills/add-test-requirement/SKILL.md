@@ -43,7 +43,7 @@ Test reqs specify how **conformance tests** should be written and run. Common co
 |-----------|-----------------|---------|
 | Unit tests | `***implementation reqs***` | Test individual functionalities in isolation |
 | Conformance tests | `***test reqs***` | Verify implementation conforms to the full spec |
-| Acceptance tests | `***acceptance tests***` under a functional spec | Verify a specific functional requirement |
+| Acceptance tests | `***acceptance tests***` under a functional spec | Verify a specific functional spec |
 
 ## Format
 

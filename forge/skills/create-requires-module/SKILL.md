@@ -17,7 +17,7 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 
 When this module is rendered:
 - The required module's generated code (`plain_modules/<required_module>`) is copied as the starting point.
-- The required module's `***functional specs***` become visible as **previous functional requirements**.
+- The required module's `***functional specs***` become visible as **previous functional specs**.
 - Only `exported_concepts` from the required module are available (not its full definitions).
 
 Use `requires` for:
@@ -73,7 +73,7 @@ Only `:StorageClient:` and `:BackupResult:` would be available to modules that `
 
 ## Chronological Ordering with Requires
 
-Functional specs from `requires` modules are considered **previous functional requirements**. This means:
+Functional specs from `requires` modules are considered **previous functional specs**. This means:
 - They are already rendered and their code exists.
 - Your new specs are rendered after them, with full awareness of what they defined.
 - Your new specs must not conflict with the required module's specs.

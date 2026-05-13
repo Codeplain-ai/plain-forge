@@ -106,9 +106,9 @@ Describes what the software should do. Each bullet point is a single piece of fu
 
 Each functional spec must be limited in complexity. If a spec is too complex, the renderer responds with "Functional spec too complex!" and it must be broken down into smaller specs.
 
-Functional specs are in **chronological order** — earlier specs are rendered before later ones. Functional specs defined in `requires` modules are considered **previous functional requirements** relative to the current module's specs. This ordering matters for incremental rendering and for detecting conflicts between requirements.
+Functional specs are in **chronological order** — earlier specs are rendered before later ones. Functional specs defined in `requires` modules are considered **previous functional specs** relative to the current module's specs. This ordering matters for incremental rendering and for detecting conflicts between specs.
 
-The renderer has **no knowledge of future functional requirements**. When a functional spec is being implemented, only the previous functional specs (those already rendered) are in the renderer's context. Specs that come later in the list are invisible to the renderer at that point. This means each spec is implemented without any awareness of what will come next.
+The renderer has **no knowledge of future functional specs**. When a functional spec is being implemented, only the previous functional specs (those already rendered) are in the renderer's context. Specs that come later in the list are invisible to the renderer at that point. This means each spec is implemented without any awareness of what will come next.
 
 ```plain
 ***functional specs***
@@ -130,7 +130,7 @@ Each functional spec must be unambiguous. If a single line is not enough to full
 
 ### Acceptance Tests
 
-Nested under individual functional requirements to specify how to verify correct implementation. They extend conformance tests and are implemented according to the `***test reqs***` specification.
+Nested under individual functional specs to specify how to verify correct implementation. They extend conformance tests and are implemented according to the `***test reqs***` specification.
 
 ```plain
 ***functional specs***
@@ -220,7 +220,7 @@ When a module **`import`s** another, it gains access to the imported module's de
 
 When a module **`requires`** another:
 - The required module's generated code (`plain_modules/<required_module>`) is copied as the starting point.
-- The required module's `***functional specs***` become visible as **previous functional requirements**.
+- The required module's `***functional specs***` become visible as **previous functional specs**.
 - Only `exported_concepts` from the required module are available (not its full definitions).
 
 A module can use both `requires` and `import` together. `requires` points to other root-level modules (e.g., `auth`, `messaging`); `import` resolves from the default `template/` directory without needing the prefix (e.g., `airplain`). Modules with functional specs live at the repository root. Import modules (templates) live in `template/`.
@@ -248,14 +248,14 @@ Test scripts live in `test_scripts/` and are run from the repo root:
 ./test_scripts/run_conformance_tests.sh <module_name> <conformance_tests_folder>
 ```
 
-## Writing Functional Requirements
+## Writing Functional Specs
 
-- Each functional requirement must imply a **maximum of 200 changed lines of code**. This is a hard limit — if a requirement would result in more than 200 lines of changes, it must be broken down into smaller, independent requirements. This limit also helps avoid "Functional spec too complex!" errors from the renderer.
-- **Conflicting requirements must be avoided at all costs.** Functional specs should be written so that no conflicts exist between them. If two specs appear to conflict, they must be clarified by adding more detail and context to the specs until all possible conflicts are resolved. Prevention is always preferable to debugging conflicts after rendering.
-- **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types) in functional specs and definitions. Write requirements in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes, REST api endpoints etc.). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
+- Each functional spec must imply a **maximum of 200 changed lines of code**. This is a hard limit — if a spec would result in more than 200 lines of changes, it must be broken down into smaller, independent specs. This limit also helps avoid "Functional spec too complex!" errors from the renderer.
+- **Conflicting specs must be avoided at all costs.** Functional specs should be written so that no conflicts exist between them. If two specs appear to conflict, they must be clarified by adding more detail and context to the specs until all possible conflicts are resolved. Prevention is always preferable to debugging conflicts after rendering.
+- **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types) in functional specs and definitions. Write specs in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes, REST api endpoints etc.). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
 - **Keep sentences short and clear.** Spec lines should be easy to read and understand at a glance. Prefer several short, concise sentences over long, complex ones.
 - **Specs must be deterministic enough to use the software without reading the generated code.** A developer should be able to know exactly how to interact with the built software solely from the specs. For example, if the software is a REST API, the specs must include endpoint paths, HTTP methods, request/response formats, and status codes. If it is a CLI tool, the specs must include command names, arguments, and expected output. Never leave interface details up to the renderer's discretion.
-- **Encapsulate functionality in functional specs.** `requires` modules import only functional specs. It is therefore important that the functionality is encapsulated in the functional specs and not in implementation reqs, as those will not be in the context of future functional specs when fixing previous conformance tests of previous functional requirements.
+- **Encapsulate functionality in functional specs.** `requires` modules import only functional specs. It is therefore important that the functionality is encapsulated in the functional specs and not in implementation reqs, as those will not be in the context of future functional specs when fixing previous conformance tests of previous functional specs.
 
 ## Working with Specs
 
@@ -285,19 +285,19 @@ The workflow is: read the generated code to understand what it does, identify wh
 
 ## Conformance Test Workflow
 
-Each functional spec in a module has its own set of conformance tests, generated per functional spec per module. After a new functional spec is rendered (i.e., its implementation code is generated), conformance tests for that spec are also rendered. Before proceeding, **all previous conformance tests** (from earlier functional specs in the same module) are run. Ideally, all conformance tests of all previous functional specs pass without any changes. If any previously passing conformance test now fails, the failure must be resolved before moving on. Resolution means one of three things: fixing the conformance test, fixing the implementation code (by adjusting the spec), or identifying conflicting requirements.
+Each functional spec in a module has its own set of conformance tests, generated per functional spec per module. After a new functional spec is rendered (i.e., its implementation code is generated), conformance tests for that spec are also rendered. Before proceeding, **all previous conformance tests** (from earlier functional specs in the same module) are run. Ideally, all conformance tests of all previous functional specs pass without any changes. If any previously passing conformance test now fails, the failure must be resolved before moving on. Resolution means one of three things: fixing the conformance test, fixing the implementation code (by adjusting the spec), or identifying conflicting specs.
 
 If conformance tests of a previous functional spec need to be changed in order to pass, this is a strong indicator that the functional specs themselves may need to be amended. Needing to modify earlier conformance tests suggests the new functional spec has introduced behavior that is inconsistent with what was previously specified — the specs should be reviewed and clarified to eliminate the ambiguity or conflict.
 
-## Conflicting Requirements and Conformance Test Debugging
+## Conflicting Specs and Conformance Test Debugging
 
-The renderer can detect conflicting requirements. Two functional requirements may be in conflict if conformance tests for a previously passing requirement begin to fail after a new requirement is rendered. When a conformance test failure occurs, the first step is to determine **where the issue lies**. There are three possible outcomes:
+The renderer can detect conflicting specs. Two functional specs may be in conflict if conformance tests for a previously passing spec begin to fail after a new spec is rendered. When a conformance test failure occurs, the first step is to determine **where the issue lies**. There are three possible outcomes:
 
 1. **The implementation is incorrect** — the generated code does not correctly implement the functional spec. Fix the spec to clarify intent and re-render.
 2. **The conformance tests are incorrect** — the generated tests do not accurately verify the spec. Adjust `***test reqs***` or `***acceptance tests***` to guide better test generation and re-render.
 3. **The requirements conflict** — the two functional specs are inherently contradictory. One or both specs must be revised to resolve the conflict before re-rendering.
 
-Conflicting requirements are the most costly outcome and should be **prevented proactively**. When writing or modifying functional specs, carefully consider how each spec interacts with all previous specs. If ambiguity exists, add explicit detail to the spec to eliminate any possible interpretation that could conflict with earlier requirements.
+Conflicting specs are the most costly outcome and should be **prevented proactively**. When writing or modifying functional specs, carefully consider how each spec interacts with all previous specs. If ambiguity exists, add explicit detail to the spec to eliminate any possible interpretation that could conflict with earlier specs.
 
 ## Common mistakes
 

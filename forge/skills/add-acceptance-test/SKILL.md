@@ -3,8 +3,7 @@ name: add-acceptance-test
 description: >-
   Add acceptance tests under a functional spec in a ***plain spec file. Use
   when the user wants to add verification criteria for a specific functional
-  requirement, or after adding a functional requirement that needs testable
-  success criteria.
+  spec, or after adding a functional spec that needs testable success criteria.
 ---
 
 # Add Acceptance Test
@@ -24,7 +23,7 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 - The functional spec's correct behavior is **non-obvious** or easily misinterpreted.
 - The spec involves **edge cases**, boundary conditions, or specific numeric outcomes.
 - The user explicitly requests verification criteria.
-- The spec was added via the `add-functional-requirement` skill and warrants testable success criteria.
+- The spec was added via the `add-functional-spec` skill and warrants testable success criteria.
 
 ## Format
 
