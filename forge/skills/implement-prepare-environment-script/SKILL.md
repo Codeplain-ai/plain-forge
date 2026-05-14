@@ -60,12 +60,27 @@ Every prepare-environment script must implement these steps **in this order**:
 
 1. **Toolchain check.** Verify that the required language runtime / build tool (and the required version, if any) is installed. If not, print an error and exit with code `69`.
 2. **Argument validation.** Require **one** positional argument: `<build_folder>`. If missing, print usage and exit with code `69`.
-3. **Working directory setup.** Define a working folder at `.tmp/<lang>_<arg>` — **identical** to the path the conformance script will use. Wipe it (`rm -rf` / `Remove-Item -Recurse -Force`) and recreate it.
-4. **Copy the build.** Recursively copy everything from `<build_folder>` (`$1`) into the working folder.
-5. **Enter the working directory.** `cd` / `Set-Location` into it. If that fails, exit with code `69`.
-6. **Install dependencies / pre-build artifacts into an isolated environment.** Set up a per-working-folder dependency location (a Python venv, a local `node_modules`, a project-scoped Maven repo, etc.) and install/resolve all dependencies into it. Where the language requires building before tests can run (Java, Rust, Go), also produce the build artifact and place it where the conformance script can find it. If any sub-step fails, exit with code `69` (do **not** propagate Maven/pip/npm exit codes — a half-prepared environment is itself an unrecoverable error). See [Dependency isolation](#dependency-isolation) for per-language specifics.
+3. **Working directory setup.** Define a working folder at `.tmp/<lang>_<arg>` — **identical** to the path the conformance script will use. Wipe it (`rm -rf` / `Remove-Item -Recurse -Force`) and recreate it. This folder — and **only** this folder — is where every subsequent write must land.
+4. **Copy the build.** Recursively copy everything from `<build_folder>` (`$1`) into the working folder. After this step the source folder (`$1`) is treated as **read-only** for the rest of the script.
+5. **Enter the working directory.** `cd` / `Set-Location` into `.tmp/<lang>_<arg>`. If that fails, exit with code `69`. All remaining steps run from inside the working folder; they must never write back to `$1`.
+6. **Install dependencies / pre-build artifacts into an isolated environment inside `.tmp/<lang>_<arg>`.** Set up a per-working-folder dependency location (a Python venv at `./.venv`, a local `./node_modules`, a project-scoped Maven repo at `./.m2`, etc.) and install/resolve all dependencies into it. Where the language requires building before tests can run (Java, Rust, Go), also produce the build artifact and place it where the conformance script can find it — **inside the working folder**, never inside `$1` and never in the user's home directory. **Never** install into the source build folder (`$1`), the user's global cache (`~/.m2`, system-wide `pip`, `~/.cargo`, `~/.npm`, ...), or anywhere outside `.tmp/<lang>_<arg>`. If any sub-step fails, exit with code `69` (do **not** propagate Maven/pip/npm exit codes — a half-prepared environment is itself an unrecoverable error). See [Dependency isolation](#dependency-isolation) for per-language specifics.
 
 That's it. There is no step 7. Once dependencies are installed and (where applicable) the build artifact is in the local repo, this script's job is done.
+
+### The build folder is read-only — hard rule
+
+The source build folder passed in as `$1` is **input only**. Prepare reads from it once in step 4 to populate the working folder, and after that the script must never:
+
+- install dependencies into it (no `pip install` inside `$1`, no `npm install` inside `$1`, no `mvn install` writing into `$1`, no Cargo build artifacts ending up under `$1`),
+- write a virtualenv / `node_modules` / `.m2` / `.gocache` / `.cargo` / `.pub-cache` directory inside it,
+- pre-build into it (every compile output — `target/`, `build/`, `dist/`, native binaries, generated sources — lives inside `.tmp/<lang>_<arg>`),
+- create logs, caches, or temp files inside it.
+
+The build folder is shared with the renderer (`plain_modules/...` by default) and with the conformance script, which staging-checks it via `if [ ! -d ".tmp/<lang>_$1" ]` and expects `$1` itself to look the same as it did right after rendering. Writing into `$1` corrupts the renderer's view of "what was generated", churns git status if the project commits `$1`, and (if the conformance script ever does an `rm -rf $1` during its own setup) silently destroys work prepare did.
+
+The whole point of staging via `.tmp/<lang>_<arg>` is so the source build folder stays a clean, reproducible artifact of the render. Every dependency, every compiled class, every binary, every cache must land inside the working folder — because that is exactly what the conformance script's activate-only variant attaches to.
+
+If you find yourself about to issue any command whose `cwd` is `$1`, or whose target path starts with `$1/`, **stop**. Either move the operation into `.tmp/<lang>_<arg>`, or you're doing something the script must not do.
 
 ## Coordination contract
 
@@ -89,7 +104,7 @@ Shared across both shell flavors:
 - **Exit codes:**
   - `69` — unrecoverable: missing argument, missing toolchain, can't enter working folder, dependency install / build failed. Treat **all** failures as unrecoverable here — there is no "soft" failure mode for prepare.
   - `0` — success.
-- **Working folder naming:** `.tmp/<lang>_<arg>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...). Use the *first* (and only) argument in the path.
+- **Working folder naming:** `.tmp/<lang>_<arg>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...). Use the *first* (and only) argument in the path. All dependency installs, build outputs, caches, and pre-built artifacts live inside this folder. Nothing the script does should touch `$1` after step 4.
 - **Logging:** print short progress lines (`"Preparing <lang> build subfolder: ..."`, `"Copied from ... to ..."`, `"Installing <lang> dependencies into ..."`, `"Pre-build completed in X.XX seconds"`) so failures are easy to triage. Wrap noisy "preparing" lines in a `VERBOSE` check if matching the Java reference.
 - **Time the dependency setup** with `date +%s.%N` (Bash) / `Get-Date` (PowerShell) and print a duration line at the end. This is the slowest phase and the whole reason this script exists; the duration tells you whether it's actually saving time.
 
@@ -108,9 +123,10 @@ The dependency environment must live **inside** `$WORKING_FOLDER` so the conform
 
 Notes:
 
+- **Every path in the install / pre-build command is relative to `.tmp/<lang>_<arg>`.** That's why the script `cd`s into the working folder in step 5 — from that point on, `./.venv`, `./node_modules`, `./.m2`, `./.gocache`, `./.cargo`, `./.pub-cache`, and any compile output (`target/`, `build/`, `dist/`, native binaries) all resolve under `.tmp/<lang>_<arg>`, never under `$1` and never under the user's home directory.
 - **Java/Rust/Go must compile, not just download.** The conformance script will time-out / re-compile from scratch if you only resolve metadata. Use `mvn install`, `cargo build --tests`, `go build ./...` (not just `dependency:resolve` / `cargo fetch` / `go mod download`).
 - **Python and Node.js only need to install** — they're interpreted/JIT-compiled at test time, so `pip install` / `npm ci` is sufficient.
-- **Always pass the isolation flag/env var.** `mvn` without `-Dmaven.repo.local`, `cargo` without `CARGO_HOME`, etc., write to the user's home directory instead of `$WORKING_FOLDER`. The conformance script will look in the wrong place and the warming was wasted.
+- **Always pass the isolation flag/env var.** `mvn` without `-Dmaven.repo.local`, `cargo` without `CARGO_HOME`, etc., write to the user's home directory instead of `$WORKING_FOLDER`. The conformance script will look in the wrong place and the warming was wasted — and the user's home dir gets polluted.
 - **Treat install failures as `exit 69`.** Unlike the conformance script (which propagates the test command's exit code), prepare has no notion of "the user's tests legitimately failed" — every failure here means the environment isn't usable, period.
 
 ### Bash specifics
@@ -169,6 +185,7 @@ Adding a `prepare_environment_<lang>` script changes the contract for the corres
 
 ## Anti-Patterns
 
+- **(Hard mistake) Don't install into, build into, or otherwise write to the source build folder (`$1`).** The build folder passed as `$1` is read-only input after step 4. Every install, cache, build artifact (`target/`, `build/`, `dist/`, native binaries, generated sources), log, and temp file must land in `.tmp/<lang>_<arg>`. This includes never running `pip install`, `npm install`, `mvn install`, `cargo build`, or `go build` with `$1` as their `cwd` or target; never letting a venv / `node_modules` / `.m2` / `.gocache` / `.cargo` / `.pub-cache` directory appear inside `$1`; and never producing a pre-built artifact at any path under `$1/`. The whole point of staging into `.tmp/` is so the build folder remains a clean artifact of the render — writing to it corrupts the renderer's view, churns git status, and can be silently destroyed if the conformance script ever re-stages `$1` on its own.
 - **Don't write to the user's global dependency cache** (`~/.m2`, system-wide `pip`, `~/.cargo`, `~/.npm`, etc.). The conformance script reads from the project-local cache; a global write is invisible to it and pollutes the user's home dir.
 - **Don't use a different working folder name than the conformance script.** They must match exactly. If you change one, change the other.
 - **Don't run tests** — not unit tests, not conformance tests, not smoke tests. Prepare's contract is "set up the environment"; running tests belongs to its siblings.

@@ -64,10 +64,10 @@ Steps **1–3** and **step 8** are identical in both variants. Steps **4–7** d
 
 ### Steps 4–7 — install-inline variant (no prepare script)
 
-4. **Working directory setup.** Define a working folder at `.tmp/<lang>_<arg1>`. Wipe it (`rm -rf` / `Remove-Item -Recurse -Force`) and recreate it.
-5. **Copy the build.** Recursively copy everything from `<build_folder>` (`$1`) into the working folder. **Do not** copy the conformance tests — they stay where they are.
-6. **Enter the working directory.** `cd` / `Set-Location` into it. If that fails, exit with code `69`.
-7. **Install dependencies into an isolated environment.** Set up a per-working-folder dependency location (a Python venv, a local `node_modules`, a project-scoped Maven repo, etc.) and install/resolve all dependencies into it. If the install command fails, propagate its exit code immediately and **do not** proceed to step 8. See [Dependency isolation (install-inline)](#dependency-isolation-install-inline).
+4. **Working directory setup.** Define a working folder at `.tmp/<lang>_<arg1>`. Wipe it (`rm -rf` / `Remove-Item -Recurse -Force`) and recreate it. This folder — and **only** this folder — is where every subsequent write must land.
+5. **Copy the build.** Recursively copy everything from `<build_folder>` (`$1`) into the working folder. **Do not** copy the conformance tests — they stay where they are. After this step both `$1` (build folder) and `$2` (conformance tests folder) are treated as **read-only** for the rest of the script.
+6. **Enter the working directory.** `cd` / `Set-Location` into `.tmp/<lang>_<arg1>`. If that fails, exit with code `69`. All remaining steps run from inside the working folder; they must never write back to `$1` or `$2`.
+7. **Install dependencies into an isolated environment inside `.tmp/<lang>_<arg1>`.** Set up a per-working-folder dependency location (a Python venv at `./.venv`, a local `./node_modules`, a project-scoped Maven repo at `./.m2`, etc.) and install/resolve all dependencies into it. **Never** install into the source build folder (`$1`), the conformance tests folder (`$2`), the user's global cache (`~/.m2`, system-wide `pip`, `~/.cargo`, `~/.npm`, ...), or anywhere outside `.tmp/<lang>_<arg1>`. If the install command fails, propagate its exit code immediately and **do not** proceed to step 8. See [Dependency isolation (install-inline)](#dependency-isolation-install-inline).
 
 ### Steps 4–7 — activate-only variant (prepare script exists)
 
@@ -75,17 +75,37 @@ Steps **1–3** and **step 8** are identical in both variants. Steps **4–7** d
    - Check that the working folder `.tmp/<lang>_<arg1>` exists.
    - Check that the language's isolation location inside it exists (e.g. `.venv/bin/activate` for Python, `.m2/` for Java, `node_modules/` for Node, `.gocache/` for Go, `.cargo/` for Rust).
 
-   If either check fails, print a helpful error (`"Error: prepared environment missing — did you run prepare_environment_<lang>.<sh|ps1> first?"`) and exit `69`. **Do not silently fall back to creating it inline** — that would mask a real misconfiguration and turn this script into the install-inline variant in disguise.
-5. **Enter the working directory.** `cd` / `Set-Location` into `.tmp/<lang>_<arg1>`. If that fails, exit `69`.
+   If either check fails, print a helpful error (`"Error: prepared environment missing — did you run prepare_environment_<lang>.<sh|ps1> first?"`) and exit `69`. **Do not silently fall back to creating it inline** — that would mask a real misconfiguration and turn this script into the install-inline variant in disguise. After this step both `$1` and `$2` are treated as **read-only** for the rest of the script.
+5. **Enter the working directory.** `cd` / `Set-Location` into `.tmp/<lang>_<arg1>`. If that fails, exit `69`. All remaining steps run from inside the working folder; they must never write back to `$1` or `$2`.
 6. **Activate the prepared dependency environment.** Per-language:
    - Python: `source .venv/bin/activate` (must succeed; exit `69` on failure).
    - Java: set `MAVEN_LOCAL_REPO="$(pwd)/.m2"` so it can be passed as `-Dmaven.repo.local="$MAVEN_LOCAL_REPO"` to `mvn` in step 8.
    - Node.js / Go / Rust: nothing to activate explicitly — the test command in step 8 just needs to receive the same isolation flag/env var that prepare used (`./node_modules` is found by default; pass `GOMODCACHE` / `CARGO_HOME`).
+
+   Activation is **always relative to the working folder**, never to `$1` or `$2` — prepare populated `.tmp/<lang>_<arg1>/...`, and that is the only place to attach to.
 7. *(There is no step 7 in this variant — install was prepare's job. Skip straight to step 8.)*
 
 ### Common step 8 (both variants)
 
 8. **Run the conformance tests.** Invoke the language's standard test command, **pointed at `$current_dir/<conformance_tests_folder>`** (the original cwd from step 3 + the second arg). The script's final exit code is whatever the test command returns — except for the "no tests discovered" case below.
+
+   The test command is **read-only** with respect to `$current_dir/$2`. It loads test files from there, but any artifacts the runner produces (caches, JUnit XML, coverage reports, compiled test classes, etc.) must land inside `.tmp/<lang>_<arg1>`, not next to the test files. If your chosen runner defaults to writing output beside the tests, pass an explicit output-directory flag pointing inside the working folder (e.g. `pytest --basetemp=./.pytest_tmp`, `jest --cacheDirectory=./.jest_cache`, Maven `target/` under `.tmp` via `mvn -f "$current_dir/$2/pom.xml" -Dproject.build.directory="$(pwd)/target" test`).
+
+### Read-only inputs — hard rule
+
+A conformance script has **two** read-only inputs: the source build folder (`$1`) and the conformance tests folder (`$2`). Neither one may be written to under any circumstances. The script must never:
+
+- install dependencies into `$1` or `$2` (no `pip install` inside `$1`/`$2`, no `npm install` inside them, no `mvn install` writing into them, no Cargo build artifacts ending up under them),
+- write a virtualenv / `node_modules` / `.m2` / `.gocache` / `.cargo` directory inside `$1` or `$2`,
+- run the test command with its `cwd` set to `$1` or `$2` (every test command runs from inside `.tmp/<lang>_<arg1>` after the `cd` in step 6 / activate-only step 5),
+- create logs, caches, build outputs, JUnit XML, coverage reports, compiled test classes, or temp files inside `$1` or `$2`.
+
+Why each input is read-only:
+
+- **`$1` (build folder)** is shared with the renderer (`plain_modules/...` by default) and downstream tooling. Writing into it corrupts the renderer's view of "what was generated" and breaks subsequent renders. The whole point of staging into `.tmp/` is so the source folder stays a clean, reproducible artifact of the render.
+- **`$2` (conformance tests folder)** is the user's authored test source — typically checked into version control. Writing into it pollutes the working tree, churns git status, and (with frameworks that auto-discover) can make subsequent runs pick up generated files as if they were tests.
+
+If you find yourself about to issue any command whose `cwd` is `$1` or `$2`, or whose target path starts with `$1/` or `$2/`, **stop**. Either move the operation into `.tmp/<lang>_<arg1>`, or you're doing something the script must not do.
 
 ### "No tests discovered" detection
 
@@ -107,7 +127,7 @@ Shared across both shell flavors **and** both variants:
   - `69` — unrecoverable invocation error: missing argument, missing toolchain, can't enter working folder, can't create venv (install-inline), or prepared environment missing/broken (activate-only). Matches the reference scripts' `UNRECOVERABLE_ERROR_EXIT_CODE`.
   - `1` — "no tests discovered" guard tripped (see above).
   - Any other non-zero code — propagated from the underlying test command.
-- **Working folder naming:** `.tmp/<lang>_<arg1>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...). Use the *first* argument (the build folder) in the path, never the conformance tests folder.
+- **Working folder naming:** `.tmp/<lang>_<arg1>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...). Use the *first* argument (the build folder) in the path, never the conformance tests folder. All dependency installs, build outputs, caches, test runner artifacts, and the test invocation itself live inside this folder. Nothing the script does should touch `$1` after step 5 (install-inline) / step 4 (activate-only), or `$2` at any point.
 - **Logging:** print short progress lines (`"Preparing <lang> build subfolder: ..."`, `"Activating prepared virtual environment..."`, `"Running <lang> conformance tests..."`) so failures are easy to triage. Wrap noisy "preparing" lines in a `VERBOSE` check if matching the Python reference.
 - **Capture `current_dir` before `cd`.** This is the single most common bug in hand-written conformance scripts: forgetting that the conformance tests folder argument is relative to the *invocation* directory, not the working folder.
 
@@ -127,7 +147,8 @@ The dependency environment must live **inside** `$WORKING_FOLDER` so the test ru
 
 Notes:
 
-- **Always pass the isolation flag/env var to both the install command and the test command.** They must agree on where deps live, otherwise the test command will silently fall back to the global cache.
+- **Every path in the install command and test command is relative to `.tmp/<lang>_<arg1>`.** That's why the script `cd`s into the working folder in step 6 — from that point on, `./.venv`, `./node_modules`, `./.m2`, etc. all resolve under `.tmp/<lang>_<arg1>`, never under `$1` or `$2`.
+- **Always pass the isolation flag/env var to both the install command and the test command.** They must agree on where deps live, otherwise the test command will silently fall back to the global cache **or** (worse) write into `$1` / `$2`.
 - **Python is the only ecosystem where the venv is mandatory** to satisfy "into a virtual environment" literally. The others use language-native equivalents that achieve the same isolation.
 - **Propagate the install exit code immediately.** In Bash: `<install cmd> || exit $?`. In PowerShell: check `$LASTEXITCODE` and `exit $LASTEXITCODE` if non-zero.
 - **Time the dependency setup** with `date +%s.%N` (Bash) / `Get-Date` (PowerShell) and print `"Requirements setup completed in X.XX seconds"`. If this number is large, that's the signal to add a `prepare_environment_<lang>` script (and switch this script to the activate-only variant).
@@ -183,6 +204,7 @@ Notes:
 
 ## Anti-Patterns
 
+- **(Hard mistake) Don't install into, build into, or otherwise write to the source build folder (`$1`) or the conformance tests folder (`$2`).** Both arguments are read-only input. Every install, cache, build artifact, log, JUnit XML, coverage report, compiled test class, and temp file must land in `.tmp/<lang>_<arg1>`. This includes never running `pip install`, `npm install`, `mvn install`, or `cargo build` with `$1` or `$2` as their `cwd` or target; never letting a venv / `node_modules` / `.m2` / `.gocache` / `.cargo` directory appear inside `$1` or `$2`; and never running the test command from inside either folder. The whole point of staging into `.tmp/` is so the build folder remains a clean artifact of the render and the conformance tests folder remains a clean tree under the user's version control — writing to either one corrupts those guarantees.
 - **Don't emit the install-inline variant when a `prepare_environment_<lang>` script already exists.** The conformance script's `rm -rf .tmp/<lang>_$1` will wipe everything prepare did, and the inline install will redo it from scratch on every run. Always run the [Variant decision](#variant-decision-install-inline-vs-activate-only) check first.
 - **Don't emit the activate-only variant when no prepare script exists.** The "verify prepared environment" check will fail on every run because nothing has populated the working folder.
 - **Don't silently fall back from activate-only to install-inline** when the prepared environment is missing. Exit `69` with a clear error so the misconfiguration is visible. Silent fallback hides the real bug and produces inconsistent behavior between runs.

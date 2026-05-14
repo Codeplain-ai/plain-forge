@@ -32,11 +32,24 @@ Every testing script must implement these steps **in this order**:
 
 1. **Toolchain check.** Verify that the required language runtime / build tool (and the required version, if any) is installed. If not, print an error and exit with code `69`.
 2. **Argument validation.** Require exactly one positional argument: the source build folder name. If missing, print usage and exit with code `1`.
-3. **Working directory setup.** Define a working folder at `.tmp/<lang>_<arg>`. If it exists, wipe its contents; otherwise create it.
-4. **Copy the build.** Recursively copy everything from the source folder into the working folder.
-5. **Enter the working directory.** `cd` / `Set-Location` into it. If that fails, exit with code `2`.
-6. **Install dependencies into an isolated environment.** Set up a per-working-folder dependency location (a Python venv, a local `node_modules`, a project-scoped Maven repo, etc.) and install/resolve all dependencies into it. If the install command fails, propagate its exit code immediately and **do not** proceed to step 7. See [Dependency isolation](#dependency-isolation) for per-language specifics.
+3. **Working directory setup.** Define a working folder at `.tmp/<lang>_<arg>`. If it exists, wipe its contents; otherwise create it. This folder — and **only** this folder — is where every subsequent write must land.
+4. **Copy the build.** Recursively copy everything from the source folder into the working folder. After this step the source folder (`$1`) is treated as **read-only** for the rest of the script.
+5. **Enter the working directory.** `cd` / `Set-Location` into `.tmp/<lang>_<arg>`. If that fails, exit with code `2`. All remaining steps run from inside the working folder; they must never write back to the source build folder.
+6. **Install dependencies into an isolated environment inside `.tmp/<lang>_<arg>`.** Set up a per-working-folder dependency location (a Python venv at `./.venv`, a local `./node_modules`, a project-scoped Maven repo at `./.m2`, etc.) and install/resolve all dependencies into it. **Never** install into the source build folder, the user's global cache (`~/.m2`, system-wide `pip`, `~/.cargo`, `~/.npm`, ...), or anywhere outside `.tmp/<lang>_<arg>`. If the install command fails, propagate its exit code immediately and **do not** proceed to step 7. See [Dependency isolation](#dependency-isolation) for per-language specifics.
 7. **Run the tests.** Invoke the language's standard test command (e.g. `mvn test`, `pytest`, `npm test`, `go test ./...`, `cargo test`), pointed at the same isolated environment from step 6. The script's final exit code is whatever the test command returns.
+
+### The build folder is read-only — hard rule
+
+The source build folder passed in as `$1` is **input only**. The script must never:
+
+- install dependencies into it (no `pip install` inside `$1`, no `npm install` inside `$1`, no `mvn install` writing into `$1`, no Cargo build artifacts ending up under `$1`),
+- write a virtualenv / `node_modules` / `.m2` / `.gocache` / `.cargo` directory inside it,
+- run the test command from inside it (every test command runs from inside `.tmp/<lang>_<arg>` after the `cd` in step 5),
+- create logs, caches, build outputs, or temp files inside it.
+
+The build folder is shared with the renderer (`plain_modules/...` by default) and downstream tooling. Writing into it corrupts the renderer's view of "what was generated" and breaks subsequent renders. Every write must go into `.tmp/<lang>_<arg>` — the whole point of staging via `.tmp` is so the source build folder stays a clean, reproducible artifact of the render.
+
+If you find yourself about to issue any command whose `cwd` is the source folder, or whose target path starts with `$1/`, **stop**. Either move the operation into `.tmp/<lang>_<arg>`, or you're doing something the script must not do.
 
 ## Conventions
 
@@ -47,7 +60,7 @@ Shared across both shell flavors:
   - `2` — filesystem problem (couldn't enter the working folder).
   - `69` — required toolchain / runtime is not installed.
   - Any other non-zero code — propagated from the underlying test command.
-- **Working folder naming:** `.tmp/<lang>_<arg>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...).
+- **Working folder naming:** `.tmp/<lang>_<arg>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...). All dependency installs, build outputs, caches, and the test run itself live inside this folder. Nothing the script does should touch the source build folder after step 4.
 - **Logging:** print short progress lines (`"Copied from ... to ..."`, `"Installing dependencies into ..."`, `"Running <lang> unittests in ..."`) so failures are easy to triage.
 
 ### Dependency isolation
@@ -64,7 +77,8 @@ The dependency environment must live **inside** `$WORKING_FOLDER` so the test ru
 
 Notes:
 
-- **Always pass the isolation flag/env var to both the install command and the test command** — they must agree on where deps live, otherwise the test command will silently fall back to the global cache.
+- **Every path in the install command and test command is relative to `.tmp/<lang>_<arg>`.** That's why the script `cd`s into the working folder in step 5 — from that point on, `./.venv`, `./node_modules`, `./.m2`, etc. all resolve under `.tmp/<lang>_<arg>`, never under the source build folder.
+- **Always pass the isolation flag/env var to both the install command and the test command** — they must agree on where deps live, otherwise the test command will silently fall back to the global cache **or** (worse) the source build folder.
 - **Python is the only ecosystem where the venv is mandatory** to satisfy "into a virtual environment" literally. The others use language-native equivalents that achieve the same isolation.
 - **Pre-warming is optional for Java/Go/Rust** — their test commands will fetch deps on demand. Doing it as a separate step makes failures easier to diagnose and gives a clean "install failed vs test failed" signal.
 - **Don't activate the venv** in Bash via `source .venv/bin/activate` — call `./.venv/bin/<tool>` directly. It's more portable and avoids subshell weirdness. In PowerShell, use `& .\.venv\Scripts\<tool>.exe` similarly.
@@ -96,6 +110,7 @@ Notes:
 
 ## Anti-Patterns
 
+- **(Hard mistake) Don't install into, build into, or otherwise write to the source build folder.** The build folder passed as `$1` is read-only input. Every install, cache, build artifact, log, and temp file must land in `.tmp/<lang>_<arg>`. This includes never running `pip install`, `npm install`, `mvn install`, or `cargo build` with the source folder as their `cwd` or target, never letting a venv / `node_modules` / `.m2` / `.gocache` / `.cargo` directory appear inside the source folder, and never running the test command from inside it. The whole point of staging the build into `.tmp/` is so the source folder remains a clean, reproducible artifact of the render — writing to it corrupts the renderer's view and breaks subsequent renders.
 - Don't skip the toolchain check, even when "everyone has it installed" — exit code `69` is what the calling system relies on to detect a missing runtime.
 - Don't reuse the source folder in place. Always copy into `.tmp/<lang>_<arg>` first; the renderer relies on this isolation.
 - Don't change the exit-code contract. Other parts of the system branch on `1`, `2`, and `69` specifically — and these codes must be identical between the Bash and PowerShell variants.
