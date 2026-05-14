@@ -25,6 +25,33 @@ The reference implementation is [assets/prepare_environment_java.sh](assets/prep
 
 When this script exists for a project, the corresponding conformance script's own dependency-install phase degrades to "activate only" (see [`implement-conformance-testing-script/SKILL.md`](../implement-conformance-testing-script/SKILL.md) → "Skipping setup when `prepare_environment` exists"). When it doesn't exist, the conformance script does the setup inline.
 
+### Why this script exists at all (the structural reason)
+
+The conformance test runner is invoked **once per functional spec** by the renderer — not once per render. Each functional spec in a module has its own `conformance_tests/<module>/<spec>/` folder, and after the renderer finishes generating code for a new spec, it runs the conformance tests of **every previous spec** in the same module to detect regressions. For a module with N functional specs, the conformance script is invoked roughly N times on every render.
+
+Without a prepare script, every one of those N invocations does the full dependency install (Python venv + `pip install`, full Maven dependency tree, `npm ci`, `cargo build`, ...) from scratch. That cost — paid N times per render — dominates the wall-clock time of rendering a non-trivial project.
+
+`prepare_environment_<lang>` exists to **amortize that cost to one** install per render:
+
+- Prepare runs **once**, installs everything, populates the project-local isolation location inside `.tmp/<lang>_<arg>/` (`./.venv`, `./node_modules`, `./.m2`, `./.gocache`, `./.cargo`, `./.pub-cache`).
+- The conformance script then runs **N times**, each invocation in its [activate-only variant](../implement-conformance-testing-script/SKILL.md#variant-decision-install-inline-vs-activate-only), attaching to the already-populated working folder and skipping the install step entirely.
+- Net effect: install cost goes from `N × install-cost` to `1 × install-cost + N × cheap-attach-cost`.
+
+This is the **whole reason** the prepare-then-conformance split exists. If a project has so few functional specs that the install overhead is negligible, generating a prepare script is wasted effort — the install-inline variant of the conformance script is fine. If a project has many specs (or expensive dependencies, GPU builds, browser binaries, etc.), prepare is mandatory in practice. The user decides per project; this skill is the tool to execute that decision.
+
+### `prepare_environment` is conformance-only — NOT for unit tests
+
+> **Common and costly mistake:** assuming `prepare_environment_<lang>` is a generic "warm up the environment for all the testing scripts" step that the unit-test runner also depends on. It is not.
+
+`prepare_environment_<lang>` exists **solely** to set up the working folder that `run_conformance_tests_<lang>` then attaches to (via the activate-only variant of the conformance script). It has **no relationship** to [`run_unittests_<lang>`](../implement-unit-testing-script/SKILL.md):
+
+- The unit-test runner is **fully self-contained**. It does its own staging into its **own** `.tmp/<lang>_<arg>/` working folder, and it installs its own dependencies inline (`pip install -r requirements.txt`, `npm ci`, `mvn`, `cargo fetch`, ...) every run.
+- The unit-test runner **never reads from** the working folder `prepare_environment` populates. The two scripts use independent working folders even when they happen to share a `.tmp/<lang>_<arg>/` naming convention — each script wipes and rebuilds its own copy.
+- The unit-test runner **does not require** `prepare_environment` to have run first. Users and CI systems routinely run unit tests as a smoke check without ever invoking conformance, and that must keep working.
+- There is **no activate-only variant** of the unit-test runner. [`implement-unit-testing-script`](../implement-unit-testing-script/SKILL.md) emits a self-contained script every time — the two-variant pattern is exclusive to the conformance runner.
+
+When authoring `prepare_environment_<lang>`, scope it strictly to what the **conformance** script needs. Do not bake in dependency installs the unit-test runner needs but conformance doesn't; do not stage files the unit-test runner reads; do not assume the unit-test runner will be the one consuming what you produce. If you find yourself reaching for those, **stop** — the right answer is to leave `prepare_environment` alone and let the unit-test runner handle its own dependencies inline.
+
 ## How prepare-environment scripts differ from the others
  
 This script shares most of its structure with its two siblings ([`run_unittests_<lang>`](../implement-unit-testing-script/SKILL.md) and [`run_conformance_tests_<lang>`](../implement-conformance-testing-script/SKILL.md)) but with these differences:
@@ -185,6 +212,7 @@ Adding a `prepare_environment_<lang>` script changes the contract for the corres
 
 ## Anti-Patterns
 
+- **(Hard mistake) Don't pre-warm the unit-test runner from this script.** `prepare_environment_<lang>` is for the **conformance** script only. The unit-test runner ([`implement-unit-testing-script`](../implement-unit-testing-script/SKILL.md)) is always fully self-contained — it stages, installs, and runs in one shot, every invocation, regardless of whether a prepare script exists. Do not add a unit-test dependency-install step to `prepare_environment` "to save time"; the unit-test runner will not read what you produce, and the coupling breaks the activate-only contract between prepare and conformance. See [`prepare_environment` is conformance-only — NOT for unit tests](#prepare_environment-is-conformance-only--not-for-unit-tests) above.
 - **(Hard mistake) Don't install into, build into, or otherwise write to the source build folder (`$1`).** The build folder passed as `$1` is read-only input after step 4. Every install, cache, build artifact (`target/`, `build/`, `dist/`, native binaries, generated sources), log, and temp file must land in `.tmp/<lang>_<arg>`. This includes never running `pip install`, `npm install`, `mvn install`, `cargo build`, or `go build` with `$1` as their `cwd` or target; never letting a venv / `node_modules` / `.m2` / `.gocache` / `.cargo` / `.pub-cache` directory appear inside `$1`; and never producing a pre-built artifact at any path under `$1/`. The whole point of staging into `.tmp/` is so the build folder remains a clean artifact of the render — writing to it corrupts the renderer's view, churns git status, and can be silently destroyed if the conformance script ever re-stages `$1` on its own.
 - **Don't write to the user's global dependency cache** (`~/.m2`, system-wide `pip`, `~/.cargo`, `~/.npm`, etc.). The conformance script reads from the project-local cache; a global write is invisible to it and pollutes the user's home dir.
 - **Don't use a different working folder name than the conformance script.** They must match exactly. If you change one, change the other.

@@ -63,7 +63,7 @@ Example:
 | `:plainTestReqs:` | Content of the `***test reqs***` section |
 | `:Implementation:` | The system implementing `:plainFunctionality:` |
 | `:plainImplementationCode:` | The generated implementation code |
-| `:UnitTests:` | Auto-generated unit tests for individual functionalities |
+| `:UnitTests:` | Auto-generated unit tests for individual functionalities - their usage goes in in the ***implementation reqs*** section |
 | `:ConformanceTests:` | Auto-generated tests that verify implementation conforms to specs |
 | `:AcceptanceTest:` / `:AcceptanceTests:` | Tests that validate specific aspects of the implementation |
 
@@ -149,7 +149,17 @@ The frontmatter is enclosed between `---` markers and supports:
 - **`requires`** — specifies dependencies on other root-level modules that must be built first. Unlike `import`, required modules can contain functional specs and represent complete software modules. Requires paths point to root-level modules (e.g., `auth`, `messaging`).
 - **`description`** — optional description of the specification.
 - **`required_concepts`** — concepts that must be defined by any module that imports this spec.
-- **`exported_concepts`** — concepts made available to modules that `require` this one.
+- **`exported_concepts`** — concepts made available to modules that `require` this one. **Exports are not transitive.** A concept exported from module `A` is visible only to the modules that `requires: A` directly. If module `B` `requires: A` and module `C` `requires: B`, the concepts `A` exports are **not** automatically visible to `C` — only the concepts `B` itself re-exports are. To pass a concept further down the chain, the intermediate module must re-declare it in its own `exported_concepts` list (and define / forward it in its own `***definitions***` as needed). This applies at every hop: each module is responsible for explicitly exporting whatever it wants its own `requires`-ers to see.
+
+    **When a concept needs to live in more than just the immediately next module, don't propagate it by chained re-exports** — that turns every intermediate module into bookkeeping for a concept it doesn't itself use, and any missing hop silently drops the concept from downstream modules. Use a **shared import module** instead:
+
+    1. Create an import module under `template/` (e.g. `template/shared_domain.plain`) and put the concept's `***definitions***` entry there. Import modules carry definitions, implementation reqs, and test reqs only — never functional specs.
+    2. In every module that needs the concept (no matter how deep in the `requires` chain), add the import module to its frontmatter `import:` list. The concept is then visible in that module directly, without any `exported_concepts` plumbing.
+    3. None of the `requires`-chained modules need to re-export the concept anymore — each one imports what it actually uses.
+
+    Use the `create-import-module` skill to scaffold this, and `consolidate-concepts` when you discover the same concept has been scattered across several modules and needs to be pulled back into a single shared import.
+
+    Rule of thumb: if a concept crosses **one** hop, `exported_concepts` is fine. If it crosses **two or more** hops, or is needed by sibling modules at the same depth, lift it into an import module.
 
 ### Linked Resources
 
@@ -159,6 +169,51 @@ Specifications can reference external files using markdown link syntax. The link
 - :User: should be able to add :Task:. The details of the user interface
   are provided in the file [task_modal_specification.yaml](task_modal_specification.yaml).
 ```
+
+**Structured protocol artifacts must be linked resources, never transcribed into prose.** Anything that has a formal machine-readable shape — JSON Schema, OpenAPI / Swagger specs, GraphQL SDL, Protobuf / gRPC `.proto` files, Avro / Thrift schemas, XML XSDs, AsyncAPI specs, JSON-RPC method definitions, wire-protocol descriptions, payload examples, etc. — belongs in a file under `resources/` (or a subfolder of the `.plain` file's directory), and the spec refers to it via a markdown link. Do **not** restate the schema's fields, types, or constraints inline in functional specs, implementation reqs, or definitions. Reasons:
+
+- **One source of truth.** A re-typed copy of a schema in prose drifts as soon as the real schema evolves. Both the renderer *and* downstream tooling (codegen, validators, API clients, IDE plugins) need the same canonical file.
+- **Machine-readable.** The renderer and the generated code can both consume the file directly — a JSON Schema linked from a spec can drive request/response validation in the implementation *and* assertions in conformance tests, with no prose-to-code translation step in between.
+- **Reviewable as a diff.** Schema changes show up cleanly in PRs as edits to a single file, instead of as a scatter of edits across multiple `.plain` sections.
+
+The accompanying spec line should describe the *role* of the artifact ("the request body conforms to ...", "the public API surface is defined in ...") rather than its contents. If the artifact is referenced from more than one place, follow the [single-reference + concept](#linked-resources) rule below.
+
+```plain
+***definitions***
+
+- :TaskCreateRequest: is the JSON payload for creating a task, defined by
+  [resources/task_create_request.schema.json](resources/task_create_request.schema.json).
+- :TasksAPI: is the public HTTP surface for tasks, defined by
+  [resources/tasks_openapi.yaml](resources/tasks_openapi.yaml).
+
+***functional specs***
+
+- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the
+  `POST /tasks` endpoint of :TasksAPI:. The endpoint responds per :TasksAPI:.
+```
+
+**Each linked resource must be referenced from exactly one place** in the project — a single functional spec, implementation requirement, or `***definitions***` entry. Linking the same file from two functional specs (or from a functional spec *and* a requirement, etc.) creates two independent sources of truth: any later edit to one site silently diverges from the other, and the renderer has no way to know which one is canonical.
+
+If a resource needs to inform multiple parts of the project, **don't repeat the link** — instead, attach the resource to a **concept** and let the rest of the project refer to that concept:
+
+1. Define a concept under `***definitions***` whose explanation links the resource exactly once.
+2. Use the concept token (`:ConceptName:`) wherever the resource was previously inlined.
+
+For example, instead of linking `task_modal_specification.yaml` from two different functional specs:
+
+```plain
+***definitions***
+
+- :TaskModalSpec: is the user-interface contract for the task modal,
+  fully described in [task_modal_specification.yaml](task_modal_specification.yaml).
+
+***functional specs***
+
+- :User: should be able to add :Task: using :TaskModalSpec:.
+- :User: should be able to edit :Task: using :TaskModalSpec:.
+```
+
+This keeps the resource link in one place, makes the dependency explicit through the concept token, and means a change to the file only ever needs to be reconciled against one spec site. If you find yourself about to paste the same `[name](path)` link a second time, **stop** — create the concept first.
 
 ### Template System
 
@@ -248,13 +303,68 @@ Test scripts live in `test_scripts/` and are run from the repo root:
 ./test_scripts/run_conformance_tests.sh <module_name> <conformance_tests_folder>
 ```
 
+## Testing Scripts
+
+Every ***plain project ships shell scripts under `test_scripts/` that the user (and the renderer) call into to verify the generated code. There are three kinds, each authored by a dedicated skill — use the corresponding skill as the source of truth whenever you create, regenerate, or adapt a script.
+
+### Why these scripts exist (and why they're shaped the way they are)
+
+The **primary** purpose of these scripts is **automated execution by the renderer**, not manual invocation by a developer. The user *can* run them by hand (see [Running Tests](#running-tests)), but the renderer runs them many times more often — once for every functional spec it processes — as part of its incremental rendering loop. The contract between the scripts and the renderer is shaped by that execution model:
+
+- **Conformance tests are per-functional-spec.** Each functional spec in a module has its own folder under `conformance_tests/<module>/<spec>/`. After the renderer finishes generating code for a new functional spec, it runs the conformance tests of **every previous functional spec** in the same module to detect regressions — see [Conformance Test Workflow](#conformance-test-workflow). For a module with N functional specs, the conformance script gets invoked **on the order of N times per render**, each invocation pointing at a different spec's test folder.
+- **Each per-spec invocation is independent.** The conformance script does not know that it's the second invocation in a long sequence; from its point of view, each invocation is a cold start against a single spec's tests. That's the right design — it keeps each invocation hermetic and lets the renderer reorder or skip specs without breaking anything.
+- **Per-spec independence is also what makes dependency installation expensive.** A naive conformance runner would re-install all of the project's runtime dependencies (Python venv + `pip install`, Maven dependency tree, `npm ci`, `cargo build`, ...) on every one of those N invocations. That's `N × install-cost` of wasted work for every render.
+- **That is exactly why `prepare_environment_<lang>` exists.** Its **only** job is to amortize the install cost: install once at the start of a render, populate `.tmp/<lang>_<arg>/` with the warmed dependency cache and build artifacts, then let the conformance runner **attach** to that working folder on each of the N per-spec invocations instead of re-installing. The conformance runner's [activate-only variant](../implement-conformance-testing-script/SKILL.md#variant-decision-install-inline-vs-activate-only) does precisely that. When no prepare script exists, the conformance runner falls back to the install-inline variant and pays the install cost N times — acceptable for tiny projects, costly for anything realistic.
+- **The unit-test runner has a different execution model, because unit tests live in a different place.** Unit tests are part of the generated codebase itself — they sit directly inside `plain_modules/<module>/` next to the implementation they exercise — whereas conformance tests live *outside* the codebase, in their own per-spec folders under `conformance_tests/<module>/<spec>/`. As a result, the unit-test runner doesn't have a per-spec axis to iterate over: it just runs against the whole `plain_modules/<module>/` build in one go, gets invoked far fewer times per render, and has no amortization gain to chase. That's why the unit-test runner is always self-contained and there is no `prepare_environment`-equivalent for it.
+
+Keep this framing in mind when you author or adapt any of these scripts. The decisions about working-folder paths, isolation locations, exit codes, and the activate-only-vs-install-inline split are not arbitrary house style — they are what makes the renderer's per-spec loop tractable.
+
+### The three scripts
+
+- **`run_unittests_<lang>.sh` / `.ps1`** — runs the auto-generated unit tests in `plain_modules/<module>/`. Authored by the [`implement-unit-testing-script`](../implement-unit-testing-script/SKILL.md) skill. Receives one positional argument: the source build folder name. Invoked roughly once per render. **Fully self-contained:** it installs its own dependencies inline (via `pip install -r requirements.txt`, `npm ci`, `mvn`, `cargo fetch`, etc.) and never relies on any other script having run first.
+- **`run_conformance_tests_<lang>.sh` / `.ps1`** — runs the conformance tests in `conformance_tests/<module>/<spec>/` against the generated implementation. Authored by the [`implement-conformance-testing-script`](../implement-conformance-testing-script/SKILL.md) skill. Receives two positional arguments: the source build folder and the conformance tests folder. **Invoked once per previous functional spec on every render** — i.e. roughly N times for a module with N functional specs.
+- **`prepare_environment_<lang>.sh` / `.ps1`** — *optional* one-time setup that runs **before** the conformance script and **only the conformance script**. Invoked **once per render** to install the build's dependencies and pre-warm build artifacts into `.tmp/<lang>_<arg>/` so the N subsequent conformance invocations can attach to the warmed environment instead of re-installing. Authored by the [`implement-prepare-environment-script`](../implement-prepare-environment-script/SKILL.md) skill. Receives one positional argument: the source build folder name. **It does not feed the unit-test script** — see [`prepare_environment` is conformance-only](#prepare_environment-is-conformance-only-common-mistake) below.
+
+### `prepare_environment` is conformance-only (common mistake)
+
+It is a **common and costly mistake** to assume that `prepare_environment_<lang>` is a generic "warm up the environment for all the testing scripts" step that the unit-test runner can also lean on. It is not. The hard rule:
+
+> `prepare_environment_<lang>` exists **solely** to set up the working folder that `run_conformance_tests_<lang>` then attaches to (the activate-only variant). The unit-test runner (`run_unittests_<lang>`) is **completely independent** of it — it does not read from `prepare`'s working folder, does not require `prepare` to have run, and must install whatever dependencies it needs on its own.
+
+Why:
+
+- **Unit tests run against `plain_modules/<module>/`, conformance tests run against `.tmp/<lang>_<arg>/`.** The two scripts stage into different places. `prepare_environment` populates `.tmp/<lang>_<arg>/` for conformance; the unit-test script does its own staging into its **own** `.tmp/<lang>_<arg>/` working folder and installs its own dependencies there.
+- **The unit-test runner must work in isolation.** Users and CI systems run unit tests as a quick smoke check without ever invoking conformance. If `run_unittests_<lang>` depended on `prepare_environment` having run, those one-off unit-test invocations would silently fail (or be "fixed" by a misguided edit to make it depend on `prepare`).
+- **The skill contract enforces it.** [`implement-unit-testing-script`](../implement-unit-testing-script/SKILL.md) emits a fully self-contained script every time: toolchain check → stage → install dependencies inline → run tests. It never emits an activate-only variant. The two-variant pattern is exclusive to the conformance runner.
+
+If you find yourself authoring (or asked to author) a `prepare_environment` script that handles unit-test dependencies too, **stop**. The unit-test script handles its own dependencies. Adding a unit-test path into `prepare_environment` couples scripts that should stay independent, and breaks the activate-only contract between `prepare` and `conformance`.
+
+### Shared rules across all three scripts
+
+Anything not listed here is documented in the individual skill file:
+
+- **Input folders are read-only — hard rule.** The build folder (and, for conformance, the conformance tests folder too) is **input only**. Every install, build artifact, cache, log, JUnit XML, coverage report, compiled test class, and temp file must land inside `.tmp/<lang>_<arg>`, never inside the input folder. The build folder is shared with the renderer and with the user's version control; writing into it corrupts both. If you find yourself about to issue a command whose `cwd` is an input folder, or whose target path starts with the input folder, **stop** — the write has to go into `.tmp/<lang>_<arg>`.
+- **Shell flavor matches the host.** `.sh` on macOS / Linux, `.ps1` on Windows. A project intended for both OSes ships both files in matching pairs (`prepare` + `conformance` for each language must agree on working-folder name and isolation paths).
+- **Exit codes are part of the contract.** `69` for unrecoverable errors (missing toolchain, bad args, can't enter the working folder, install failed); `1` for the "no tests discovered" guard in the conformance runner (and bad usage in the unit-test runner); any other non-zero code is propagated from the underlying test command. Other skills — notably [`plain-healthcheck`](../plain-healthcheck/SKILL.md) and [`check-plain-env`](../check-plain-env/SKILL.md) — branch on these codes.
+- **Wired in via `config.yaml`.** Each script that is actually generated must be referenced from the relevant `config.yaml` via the `unittests-script:`, `conformance-tests-script:`, and `prepare-environment-script:` keys respectively. See the [`init-config-file`](../init-config-file/SKILL.md) skill for the canonical assembly. **If `prepare-environment-script` is declared, `conformance-tests-script` must be declared too** — a prepare script only makes sense in service of conformance, and `plain-healthcheck` will hard-fail a project that violates this.
+- **Conformance scripts come in two variants — unit-test scripts do not.** When a `prepare_environment_<lang>` script exists, the conformance script is the **activate-only** variant (it attaches to the env prepare populated in `.tmp/`). When no prepare exists, the conformance script is the **install-inline** variant (it stages and installs in one shot). The `implement-conformance-testing-script` skill picks the right variant automatically based on whether a prepare script is already on disk. **The unit-test script has no activate-only variant** — it is always self-contained, regardless of whether a `prepare_environment_<lang>` script exists.
+- **Dependency isolation is project-local.** Each language's package cache / virtual env / build repo lives inside the working folder (`./.venv` for Python, `./node_modules` for Node, `./.m2` for Java, `./.gocache` for Go, `./.cargo` for Rust, `./.pub-cache` for Flutter, ...) — never in the user's home directory. The conformance script reads from the same project-local location prepare wrote to; the unit-test script uses its **own** working folder and its **own** copy of the isolated dependencies.
+- **No language-package checks live in these scripts.** The scripts themselves install language packages via `pip install -r requirements.txt`, `npm ci`, `mvn -Dmaven.repo.local=...`, `go mod download`, `cargo fetch`, etc. They do **not** pre-verify individual packages; that's the package manager's job. The host-level checks for the toolchains and external dependencies belong in `check-plain-env`, not in these scripts.
+
+For implementation details — the exact step sequence, toolchain checks, language-specific install / test commands, working-folder lifecycle, anti-patterns — open the corresponding `implement-*-testing-script` skill. Do not hand-author a testing script from scratch; route every creation or modification through the matching skill so the shared rules above are enforced uniformly.
+
 ## Writing Functional Specs
 
 - Each functional spec must imply a **maximum of 200 changed lines of code**. This is a hard limit — if a spec would result in more than 200 lines of changes, it must be broken down into smaller, independent specs. This limit also helps avoid "Functional spec too complex!" errors from the renderer.
 - **Conflicting specs must be avoided at all costs.** Functional specs should be written so that no conflicts exist between them. If two specs appear to conflict, they must be clarified by adding more detail and context to the specs until all possible conflicts are resolved. Prevention is always preferable to debugging conflicts after rendering.
 - **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types) in functional specs and definitions. Write specs in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes, REST api endpoints etc.). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
-- **Keep sentences short and clear.** Spec lines should be easy to read and understand at a glance. Prefer several short, concise sentences over long, complex ones.
-- **Specs must be deterministic enough to use the software without reading the generated code.** A developer should be able to know exactly how to interact with the built software solely from the specs. For example, if the software is a REST API, the specs must include endpoint paths, HTTP methods, request/response formats, and status codes. If it is a CLI tool, the specs must include command names, arguments, and expected output. Never leave interface details up to the renderer's discretion.
+- **Keep sentences short and clear — but never at the cost of ambiguity.** Spec lines should be easy to read and understand at a glance. Prefer short, direct sentences and plain words over long sentences and jargon — if a 10-cent word and a 50-cent word say the same thing, use the 10-cent one. This applies to every spec section, not only functional specs: `***definitions***`, `***implementation reqs***`, `***test reqs***`, and `***acceptance tests***` should all be as concise as they can be while staying unambiguous. The hard constraint is in the second half of that rule: **wordy-but-precise always beats terse-but-ambiguous.** If trimming a clause, a qualifier, or a sub-bullet would leave the spec open to more than one reasonable interpretation, leave it in. When a sentence starts to grow because the behavior is genuinely complex, split it into two short sentences (or into a parent line + sub-bullets) rather than dropping detail. Concision is in service of clarity, never the other way around.
+- **Specs must be deterministic enough to both *run* and *use* the software without reading the generated code.** A developer should be able to figure out, from the specs alone, two distinct things:
+
+    1. **How to run the built software** — the entry-point command (e.g. `python -m app`, `uvicorn app.main:app`, `./my-cli`), prerequisites (required runtime versions, package managers, system binaries), required environment variables, ports the software listens on, configuration file paths and shapes, and any default arguments.
+    2. **How to use the running software** — the full interaction surface. For a REST API: every endpoint path, HTTP method, request body shape, response body shape, status codes, and authentication scheme. For a CLI tool: every command, its arguments and flags, the expected output (including exit codes), and the input it reads (stdin, files, env vars). For a library: every public function/class, its signature, the inputs it accepts, the outputs it returns, and the errors it can raise.
+
+    Concretely, a reader should never have to open `plain_modules/` to answer "how do I start this?" or "how do I call this endpoint?" — those answers must already live in the specs. **Never leave runtime or interface details up to the renderer's discretion** — if the spec doesn't pin them down, two renders can produce two different shapes, and any human or automated consumer of the software is now coupled to an undocumented choice.
 - **Encapsulate functionality in functional specs.** `requires` modules import only functional specs. It is therefore important that the functionality is encapsulated in the functional specs and not in implementation reqs, as those will not be in the context of future functional specs when fixing previous conformance tests of previous functional specs.
 
 ## Working with Specs

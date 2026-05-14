@@ -217,22 +217,23 @@ Apply the user's responses back to the `.plain` files, the scripts, and the `con
 
 #### Verify the user's environment
 
-Once the review is complete, verify on the user's machine that everything the generated scripts and the chosen stack require is actually installed and usable. Do this **thoroughly** — the goal is that the moment rendering finishes, the user can run `prepare_environment` (if generated), `run_unittests`, and `run_conformance_tests` (if generated) without hitting a missing-tool error.
+Once the review is complete, delegate environment verification to the **`check-plain-env`** skill. Do **not** probe the user's machine inline here — `check-plain-env` is the single source of truth for "can this machine render and test this project?" and it derives the requirement list at runtime from the project's `.plain` files, `test_scripts/`, `config.yaml`(s), and `resources/`.
 
-Use the `terminal` tool to probe the user's machine. Do not assume — actually run version/availability checks. For each item below, run the check, capture the output, and tell the user whether it passed or failed and what version was found.
+What `check-plain-env` does on your behalf:
 
-1. **Language runtime & toolchain** — confirm the language chosen in Phase 2 is installed and at a compatible version (e.g. `python --version`, `python3 --version`, `node --version`, `npm --version`, `go version`, `java -version`, `cargo --version`).
-2. **Package manager** — the package manager the project will use (e.g. `pip`, `poetry`, `uv`, `npm`, `pnpm`, `yarn`, `cargo`, `go`, `mvn`, `gradle`).
-3. **Testing framework binary** — confirm the framework chosen in this phase is reachable (e.g. `pytest --version`, `npx jest --version`, `go test -h`).
-4. **Frameworks & runtime dependencies** — anything required by the frameworks from Phase 2 (e.g. a system Postgres client for `psycopg`, OpenSSL for HTTPS clients, build toolchain like `gcc`/`clang`/`make` for native modules).
-5. **External services** — confirm presence of the binaries/services declared in Phase 2 (e.g. `psql --version`, `redis-cli --version`, `docker --version`, `docker compose version`). If a service must be running for tests, attempt a connectivity check.
-6. **Underlying / transitive dependencies** — dig one level deeper than the obvious package. Whenever a chosen library has a system-level prerequisite, verify it. Examples (non-exhaustive): `torch` with GPU → `nvidia-smi`, `nvcc --version` (CUDA toolkit), matching driver version; `tensorflow` GPU → CUDA + cuDNN; `psycopg2` → `pg_config`; `Pillow` → libjpeg/zlib headers; `lxml` → libxml2; `playwright` → `playwright install` browsers; `puppeteer` → Chromium; `cryptography` → OpenSSL/Rust toolchain; `numpy`/`scipy` → BLAS/LAPACK; native Node modules → `python` + build tools.
-7. **OS-level prerequisites** — anything platform-specific the project relies on (e.g. on macOS, Xcode Command Line Tools; on Linux, distro package equivalents; correct shell for the generated scripts).
-8. **Auth, credentials, and config holes** — check whether required environment variables / config files exist (without printing their values), e.g. `printenv DATABASE_URL >/dev/null && echo set || echo missing`, presence of `.env`, `~/.aws/credentials`, gcloud login, etc.
+- Detects the host OS.
+- Builds the requirement list at runtime (language toolchains + their package managers, external services, system binaries that language packages wrap, hardware / drivers / accelerators, `codeplain` itself, credentials) — the layers a package manager **cannot** install.
+- Probes each requirement with an actual version / availability command.
+- Never probes individual language packages (`torch`, `numpy`, `FastAPI`, `react`, JARs, gems, ...) — those are installed by the project's own `prepare_environment` / unit-test scripts the moment they run.
+- Emits a `PASS` / `WARN` / `FAIL` report with OS-specific install commands for any gaps. Read-only — never installs anything itself.
 
-For each failed check, tell the user **what is missing**, **why it is needed** (which library/script/feature depends on it), and **how to install it** for their OS. Then ask whether they want to install it now, swap to an alternative, or proceed knowing the corresponding scripts will fail.
+Invoke `check-plain-env`, then act on its return value:
 
-Do not move on to Phase 4 until either every requirement passes, or the user has explicitly acknowledged each remaining gap.
+- **`PASS`** — the machine is ready. Continue to Phase 4.
+- **`WARN`** — everything required is present but at least one soft warning (e.g. service binary present but daemon not running, language version mismatch). Show the warnings to the user; let them decide whether to address each one now or proceed knowing the corresponding scripts will surface the issue later.
+- **`FAIL`** — at least one required item is missing. For every gap, the report already includes **what** is missing, **why** the project needs it, and **how to install it** for the detected OS. Walk the gaps with the user and, for each one, ask whether they want to install it now, swap to an alternative (which would mean revising the Phase 2 / Phase 3 decisions), or proceed knowing the corresponding scripts will fail. Re-invoke `check-plain-env` after the user installs anything so the report reflects the current state of the machine.
+
+Do not move on to Phase 4 until either `check-plain-env` returns `PASS` / `WARN` with the user's explicit acknowledgement of each warning, or the user has explicitly acknowledged each remaining `FAIL`.
 
 --- 
 

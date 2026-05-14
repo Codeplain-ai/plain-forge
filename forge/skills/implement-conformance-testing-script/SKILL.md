@@ -39,7 +39,18 @@ Everything else — toolchain check, build staging, dependency isolation, exit c
 | `prepare_environment_<lang>.sh` / `.ps1` in the project's `test_scripts/` folder (or wherever `config.yaml`'s `prepare-environment-script:` key points) | **Activate-only variant.** Verifies the prepared env, activates it, and runs tests. **Does not** stage the build or install deps — prepare already did. |
 | Nothing — no prepare script | **Install-inline variant.** Stages the build, installs deps, and runs tests in one shot. |
 
-**Why this matters:** if you emit the install-inline variant alongside an existing prepare script, prepare's work is wiped (by the script's `rm -rf .tmp/<lang>_$1`) or duplicated (by re-running install) on every run — defeating prepare's whole purpose. Conversely, emitting activate-only without a prepare script means the "verify prepared environment" check fails on every run because nothing has populated the working folder. See [Anti-Patterns](#anti-patterns).
+### Why this split exists
+
+The conformance runner is invoked **once per functional spec** by the renderer. Each functional spec in a module has its own `conformance_tests/<module>/<spec>/` folder, and after the renderer finishes generating code for a new spec, it runs the conformance tests of **every previous spec** in the same module to detect regressions. For a module with N functional specs, this script is called **on the order of N times per render** — not once per render.
+
+That per-spec invocation pattern is what makes the install step expensive. A naive runner that does `pip install` / `npm ci` / `mvn install -DskipTests` / `cargo build` on every invocation pays the install cost N times per render. For anything beyond a toy project, that cost dominates wall-clock time.
+
+The two variants are a direct response to this:
+
+- **Install-inline** is correct only when N is small (a few specs) or dependencies are cheap. It is self-contained: stage, install, run, repeat from scratch every invocation.
+- **Activate-only** is the production answer. [`prepare_environment_<lang>`](../implement-prepare-environment-script/SKILL.md) runs **once per render** and pays the install cost a single time, populating `.tmp/<lang>_<arg>/` with the warmed environment. Each of the N conformance invocations then just **attaches** to that working folder and runs the tests — no install, no compile, just activate-and-go.
+
+**Why picking the right variant matters:** if you emit the install-inline variant alongside an existing prepare script, prepare's work is wiped (by the script's `rm -rf .tmp/<lang>_$1`) or duplicated (by re-running install) on every run — defeating prepare's whole purpose. Conversely, emitting activate-only without a prepare script means the "verify prepared environment" check fails on every run because nothing has populated the working folder. See [Anti-Patterns](#anti-patterns).
 
 ## Pick the Shell First
 
