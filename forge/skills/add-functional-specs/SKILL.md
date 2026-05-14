@@ -31,11 +31,12 @@ This skill is `add-functional-spec` applied **one spec at a time, in order**, wi
 3. **Draft all the specs you intend to add**, in the chronological order they should appear. Keep the drafts in a working list — nothing is inserted yet.
 4. **For each drafted spec, in order:**
    1. **Analyze complexity.** Run `analyze-if-func-spec-too-complex` on the spec. If the verdict is `TOO COMPLEX`, run `break-down-func-spec`, replace the entry in the working list with the resulting smaller specs (preserving order), and restart this step on the first of the replacements.
-   2. **Check for conflicts.** Use `analyze-2-func-specs` on every relevant pair:
-      - the new spec × every existing functional spec in the file and its `requires` chain, and
-      - the new spec × every spec from this batch that has already been inserted.
+   2. **Check for conflicts.** Run `analyze-func-specs` **once** with this single input set:
+      - the new spec, plus
+      - every existing functional spec in the file and its `requires` chain, plus
+      - every spec from this batch that has already been inserted.
 
-      For any pair that returns `CONFLICTING`, run `resolve-spec-conflict`. Apply the resolution — which may revise the new spec, an existing spec, or both — then re-run the conflict check for every pair that the resolution touched.
+      The batched analyzer returns every conflicting pair in one call — do **not** loop over pairs invoking a per-pair analyzer. For each conflicting pair it reports, run `resolve-spec-conflict`. Apply the resolution — which may revise the new spec, an existing spec, or both — then re-run `analyze-func-specs` once over the touched set until the verdict is `COMPATIBLE`.
    3. **Append the spec** to the `***functional specs***` section. Specs are chronological; the new entry goes at the end (unless an earlier existing spec must come *after* it — in that rare case, insert at the correct position).
 5. **Read the file again** to confirm correct placement, ordering, and syntax for the full batch.
 
@@ -60,13 +61,13 @@ Specs are rendered incrementally, top to bottom. The renderer has **no knowledge
 
 Write in terms of behavior, concepts, and domain logic — not implementation constructs. Avoid language-specific types, generics syntax, framework annotations, or other constructs tied to a particular language or framework. General technical terms (null values, JSON types, HTTP status codes) are fine. Language-specific guidance belongs in `***implementation reqs***`.
 
-### No Conflicts (full pairwise)
+### No Conflicts (full coverage via one batched call per spec)
 
 The new specs must not contradict each other **and** must not contradict any existing functional spec. Conflicting specs are the most costly outcome. The conflict check must cover:
 - every (new × existing) pair, and
 - every (new × new) pair within the batch.
 
-If ambiguity exists, add explicit detail to eliminate any conflicting interpretation. If a conflict is detected, use the `resolve-spec-conflict` skill to diagnose and fix it before proceeding.
+That coverage is achieved by running `analyze-func-specs` **once per spec being inserted**, with the new spec plus every existing spec plus every already-inserted spec from this batch passed in as a single set. The batched analyzer lists every conflicting pair in one call — do not invoke a pair-by-pair analyzer. If ambiguity exists, add explicit detail to eliminate any conflicting interpretation. For each conflicting pair the batched analyzer reports, use the `resolve-spec-conflict` skill to diagnose and fix it before proceeding.
 
 ### Disambiguation (per spec)
 
@@ -93,7 +94,8 @@ If any of the newly added functional specs need verification, use the `add-accep
 
 ## Anti-Patterns
 
-- **Don't skip per-spec checks because the batch "feels" small.** Even two specs require two complexity checks and at least one new × new conflict check.
+- **Don't skip per-spec checks because the batch "feels" small.** Even two specs require two complexity checks and a batched conflict check that includes both new specs.
+- **Don't fall back to pair-by-pair conflict analysis.** Use `analyze-func-specs` with the full relevant set once per inserted spec — not `analyze-2-func-specs` across every pair.
 - **Don't run all complexity checks first and all conflict checks last.** Interleave them per spec, as described in the Workflow — a failed complexity check earlier would otherwise waste later conflict checks.
 - **Don't insert every spec first and then analyze.** A bad spec already in the file pollutes subsequent conflict analyses.
 - **Don't fall back to hand-authoring** because there are "a lot" of specs to add. The right answer is more analyzer calls, not fewer.
@@ -102,9 +104,9 @@ If any of the newly added functional specs need verification, use the `add-accep
 ## Validation Checklist
 
 - [ ] Every spec in the batch implies ≤ 200 lines of code changes (verified via `analyze-if-func-spec-too-complex`)
-- [ ] No conflict between any new spec and any existing spec (verified via `analyze-2-func-specs`)
-- [ ] No conflict between any two new specs in the batch (verified via `analyze-2-func-specs`)
-- [ ] Every detected conflict was resolved via `resolve-spec-conflict` before the batch completed
+- [ ] No conflict between any new spec and any existing spec (verified via batched `analyze-func-specs` calls)
+- [ ] No conflict between any two new specs in the batch (covered by the same batched `analyze-func-specs` calls)
+- [ ] Every conflicting pair the batched analyzer reported was resolved via `resolve-spec-conflict` before the batch completed
 - [ ] All specs written in language-agnostic terms (no language/framework specifics)
 - [ ] All external interfaces explicit (endpoint paths, methods, CLI args, formats, etc.)
 - [ ] All referenced `:Concepts:` are defined in `***definitions***`

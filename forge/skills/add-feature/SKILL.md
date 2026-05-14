@@ -50,7 +50,7 @@ Frame each question with concrete options when the answer space is predictable, 
 Translate the answers directly into `.plain` content by editing the target file(s) yourself. Run the relevant checks **inline before inserting** each snippet:
 
 - **New concepts** — add to the `***definitions***` section. Define each concept before it is referenced by anything else.
-- **New functional spec** — draft the spec text; then **always** run `analyze-if-func-spec-too-complex` to verify it implies ≤200 LOC of generated code (if it doesn't, break it down with the user into smaller specs that each fit the limit); **always** run `analyze-2-func-specs` against every existing spec that touches the same concepts to confirm there are no contradictions; only after both analyzers pass, insert it into `***functional specs***` at the correct chronological position.
+- **New functional spec** — draft the spec text; then **always** run `analyze-if-func-spec-too-complex` to verify it implies ≤200 LOC of generated code (if it doesn't, break it down with the user into smaller specs that each fit the limit); **always** run `analyze-func-specs` **once**, with the new spec plus every existing spec that touches the same concepts, to surface every conflicting pair in a single call (do not invoke a pair-by-pair analyzer); only after both analyzers pass, insert it into `***functional specs***` at the correct chronological position.
 - **New implementation reqs** — only when the functionality introduces technology, libraries, data formats, or architectural patterns not already present. Add to `***implementation reqs***`.
 - **New acceptance tests** — only if conformance testing is configured (see *Conformance gate* below) and the functionality needs concrete verification. Add as a child block under the relevant functional spec.
 - **New test reqs** — only if conformance testing is configured *and* this functionality changes how conformance tests should be run (new framework, new execution command, new constraint). Add to `***test reqs***`. Rarely needed for a single feature.
@@ -59,7 +59,7 @@ After inserting a new functional spec, re-read the chronological ordering and co
 
 ### 2c. Handle impact just-in-time
 
-If `analyze-2-func-specs` returns CONFLICTING, or if authoring this functionality would **break** (contradict, invalidate) or **augment** (change the meaning of, add behavior to) an existing concept, functional spec, implementation req, test req, or acceptance test, **stop authoring and surface it to the user right now**. Show the exact existing snippet and ask whether to:
+If `analyze-func-specs` reports any conflicting pair involving the new spec, or if authoring this functionality would **break** (contradict, invalidate) or **augment** (change the meaning of, add behavior to) an existing concept, functional spec, implementation req, test req, or acceptance test, **stop authoring and surface it to the user right now**. Show the exact existing snippet (for each conflicting pair the batched analyzer reported) and ask whether to:
 
 - **(a) keep** the existing spec as-is and adjust this functionality to fit around it,
 - **(b) augment** the existing spec — embed the proposed new wording in the question so the user can see what they're approving, or
@@ -116,7 +116,7 @@ After completing one feature, the user may immediately describe the next. Start 
 - [ ] New concepts defined before they are referenced
 - [ ] No circular concept references
 - [ ] Each functional spec implies ≤ 200 LOC (verified via `analyze-if-func-spec-too-complex`)
-- [ ] No unresolved conflicts with existing specs (verified via `analyze-2-func-specs`)
+- [ ] No unresolved conflicts with existing specs (verified via a single batched `analyze-func-specs` call per new spec)
 - [ ] Every break/augment of an existing spec was explicitly surfaced and approved by the user
 - [ ] Functional specs are language-agnostic
 - [ ] All external interfaces are explicit (endpoint paths, methods, CLI args, formats, etc.)

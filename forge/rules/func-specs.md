@@ -11,7 +11,7 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
 - Each functional spec must imply a **maximum of 200 changed lines of code**
 - If a spec is too large, use `break-down-func-spec` to split it into multiple smaller, independent specs
 - Use `analyze-if-func-spec-too-complex` to verify before inserting
-- Use `analyze-2-func-specs` to check pairs; use `resolve-spec-conflict` if a conflict is found
+- Use `analyze-func-specs` to check a spec (or a batch of specs) against all relevant existing specs in a single batched call; use `resolve-spec-conflict` for each conflicting pair it reports
 
 ## Chronological ordering
 - Specs are rendered incrementally, top to bottom

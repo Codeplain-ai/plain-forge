@@ -23,25 +23,28 @@ plain-forge ships as a set of skills that plug into your AI coding tool of choic
 
 ### Install with the `skills` CLI (any runtime)
 
-The fastest way to add plain-forge to whatever runtime you have installed locally:
+The fastest way to add plain-forge is the `skills` CLI. The `--all` flag installs **every** plain-forge skill at once:
 
 ```bash
-npx skills add https://github.com/Codeplain-ai/plain-forge --all
+npx skills add Codeplain-ai/plain-forge --all
 ```
 
-The `skills` CLI walks you through an interactive setup. When it asks:
+#### Install into a specific runtime
 
-```
-◇  Installation method
-│  Copy to all agents
-```
-
-pick **Copy to all agents** so the skills are installed into every runtime (Claude Code, Codex, OpenCode) you have on the machine.
-
-To skip the prompts and install into specific runtimes non-interactively:
+If you only use one runtime, pass `--agent` to target just that one (you can repeat the flag to pick several):
 
 ```bash
-npx skills add https://github.com/Codeplain-ai/plain-forge --all --agent opencode --agent codex --agent claude
+# Just Claude Code
+npx skills add Codeplain-ai/plain-forge --all --agent claude-code
+
+# Just Codex
+npx skills add Codeplain-ai/plain-forge --all --agent codex
+
+# Just OpenCode
+npx skills add Codeplain-ai/plain-forge --all --agent opencode
+
+# Any combination, non-interactive
+npx skills add Codeplain-ai/plain-forge --all --agent opencode --agent codex --agent claude-code
 ```
 
 If you'd rather use the native install flow for a specific runtime, the per-tool instructions below still work.
@@ -194,7 +197,8 @@ The build is idempotent — re-running it produces no `git diff`.
 | Skill | Description |
 |-------|-------------|
 | `analyze-if-func-spec-too-complex` | Check if a spec exceeds the 200-line complexity limit |
-| `analyze-2-func-specs` | Check two specs for conflicts |
+| `analyze-func-specs` | Check a batch of specs (2+) against each other in one call and return every conflicting pair |
+| `analyze-2-func-specs` | Legacy: check exactly two specs for conflicts (prefer `analyze-func-specs`) |
 | `break-down-func-spec` | Split an overly complex spec into smaller specs (each ≤ 200 LOC) |
 | `resolve-spec-conflict` | Resolve a conflict between two functional specs |
 

@@ -107,7 +107,7 @@ Apply the fix based on the diagnosed root cause. Use the appropriate skill:
 - **Preserve chronological order.** If adding a new spec, place it correctly relative to existing specs.
 - **Stay language-agnostic.** Functional specs describe behavior, not implementation. Platform-specific guidance belongs in implementation reqs.
 - **Respect the 200 LOC limit.** If a fix makes a spec too complex, use `break-down-func-spec` to split it.
-- **Check for new conflicts.** After editing, verify the fix doesn't conflict with other specs using `analyze-2-func-specs`.
+- **Check for new conflicts.** After editing, verify the fix doesn't conflict with other specs by running `analyze-func-specs` once with the edited spec(s) plus every existing spec that touches the same concepts. The batched analyzer reports all conflicting pairs in a single call; resolve each with `resolve-spec-conflict`.
 
 ## Phase 5 — Verify and Report
 
