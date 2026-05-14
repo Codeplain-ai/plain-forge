@@ -1,7 +1,7 @@
 {
-    "name": "plain-forge",
-    "description": "Conversational spec-writing tool for ***plain specification language",
-    "version": "1.0.3",
-    "skills": "./.claude/skills",    
-    "homepage": "https://github.com/Codeplain-ai/plain-forge"
+  "name": "plain-forge",
+  "description": "Conversational spec-writing tool for ***plain specification language",
+  "version": "1.0.4",
+  "skills": "./.claude/skills",
+  "homepage": "https://github.com/Codeplain-ai/plain-forge"
 }
