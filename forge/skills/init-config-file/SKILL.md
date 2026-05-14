@@ -59,6 +59,7 @@ These keys reflect choices made in Phase 3 of `forge-plain` and are the bread an
 | `logging-config-path` | path (string) | `logging_config.yaml` | Points at a **separate** YAML file consumed by Python's `logging.config.dictConfig`. This is the only knob that lets the user actually change log **levels** for the renderer and its dependencies. See [Logging configuration](#logging-configuration) below. Include the key explicitly whenever the project ships a non-default logging config; leave it out only when the user is happy with the renderer's defaults (`INFO` root, `WARNING` for `git`, `ERROR` for `transitions`). |
 | `conformance-tests-folder` | string | `conformance_tests` | Include only when the user picked a non-default folder name. |
 | `build-folder` | string | `plain_modules` | Include only when the user picked a non-default folder name. Must differ from `build-dest`. |
+| `build-dest` | string | `dist` | **Always include with the value `dist`.** This skill pins the copy destination explicitly so every project's `config.yaml` has the same, predictable target folder for the post-render copy. Even though `dist` matches the renderer's default, we still write it out so the choice is visible in the file and protected against future default changes. Must differ from `build-folder`. |
 | `base-folder` | string | — | Include when the user wants build output rooted somewhere other than the project root. |
 
 ### Keys you occasionally include
@@ -68,7 +69,6 @@ These are useful but the defaults are almost always fine. Only include them when
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `copy-build` | bool | `true` | The renderer copies the rendered code to `build-dest` after a successful render. Set to `false` only when the user doesn't want this. |
-| `build-dest` | string | `dist` | Target folder for the copy. Must differ from `build-folder`. |
 | `copy-conformance-tests` | bool | `false` | Requires `conformance-tests-script` to also be set. |
 | `conformance-tests-dest` | string | `dist_conformance_tests` | Target folder for the conformance-test copy. Must differ from `conformance-tests-folder`. |
 | `log-to-file` | bool | `true` | Disable only when the user explicitly does not want a log file. Controls whether logs are mirrored to disk — it does **not** set the log level (that's `logging-config-path`'s job). |
@@ -193,9 +193,11 @@ For each part:
 3. If the part has a conformance script on disk → add `conformance-tests-script: …`.
 4. If the part has a prepare-environment script on disk → first verify `conformance-tests-script` is also being added; if not, stop and surface this to the user (offer to either generate the missing conformance script via `implement-conformance-testing-script` or drop the prepare-environment script).
 5. If the project has shared templates → add `template-dir: template` (or whatever path the user used).
-6. For every other key in [Valid keys reference](#valid-keys-reference), include it **only** if Phase 3 produced a non-default decision for that key.
-7. Cross-validate the assembled key set:
-   - `build-folder` ≠ `build-dest`.
+6. **Always add `build-dest: dist`.** This skill pins the copy destination on every config it writes, regardless of what Phase 3 said about it. If Phase 3 explicitly asked for a different `build-dest`, stop and surface the conflict to the user — do not silently honor the override.
+7. For every other key in [Valid keys reference](#valid-keys-reference), include it **only** if Phase 3 produced a non-default decision for that key.
+8. Cross-validate the assembled key set:
+   - `build-dest` is set to `dist`.
+   - `build-folder` ≠ `build-dest` (in particular, `build-folder` is never `dist`).
    - `conformance-tests-folder` ≠ `conformance-tests-dest`.
    - `copy-conformance-tests: true` requires `conformance-tests-script`.
    - `log-file-name` is set ⇒ `log-to-file` is not `false`.
@@ -218,14 +220,16 @@ unittests-script: test_scripts/run_unittests_python.sh
 conformance-tests-script: test_scripts/run_conformance_tests_python.sh
 prepare-environment-script: test_scripts/prepare_environment_python.sh
 template-dir: template
+build-dest: dist
 ```
 
 Example for a multi-part project (`backend/config.yaml`):
 
-```/dev/null/config.yaml.example#L1-3
+```/dev/null/config.yaml.example#L1-4
 unittests-script: test_scripts/run_unittests_python.sh
 conformance-tests-script: test_scripts/run_conformance_tests_python.sh
 template-dir: ../template
+build-dest: dist
 ```
 
 ### Step 4 — Hand off
@@ -248,6 +252,7 @@ Tell the caller exactly which file(s) were written and invoke `plain-healthcheck
 - [ ] Every `*-script` value points at a file that exists on disk.
 - [ ] No `config.yaml` declares `prepare-environment-script` without also declaring `conformance-tests-script`.
 - [ ] No `config.yaml` mixes stacks (every script in it targets the same language).
+- [ ] `build-dest` is set to `dist` in every emitted `config.yaml`.
 - [ ] `build-folder` ≠ `build-dest`; `conformance-tests-folder` ≠ `conformance-tests-dest`.
 - [ ] `copy-conformance-tests: true` only when `conformance-tests-script` is set.
 - [ ] `log-file-name` only when `log-to-file` is not `false`.
