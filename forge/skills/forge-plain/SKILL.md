@@ -249,38 +249,39 @@ Examples:
 - Chain `base.plain → features.plain → integrations.plain` → render target is `integrations.plain`.
 - Single module `my_app.plain` → render target is `my_app.plain`.
 
-#### 4b. Validate the specs with `codeplain --dry-run`
+#### 4b. Build the final `config.yaml` with `init-config-file`
 
-Before handing off to the user, run a dry-run yourself. The dry-run executes the full ***plain pipeline up to but not including the actual code-generation step, so it surfaces every static issue the renderer would otherwise reject at render time — syntax errors, undefined concepts, broken `import` / `requires` chains, cyclic definitions, missing templates, complexity violations ("Functional spec too complex!"), conflicting reqs, etc.
+Before validation, finalize the project's `config.yaml` file(s). Phase 3 may have written provisional entries as scripts were generated; **this** is where they're consolidated into the canonical form the renderer expects.
 
-The minimal invocation, run from the project root via the `terminal` tool, is:
+Invoke the **`init-config-file`** skill. It:
 
-```bash
-codeplain <module>.plain --dry-run
-```
+- enumerates every part of the project (one `config.yaml` per part — single-stack → root config; multi-part → one config per part),
+- assembles only the **valid** config keys derived from the `codeplain` CLI parser,
+- emits a clean YAML file per part (script paths first, then template/build folders, then copy/log settings),
+- verifies every `*-script` value resolves to a real file on disk,
+- refuses to write secrets (`api-key`) or per-invocation flags (`dry-run`, `full-plain`, `render-range`, `render-from`, `replay-with`) into the config.
 
-**Match the dry-run to how the user will actually render.** Pass the same flags they would pass for the real render so what you validate is what they will run. The flags that matter most in Phase 4:
+If `init-config-file` stops because a precondition isn't met (e.g. `prepare-environment-script` exists but no conformance script does), resolve the gap with the user before continuing — do **not** hand the project to `plain-healthcheck` with a known-broken config.
 
-- **`--config-name <name>`** — use whenever the project's config file is not the default `config.yaml`. `--config-name` takes a *file name*, not a path; the CLI searches the plain file's directory and the current working directory. If Phase 3 split the project into multiple parts (e.g. `backend/config.yaml`, `frontend/config.yaml`), either `cd` into the directory that contains the right `config.yaml` before running the dry-run, or pass `--config-name` explicitly to disambiguate.
-- **`--template-dir <path>`** — use only when templates live outside `template/` **and** `template_dir` is not already set in the relevant `config.yaml`. If `template_dir` is in the config, this is redundant.
-- **`--verbose` / `-v`** — strongly recommended on a failed dry-run. The extra log output usually makes it obvious which `.plain` file and which functional spec triggered the error.
-- **`--full-plain`** — useful when an `import` / `requires` chain is suspect. It prints the fully assembled ***plain specification (all imported definitions, required modules, templates) so you can confirm the renderer actually sees what you think it sees before fixing anything.
+#### 4c. Validate the project with `plain-healthcheck`
 
-If Phase 3 produced **multiple `config.yaml`s**, treat each render target as its own validation: run a separate `codeplain <module>.plain --dry-run` for every part, each with the right working directory or `--config-name`. Step 4c is not unlocked until **every** dry-run exits successfully.
+Before handing off to the user, run the **`plain-healthcheck`** skill. It is the single source of truth for "is this project ready to render?" — it:
+
+- inventories every `.plain` module and identifies every top module,
+- validates every `config.yaml` (existence, parseability, script paths actually point at files in `test_scripts/`, no mixed stacks, etc.), and
+- runs `codeplain <top>.plain --dry-run` for **every** top module with the correct `--config-name` for multi-part projects.
+
+Do **not** run the dry-run inline here. Delegate to `plain-healthcheck`. The skill handles the full detect → fix → re-run loop on its own (syntax errors, undefined concepts, broken `import` / `requires` chains, cyclic definitions, missing templates, complexity violations, conflicting reqs, config drift, missing scripts, …) and only returns once everything passes or a gap genuinely needs the user.
 
 Then:
 
-- **Dry-run exits successfully** → move on to step 4c.
-- **Dry-run fails** → do **not** ask the user to render. Work the failure to completion before handing off:
-  1. Read the error output. If the first run was not verbose, immediately re-run with `--verbose` to get more context. Identify the offending `.plain` file, the line (if reported), and the kind of issue (missing concept, syntax error, cyclic definition, complexity violation, conflicting reqs, missing template, broken `import`/`requires`, missing config field, …).
-  2. Fix only the `.plain` files (or the relevant `config.yaml` / template) using the appropriate edit skill — `add-concept`, `add-functional-spec`, `add-functional-specs`, `add-implementation-requirement`, `resolve-spec-conflict`, `break-down-func-spec`, `consolidate-concepts`, or an inline edit. **Never modify generated code in `plain_modules/` or `conformance_tests/`.**
-  3. If you are uncertain about ***plain syntax for the failing construct, re-load `load-plain-reference` before fixing.
-  4. Re-run the same `codeplain <module>.plain --dry-run …` command (with the same flags). Repeat until it exits successfully.
-- **`codeplain` is not on PATH, or `CODEPLAIN_API_KEY` is not set** → stop and tell the user what's missing and how to fix it (install the CLI, export the env var) before continuing. Do not pretend the dry-run passed.
+- **`plain-healthcheck` returns `PASS`** → move on to step 4d.
+- **`plain-healthcheck` returns `FAIL`** → do **not** ask the user to render. Work through the numbered list it produced (each item references a specific `.plain` file, `config.yaml`, or script), resolve each one with the appropriate edit skill, and re-run `plain-healthcheck` until it returns `PASS`. Any item the skill could not auto-resolve will name the concrete question to put to the user.
+- **Environment failure** (e.g. `codeplain` not on PATH, `CODEPLAIN_API_KEY` not set) → `plain-healthcheck` will surface this with a clearly-marked environment failure. Tell the user exactly what's missing and how to fix it before continuing. Do not pretend the healthcheck passed.
 
-For the full list of `codeplain` flags, see the CLI reference at the end of this section.
+For the full list of `codeplain` flags `plain-healthcheck` may use, see the CLI reference at the end of this section.
 
-#### 4c. Present the render command
+#### 4d. Present the render command
 
 Only after the dry-run passes, tell the user their specs are ready and present the render command:
 

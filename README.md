@@ -196,6 +196,8 @@ The build is idempotent — re-running it produces no `git diff`.
 
 | Skill | Description |
 |-------|-------------|
+| `init-config-file` | Build / finalize the project's `config.yaml` file(s) from the decisions made in Phase 3. Knows the full set of valid keys derived from the `codeplain` CLI, refuses to write secrets or per-invocation flags, and produces one config per part of the project. Run at the end of `forge-plain` (just before `plain-healthcheck`) and any time the testing surface changes. |
+| `plain-healthcheck` | Verification gate: validates every `config.yaml`, confirms each `*-script` field points at a real file in `test_scripts/`, and dry-runs every top module. Run whenever anything in the project is finalized — at the end of `forge-plain`, at the end of `add-feature`, after `debug-specs`, and after any single-skill edit that touches the renderable surface. |
 | `analyze-if-func-spec-too-complex` | Check if a spec exceeds the 200-line complexity limit |
 | `analyze-func-specs` | Check a batch of specs (2+) against each other in one call and return every conflicting pair |
 | `analyze-2-func-specs` | Legacy: check exactly two specs for conflicts (prefer `analyze-func-specs`) |

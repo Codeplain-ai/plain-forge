@@ -104,6 +104,7 @@ Most checks have already happened per-functionality. Phase 3 is a slim consisten
    - Acceptance tests (if any) are consistent with their parent specs.
 3. Present the final diff for the modified file(s) to the user for approval.
 4. If the user requests changes, apply them and re-review only the affected snippets — do not restart the functionality loop for the whole feature.
+5. **Run `plain-healthcheck`.** Once the user has approved the final diff, invoke the `plain-healthcheck` skill before declaring the feature done. It validates every `config.yaml` and dry-runs every top module, so a feature is never considered finished while the project would fail to render. If `plain-healthcheck` returns `FAIL`, work through the numbered list it produced (fix only `.plain` files / `config.yaml` / scripts — never generated code) and re-run it until it returns `PASS`. Only then tell the user the feature is ready and remind them to re-render with `codeplain <module>.plain`.
 
 ## When the User Comes Back with Another Feature
 
@@ -122,6 +123,7 @@ After completing one feature, the user may immediately describe the next. Start 
 - [ ] All external interfaces are explicit (endpoint paths, methods, CLI args, formats, etc.)
 - [ ] Acceptance tests are consistent with their parent functional specs
 - [ ] User approved the final diff
+- [ ] `plain-healthcheck` returned `PASS` after the final diff was approved
 
 
 ## Question style
