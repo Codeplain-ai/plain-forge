@@ -13,7 +13,7 @@ description: >-
 
 This skill produces a single executable script that runs the unit tests for a generated build folder, following a consistent, language-agnostic pattern.
 
-The reference implementation is [assets/run_unittests_java.sh](assets/run_unittests_java.sh). Read it first — every script you produce must be a faithful translation of that pattern into the target language's tooling **and** the user's shell environment.
+The reference implementation is [assets/run_unittests_java.sh](assets/run_unittests_java.sh). Read it first — every script you produce must be a faithful translation of that pattern into the target language's tooling **and** the user's shell environment. There are also Windows PowerShell equivalents of these scripts in [assets/run_unittests_*.ps1](assets/run_unittests_*.ps1).
 
 ## Pick the Shell First
 

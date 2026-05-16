@@ -18,8 +18,10 @@ The reference implementations are:
 
 - [assets/run_conformance_tests_java.sh](assets/run_conformance_tests_java.sh) — Java, install-inline variant.
 - [assets/run_conformance_tests_python.sh](assets/run_conformance_tests_python.sh) — Python, install-inline variant.
+- [assets/run_conformance_tests_<lang>.ps1](assets/run_conformance_tests_*.ps1) — Windows PowerShell equivalents.
 
 Read both before writing anything — every script you produce must be a faithful translation of the same pattern into the target language's tooling **and** the user's shell environment.
+
 
 ## How conformance scripts differ from unit-test scripts
 
