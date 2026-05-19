@@ -98,19 +98,29 @@ Once the plugin is installed, all plain-forge skills become available in your Co
 
 1. Invoke `forge-plain` to launch the structured QA workflow.
 2. Answer the questions. plain-forge writes the `.plain` files for you as you go through the four phases.
-3. Render the specs into code with the [Codeplain](https://codeplain.ai) renderer:
-
-   ```bash
-   codeplain <module>.plain
-   ```
-
-   plain-forge prints the exact command (with the right final module name) at the end of Phase 4.
+3. Render the specs into code (see [Rendering specs](#rendering-specs) below).
 
 ### Adding a feature to an existing project
 
 1. Invoke `add-feature`.
 2. Describe the feature in plain English. plain-forge runs the same **ask → author → review** loop scoped to that feature and updates the relevant `.plain` file(s).
-3. Re-render with `codeplain <module>.plain` to regenerate the code.
+3. Re-render to regenerate the code (see [Rendering specs](#rendering-specs)).
+
+### Rendering specs
+
+Once your `.plain` files are ready (and `plain-healthcheck` is green), render the specs into code with the [Codeplain](https://codeplain.ai) renderer:
+
+```bash
+codeplain <module>.plain
+```
+
+plain-forge prints the exact command (with the right final module name) at the end of Phase 4.
+
+#### Supervised render (experimental)
+
+If you'd rather have plain-forge babysit the run from your AI coding agent, invoke `run-codeplain`. It launches the renderer for you, tails `codeplain.log`, watches generated code appear under `plain_modules/`, and surfaces what's happening in plain English. If it detects a pathology (stuck conformance loop, complexity error, missing concept, render failure), it asks for approval to stop the renderer, hands off to the right spec-edit skill (`debug-specs`, `resolve-spec-conflict`, `break-down-func-spec`, …), and resumes the render from the last completed functionality via `--render-from`.
+
+This is an **experimental** feature — the default and most reliable way to render is still the manual `codeplain <module>.plain` invocation above.
 
 ### Debugging specs
 
@@ -118,7 +128,7 @@ Hit a bug in the rendered app, a failing test, or behavior that doesn't match wh
 
 1. Invoke `debug-specs`. plain-forge reads the generated code in `plain_modules/` (and the failing tests, if any), traces the issue back to the responsible `.plain` spec, and diagnoses the root cause — **ambiguous spec**, **missing spec**, **conflicting specs**, **incorrect spec**, or a **missing implementation req**.
 2. plain-forge applies the fix in the `.plain` file(s) only and summarizes what changed.
-3. Re-render with `codeplain <module>.plain` to regenerate the code.
+3. Re-render to regenerate the code (see [Rendering specs](#rendering-specs)).
 
 > **Important:** Never edit generated code under `plain_modules/` or `conformance_tests/` directly — your changes will be overwritten on the next render. Always fix the spec and re-render.
 
@@ -178,6 +188,7 @@ The build is idempotent — re-running it produces no `git diff`.
 |-------|-------------|
 | `forge-plain` | End-to-end QA interview that produces complete `.plain` spec files for a new project |
 | `add-feature` | Interview the user about a single feature, then write all the specs for it |
+| `run-codeplain` | **Experimental.** Launch a `codeplain` render and supervise it end-to-end — tails `codeplain.log`, watches generated code appear, detects pathologies (stuck conformance loops, complexity errors, missing concepts, render failures), and on approval stops the renderer, hands off to the right spec-edit skill, and resumes with `--render-from`. The default render path is still the manual `codeplain <module>.plain` command. |
 
 ### Spec Authoring
 
