@@ -31,6 +31,7 @@ Acceptance tests are nested under the functional spec they verify, using a `***a
 
 ```plain
 ***functional specs***
+
 - The system should process :Task: items in batches of 100.
 
   ***acceptance tests***

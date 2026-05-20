@@ -56,8 +56,11 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
 
 ```plain
 ***functional specs***
+
 - Implement the entry point for :App:.
+
 - :User: should be able to add :Task:. Only valid :Task: items can be added.
+
 - :User: should be able to send a :Message: to a :Conversation:.
   - A :Message: must have non-empty content.
   - The :Message: is appended to the end of the :Conversation:.

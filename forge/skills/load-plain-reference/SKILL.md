@@ -42,11 +42,14 @@ Example:
 
 ```plain
 ***definitions***
+
 - :User: is the user of :App:
+
 - :Task: describes an activity that needs to be done by :User:. :Task: has:
     - Name - a short description (required)
     - Notes - additional details (optional)
     - Due Date - completion deadline (optional)
+
 - :TaskList: is a list of :Task: items.
     - Initially :TaskList: should be empty.
 ```
@@ -73,6 +76,7 @@ Declares concepts used throughout the specification. A concept must be defined b
 
 ```plain
 ***definitions***
+
 - :ConceptName: is a description of the concept.
     - Additional details or attributes can be nested
     - Multiple attributes can be listed
@@ -85,8 +89,11 @@ A free-form section for any instructions that steer code generation. Common uses
 
 ```plain
 ***implementation reqs***
+
 - :Implementation: should be in Python.
+
 - :MainExecutableFile: of :App: should be called "hello_world.py".
+
 - :Implementation: should include :Unittests: using Unittest framework!
 ```
 
@@ -96,8 +103,11 @@ Specifies requirements for conformance testing — test frameworks, execution me
 
 ```plain
 ***test reqs***
+
 - :ConformanceTests: of :App: should be implemented in Python using Unittest framework.
+
 - :ConformanceTests: will be run using "python -m unittest discover" command.
+
 - :ConformanceTests: must be implemented and executed - do not use unittest.skip().
 ```
 
@@ -113,16 +123,22 @@ The renderer has **no knowledge of future functional specs**. When a functional 
 
 ```plain
 ***functional specs***
+
 - Implement the entry point for :App:.
+
 - Show :TaskList:.
+
 - :User: should be able to add :Task:. Only valid :Task: items can be added.
+
 - :User: should be able to delete :Task:.
+
 ```
 
 Each functional spec must be unambiguous. If a single line is not enough to fully disambiguate the behavior, use nested sub-bullets to add detail. Nested lines clarify the parent spec — they do not introduce separate functionality. Even with nested detail, the spec must still respect the complexity limit.
 
 ```plain
 ***functional specs***
+
 - :User: should be able to send a :Message: to a :Conversation:.
   - A :Message: must have non-empty content.
   - The :Message: is appended to the end of the :Conversation:.
@@ -135,6 +151,7 @@ Nested under individual functional specs to specify how to verify correct implem
 
 ```plain
 ***functional specs***
+
 - Display "hello, world"
 
     ***acceptance tests***
@@ -211,6 +228,7 @@ For example, instead of linking `task_modal_specification.yaml` from two differe
 ***functional specs***
 
 - :User: should be able to add :Task: using :TaskModalSpec:.
+
 - :User: should be able to edit :Task: using :TaskModalSpec:.
 ```
 
@@ -430,6 +448,7 @@ The workflow is: read the generated code to understand what it does, identify wh
 BAD
 ```***plain
 ***functional specs***
+
 - Implement :Message:
 
 ```
@@ -437,9 +456,11 @@ BAD
 GOOD
 ```***plain
 ***definitions***
+
 - :Message: is an interface of communication between two users. 
 
 ***functional specs***
+
 - Implement :Message:
 ```
 
@@ -448,14 +469,18 @@ GOOD
 BAD
 ```***plain
 ***definitions***
+
 - :Message: has an :Author:
+
 - :Author: can create a :Message:
 ```
 
 GOOD
 ```***plain
 ***definitions***
+
 - :Message: is an interface of communication between two users. 
+
 - :Author: can create a :Message:
 ```
 
@@ -465,7 +490,9 @@ BAD — both reqs in the same module
 
 ```***plain
 ***implementation reqs***
+
 - :Implementation: should be in python
+
 - :Implementation: should be in react
 ```
 
@@ -474,12 +501,15 @@ GOOD — split into two independent root modules
 `backend.plain`
 ```***plain
 ***implementation reqs***
+
 - :Implementation: should be in python
+
 ```
 
 `frontend.plain`
 ```***plain
 ***implementation reqs***
+
 - :Implementation: should be in react
 ```
 

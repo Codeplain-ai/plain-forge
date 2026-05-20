@@ -34,6 +34,7 @@ Use standard markdown link syntax inside any spec section:
   [backup_transform.jolt](resources/backup_transform.jolt).
 
 ***functional specs***
+
 - The system should expose an API conforming to the
   [API specification](resources/api_spec.yaml).
 ```
