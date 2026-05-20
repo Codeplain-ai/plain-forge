@@ -13,9 +13,9 @@ description: >-
 
 ## Project Overview
 
-This repository is a workspace for writing and managing **\*\*\*plain** (codeplain) specifications. \*\*\*plain is a specification-driven language powered by AI that generates production-ready code from `.plain` spec files.
+\*\*\*plain is a specification-driven language powered by AI that generates production-ready code from `.plain` spec files.
 
-The `.plain` files in this repository are the source of truth. They describe what the software should do, how it should be built, and how it should be tested. The generated code is a read-only artifact produced by the renderer.
+The `.plain` files are the source of truth. They describe what the software should do, how it should be built, and how it should be tested. The generated code is a read-only artifact produced by the renderer.
 
 ## ***plain Language Reference
 
@@ -23,20 +23,20 @@ The `.plain` files in this repository are the source of truth. They describe wha
 
 ### .plain File Structure
 
-A `.plain` file consists of an optional YAML frontmatter section followed by standardized sections marked with `***section name***` headers. There are four types of specification sections:
+A `.plain` file has a YAML frontmatter section followed by standardized sections marked with `***section name***` headers. There are four types of specification sections:
 
 - `***definitions***` — declares concepts used throughout the specification
 - `***implementation reqs***` — non-functional requirements about how the software should be built
 - `***test reqs***` — requirements for conformance testing
 - `***functional specs***` — describes what the software should do
 
-Every plain source file requires at least one functional spec and an associated implementation req. Functional specs must reside in leaf sections while other specifications can be placed also in non-leaf sections. Specifications in non-leaf sections apply to all of their subsections.
+Every plain source file requires at least one functional spec and an associated implementation req. 
 
 ### Concept Notation
 
 Concepts are the building blocks of ***plain specifications. They are written between colons: `:ConceptName:`. Valid characters include letters, digits, plus, minus, dot, and underscore.
 
-Concepts must be defined in `***definitions***` before being referenced in other sections. Concept names must be globally unique across the specification and its imports. Concept references must not form cycles — if concept A references concept B, then concept B must not reference concept A (directly or indirectly).
+Concepts must be defined in `***definitions***` before being referenced in other sections. Concept names must be globally unique across the specification and its imports. Concept references must not form cycles — if concept A references concept B, then concept B must not reference concept A.
 
 Example:
 
@@ -44,11 +44,11 @@ Example:
 ***definitions***
 - :User: is the user of :App:
 - :Task: describes an activity that needs to be done by :User:. :Task: has:
-  - Name - a short description (required)
-  - Notes - additional details (optional)
-  - Due Date - completion deadline (optional)
+    - Name - a short description (required)
+    - Notes - additional details (optional)
+    - Due Date - completion deadline (optional)
 - :TaskList: is a list of :Task: items.
-  - Initially :TaskList: should be empty.
+    - Initially :TaskList: should be empty.
 ```
 
 ### Predefined Concepts
@@ -69,18 +69,19 @@ Example:
 
 ### Definitions Section
 
-Declares concepts used throughout the specification. A concept must be defined before it can be referenced in any section. The definition can come from the module's own `***definitions***` section, from an `import`ed module's definitions, or from a `require`d module's `exported_concepts`. Attributes and constraints can be nested as sub-bullets.
+Declares concepts used throughout the specification. A concept must be defined before it can be referenced in any section. The definition can come from the module's own `***definitions***` section, from an `import`ed module's definitions, or from a `require`d module's `exported_concepts` (but not transitively). Attributes, constraints and clarifications can be nested as sub-bullets.
 
 ```plain
 ***definitions***
 - :ConceptName: is a description of the concept.
-  - Additional details or attributes can be nested
-  - Multiple attributes can be listed
+    - Additional details or attributes can be nested
+    - Multiple attributes can be listed
+    - Concept clarification also goes here
 ```
 
 ### Implementation Reqs Section
 
-A free-form section for any instructions that steer code generation. Common uses include technology choices, architectural constraints, coding standards, and naming conventions, but it can also contain detailed implementation guidance — data formats, error handling strategies, algorithm descriptions, or any other context the renderer needs to produce correct code. These describe HOW to build the software, not WHAT it should do.
+A free-form section for any instructions that steer code generation. Common uses include technology choices, architectural constraints, coding standards, and naming conventions, but it can also contain detailed implementation guidance — data formats, error handling strategies, algorithm descriptions, or any other context the renderer needs to produce correct code. These describe HOW to build the software, not WHAT it should do. Specs about unit testing also go here - it is a common mistake to include them in the `***test reqs***` section.
 
 ```plain
 ***implementation reqs***
@@ -91,7 +92,7 @@ A free-form section for any instructions that steer code generation. Common uses
 
 ### Test Reqs Section
 
-Specifies requirements for conformance testing — test frameworks, execution methods, and testing constraints. Only used when writing and fixing conformance tests (not unit tests).
+Specifies requirements for conformance testing — test frameworks, execution methods, and testing constraints. Only used when writing and fixing conformance tests (not unit tests). Unit tests should be specified in the `***implementation reqs***` section and NOT HERE. 
 
 ```plain
 ***test reqs***
@@ -104,7 +105,7 @@ Specifies requirements for conformance testing — test frameworks, execution me
 
 Describes what the software should do. Each bullet point is a single piece of functionality that will be implemented. Functional specs are rendered incrementally one by one — earlier specs cannot reference later specs.
 
-Each functional spec must be limited in complexity. If a spec is too complex, the renderer responds with "Functional spec too complex!" and it must be broken down into smaller specs.
+Each functional spec must be limited in complexity. If a spec is too complex, the renderer responds with "Functional spec too complex!" and it must be broken down into smaller specs. Complexity is measured in lines of code - each spec should imply more than 200 lines of code.
 
 Functional specs are in **chronological order** — earlier specs are rendered before later ones. Functional specs defined in `requires` modules are considered **previous functional specs** relative to the current module's specs. This ordering matters for incremental rendering and for detecting conflicts between specs.
 
@@ -130,7 +131,7 @@ Each functional spec must be unambiguous. If a single line is not enough to full
 
 ### Acceptance Tests
 
-Nested under individual functional specs to specify how to verify correct implementation. They extend conformance tests and are implemented according to the `***test reqs***` specification.
+Nested under individual functional specs to specify how to verify correct implementation. They extend conformance tests and are implemented according to the `***test reqs***` specification. Acceptance tests are only run if conformance tests are enabled.
 
 ```plain
 ***functional specs***
@@ -170,7 +171,7 @@ Specifications can reference external files using markdown link syntax. The link
   are provided in the file [task_modal_specification.yaml](task_modal_specification.yaml).
 ```
 
-**Structured protocol artifacts must be linked resources, never transcribed into prose.** Anything that has a formal machine-readable shape — JSON Schema, OpenAPI / Swagger specs, GraphQL SDL, Protobuf / gRPC `.proto` files, Avro / Thrift schemas, XML XSDs, AsyncAPI specs, JSON-RPC method definitions, wire-protocol descriptions, payload examples, etc. — belongs in a file under `resources/` (or a subfolder of the `.plain` file's directory), and the spec refers to it via a markdown link. Do **not** restate the schema's fields, types, or constraints inline in functional specs, implementation reqs, or definitions. Reasons:
+**Structured protocol artifacts must be linked resources, never transcribed into prose.** Anything that has a formal machine-readable shape which includes but is not limited to — JSON Schema, OpenAPI / Swagger specs, GraphQL SDL, Protobuf / gRPC `.proto` files, Avro / Thrift schemas, XML XSDs, AsyncAPI specs, JSON-RPC method definitions, wire-protocol descriptions, payload examples, etc. — belongs in a file under `resources/` (or a subfolder of the `.plain` file's directory), and the spec refers to it via a markdown link. Do **not** restate the schema's fields, types, or constraints inline in functional specs, implementation reqs, or definitions. Reasons:
 
 - **One source of truth.** A re-typed copy of a schema in prose drifts as soon as the real schema evolves. Both the renderer *and* downstream tooling (codegen, validators, API clients, IDE plugins) need the same canonical file.
 - **Machine-readable.** The renderer and the generated code can both consume the file directly — a JSON Schema linked from a spec can drive request/response validation in the implementation *and* assertions in conformance tests, with no prose-to-code translation step in between.
@@ -238,7 +239,7 @@ Lines starting with `>` are ignored when rendering:
 1. **Reference concepts consistently** — use `:ConceptName:` notation to disambiguate key concepts
 2. **Keep it simple** — specs should be readable by both humans and AI
 3. **Leverage templates** — use the standard template library for common patterns
-4. **Use acceptance tests** — add them for requirements that need verification
+4. **Use acceptance tests** — add them for requirements that need verification (under the condition that conformance tests are enabled)
 5. **Be specific** — write clear, testable requirements in functional specs
 6. **Define before use** — always define concepts in `***definitions***` before referencing them
 7. **Start with imports** — import relevant templates before defining your own concepts
@@ -252,7 +253,7 @@ plain_modules/           # Generated code output (one folder per .plain spec)
 resources/               # Schemas, API specs, transforms, test fixtures
 conformance_tests/       # Generated conformance tests (one folder per module)
 test_scripts/            # Scripts for running unit and conformance tests
-config.yaml              # Codeplain configuration
+config.yaml              # codeplain CLI configuration
 ```
 
 **Generated artifacts** (gitignored):
@@ -265,9 +266,9 @@ There are two types of modules:
 
 ### Import Modules
 
-An import module lives in the **`template/`** directory and contains **only** `***definitions***`, `***implementation reqs***`, and/or `***test reqs***`. It must **not** contain `***functional specs***` and must **not** use `requires`. It may optionally `import` other templates for layered reuse.
+An import module may live in the **`template/`** directory (other directories are also supported) and contains **only** `***definitions***`, `***implementation reqs***`, and/or optionally `***test reqs***`. It must **not** contain `***functional specs***` and must **not** use `requires`. It may optionally `import` other templates for layered reuse.
 
-When a module **`import`s** another, it gains access to the imported module's definitions, implementation reqs, and test reqs — but not its functional specs. The default import directory is `template/`, so the `template/` prefix is not needed (e.g., `airplain`).
+When a module **`import`s** another, it gains access to the imported module's definitions, implementation reqs, and test reqs — but not its functional specs. The default import directory needs to be specified in `config.yaml` - in such a case, the directory prefix is not needed (e.g., `airplain`).
 
 ### Requires Modules
 
@@ -275,18 +276,24 @@ When a module **`import`s** another, it gains access to the imported module's de
 
 When a module **`requires`** another:
 - The required module's generated code (`plain_modules/<required_module>`) is copied as the starting point.
-- The required module's `***functional specs***` become visible as **previous functional specs**.
-- Only `exported_concepts` from the required module are available (not its full definitions).
+- The required module's `***functional specs***` become visible as **previous functional specs** - this property IS transitive.
+- Only `exported_concepts` from the required module are available (not its full definitions) - this property IS NOT transitive.
 
-A module can use both `requires` and `import` together. `requires` points to other root-level modules (e.g., `auth`, `messaging`); `import` resolves from the default `template/` directory without needing the prefix (e.g., `airplain`). Modules with functional specs live at the repository root. Import modules (templates) live in `template/`.
+A module can use both `requires` and `import` together.
 
-**`requires` modules must share the same tech stack.** Because the required module's generated code is copied as the starting point and the renderer continues building on top of it with one language/framework toolchain, two modules can only be linked with `requires` when they target the same language, framework, and runtime. A runtime/network dependency between systems is **not** a reason to use `requires`. For example, a React frontend that talks to a Python/FastAPI backend over HTTP must **not** `requires: [backend]` — the stacks differ. Model that pair as two independent root modules (each with its own `config.yaml` and test scripts), and express the contract between them through a shared API schema in `resources/` or shared concepts in an `import`ed template, not through `requires`.
+**`requires` modules must share the same tech stack.** Because the required module's generated code is copied as the starting point and the renderer continues building on top of it with one language/framework toolchain, two modules can only be linked with `requires` when they target the same language, framework, and runtime. A runtime/network dependency between systems is **not** a reason to use `requires`. For example, a React frontend that talks to a Python/FastAPI backend over HTTP must **not** `requires: [backend]` — the stacks differ. Model that pair as two independent root modules (each with its own `config.yaml` and test scripts), and express the contract between them through a shared API schema in `resources/` or shared concepts in an `import`ed template, NOT through `requires`.
 
 ### Contracts Between Modules
 
-Modules can use `required_concepts` and `exported_concepts` to enforce contracts between them. A template declaring `required_concepts` means any module that imports it must define those concepts. A module declaring `exported_concepts` controls which concepts are visible to modules that `require` it.
+Modules can use `required_concepts` and `exported_concepts` to enforce contracts between them. An import module declaring `required_concepts` means any module that imports it must define those concepts. A module declaring `exported_concepts` controls which concepts are visible to modules that `require` it - not transitive.
 
 **Exported concepts are not transitive.** If module A exports a concept and module B `requires` A, module B can use that concept — but if module C `requires` B, it does **not** automatically gain access to A's exported concepts. If a concept needs to be shared across multiple `requires` modules, define it in a common import module and have each module `import` that shared template.
+
+## Conformance Test Workflow
+
+Each functional spec in a module has its own set of conformance tests, generated per functional spec per module. After a new functional spec is rendered (i.e., its implementation code is generated), conformance tests for that spec are also rendered. Before proceeding, **all previous conformance tests** (from earlier functional specs in the same module) are run. Ideally, all conformance tests of all previous functional specs pass without any changes. If any previously passing conformance test now fails, the failure must be resolved before moving on. Resolution means one of three things: fixing the conformance test, fixing the implementation code (by adjusting the spec), or identifying conflicting specs.
+
+If conformance tests of a previous functional spec need to be changed in order to pass, this is a strong indicator that the functional specs themselves may need to be amended. Needing to modify earlier conformance tests suggests the new functional spec has introduced behavior that is inconsistent with what was previously specified — the specs should be reviewed and clarified to eliminate the ambiguity or conflict.
 
 ## Running Tests
 
@@ -294,13 +301,13 @@ Test scripts live in `test_scripts/` and are run from the repo root:
 
 ```bash
 # Run all unit tests for a module
-./test_scripts/run_unittests.sh <module_name>
+./test_scripts/run_unittests.sh plain_modules/<module_name>
 
-# Run a single unit test
-./test_scripts/run_unittests_single.sh <module_name>
+# Prepare environment for conformance tests
+./test_scripts/prepare_environment.sh plain_modules/<module_name>
 
-# Run conformance tests
-./test_scripts/run_conformance_tests.sh <module_name> <conformance_tests_folder>
+# Run conformance tests for a specific functionality in a module
+./test_scripts/run_conformance_tests.sh plain_modules/<module_name> conformance_tests/<module_name>/<functionality>
 ```
 
 ## Testing Scripts
@@ -309,10 +316,10 @@ Every ***plain project ships shell scripts under `test_scripts/` that the user (
 
 ### Why these scripts exist (and why they're shaped the way they are)
 
-The **primary** purpose of these scripts is **automated execution by the renderer**, not manual invocation by a developer. The user *can* run them by hand (see [Running Tests](#running-tests)), but the renderer runs them many times more often — once for every functional spec it processes — as part of its incremental rendering loop. The contract between the scripts and the renderer is shaped by that execution model:
+The **primary** purpose of these scripts is **automated execution by the renderer** to validate the generated code and validate that all the previous functionalities work as expected, not manual invocation by a developer. The user *can* run them by hand (see [Running Tests](#running-tests)), but the renderer runs them many times more often — once for every functional spec it processes — as part of its incremental rendering loop. The contract between the scripts and the renderer is shaped by that execution model:
 
-- **Conformance tests are per-functional-spec.** Each functional spec in a module has its own folder under `conformance_tests/<module>/<spec>/`. After the renderer finishes generating code for a new functional spec, it runs the conformance tests of **every previous functional spec** in the same module to detect regressions — see [Conformance Test Workflow](#conformance-test-workflow). For a module with N functional specs, the conformance script gets invoked **on the order of N times per render**, each invocation pointing at a different spec's test folder.
-- **Each per-spec invocation is independent.** The conformance script does not know that it's the second invocation in a long sequence; from its point of view, each invocation is a cold start against a single spec's tests. That's the right design — it keeps each invocation hermetic and lets the renderer reorder or skip specs without breaking anything.
+- **Conformance tests are per-functional-spec.** Each functional spec in a module has its own folder under `conformance_tests/<module>/<functionality>/`. After the renderer finishes generating code for a new functional spec and the unit tests and refactoring passes, it runs the conformance tests of **all previous functional spec** to detect regressions — see [Conformance Test Workflow](#conformance-test-workflow). For a single module (with 0 `requires` modules) with N functional specs, the conformance script gets invoked **on the order of N times per render**, each invocation pointing at a different spec's test folder.
+- **Each per-spec invocation is independent.** The conformance script does not know that it's the second invocation in a long sequence; from its point of view, each invocation is a cold start against a single spec's tests.
 - **Per-spec independence is also what makes dependency installation expensive.** A naive conformance runner would re-install all of the project's runtime dependencies (Python venv + `pip install`, Maven dependency tree, `npm ci`, `cargo build`, ...) on every one of those N invocations. That's `N × install-cost` of wasted work for every render.
 - **That is exactly why `prepare_environment_<lang>` exists.** Its **only** job is to amortize the install cost: install once at the start of a render, populate `.tmp/<lang>_<arg>/` with the warmed dependency cache and build artifacts, then let the conformance runner **attach** to that working folder on each of the N per-spec invocations instead of re-installing. The conformance runner's [activate-only variant](../implement-conformance-testing-script/SKILL.md#variant-decision-install-inline-vs-activate-only) does precisely that. When no prepare script exists, the conformance runner falls back to the install-inline variant and pays the install cost N times — acceptable for tiny projects, costly for anything realistic.
 - **The unit-test runner has a different execution model, because unit tests live in a different place.** Unit tests are part of the generated codebase itself — they sit directly inside `plain_modules/<module>/` next to the implementation they exercise — whereas conformance tests live *outside* the codebase, in their own per-spec folders under `conformance_tests/<module>/<spec>/`. As a result, the unit-test runner doesn't have a per-spec axis to iterate over: it just runs against the whole `plain_modules/<module>/` build in one go, gets invoked far fewer times per render, and has no amortization gain to chase. That's why the unit-test runner is always self-contained and there is no `prepare_environment`-equivalent for it.
@@ -329,7 +336,7 @@ Keep this framing in mind when you author or adapt any of these scripts. The dec
 
 It is a **common and costly mistake** to assume that `prepare_environment_<lang>` is a generic "warm up the environment for all the testing scripts" step that the unit-test runner can also lean on. It is not. The hard rule:
 
-> `prepare_environment_<lang>` exists **solely** to set up the working folder that `run_conformance_tests_<lang>` then attaches to (the activate-only variant). The unit-test runner (`run_unittests_<lang>`) is **completely independent** of it — it does not read from `prepare`'s working folder, does not require `prepare` to have run, and must install whatever dependencies it needs on its own.
+> `prepare_environment_<lang>` exists **solely** to set up the working folder that `run_conformance_tests_<lang>` then attaches to (the activate-only variant). The unit-test runner (`run_unittests_<lang>`) is **completely independent and complete** of it — it does not read from `prepare`'s working folder, does not require `prepare` to have run, and must install whatever dependencies it needs on its own.
 
 Why:
 
@@ -350,6 +357,7 @@ Anything not listed here is documented in the individual skill file:
 - **Conformance scripts come in two variants — unit-test scripts do not.** When a `prepare_environment_<lang>` script exists, the conformance script is the **activate-only** variant (it attaches to the env prepare populated in `.tmp/`). When no prepare exists, the conformance script is the **install-inline** variant (it stages and installs in one shot). The `implement-conformance-testing-script` skill picks the right variant automatically based on whether a prepare script is already on disk. **The unit-test script has no activate-only variant** — it is always self-contained, regardless of whether a `prepare_environment_<lang>` script exists.
 - **Dependency isolation is project-local.** Each language's package cache / virtual env / build repo lives inside the working folder (`./.venv` for Python, `./node_modules` for Node, `./.m2` for Java, `./.gocache` for Go, `./.cargo` for Rust, `./.pub-cache` for Flutter, ...) — never in the user's home directory. The conformance script reads from the same project-local location prepare wrote to; the unit-test script uses its **own** working folder and its **own** copy of the isolated dependencies.
 - **No language-package checks live in these scripts.** The scripts themselves install language packages via `pip install -r requirements.txt`, `npm ci`, `mvn -Dmaven.repo.local=...`, `go mod download`, `cargo fetch`, etc. They do **not** pre-verify individual packages; that's the package manager's job. The host-level checks for the toolchains and external dependencies belong in `check-plain-env`, not in these scripts.
+- **Scripts are verbose**. They print out every step they take, including toolchain checks, dependency installations, and test results. This makes it easier to debug and understand what's going on.
 
 For implementation details — the exact step sequence, toolchain checks, language-specific install / test commands, working-folder lifecycle, anti-patterns — open the corresponding `implement-*-testing-script` skill. Do not hand-author a testing script from scratch; route every creation or modification through the matching skill so the shared rules above are enforced uniformly.
 
@@ -357,7 +365,11 @@ For implementation details — the exact step sequence, toolchain checks, langua
 
 - Each functional spec must imply a **maximum of 200 changed lines of code**. This is a hard limit — if a spec would result in more than 200 lines of changes, it must be broken down into smaller, independent specs. This limit also helps avoid "Functional spec too complex!" errors from the renderer.
 - **Conflicting specs must be avoided at all costs.** Functional specs should be written so that no conflicts exist between them. If two specs appear to conflict, they must be clarified by adding more detail and context to the specs until all possible conflicts are resolved. Prevention is always preferable to debugging conflicts after rendering.
-- **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types) in functional specs and definitions. Write specs in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes, REST api endpoints etc.). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
+- **Specs should be language-agnostic.** Avoid using programming language-specific terminology (e.g., generics syntax, framework annotations, language-specific collection types, decorator syntax, language-specific base classes or type keywords like "POJO" or "dataclass") in functional specs and definitions. Write specs in terms of behavior, concepts, and domain logic — not implementation constructs. General technical terms that are not language-specific are fine (e.g., null values, JSON types, HTTP status codes, REST api endpoints etc.). The `***implementation reqs***` section is the appropriate place for language-specific guidance.
+
+    Naming concrete *components* — classes, methods, functions, fields — is encouraged and not in conflict with this rule. A functional spec should freely refer to `:CsvToJsonConverter:` as a component with methods `:CsvToJson:` and `:JsonToCsv:`, describe their inputs, outputs, and error behavior, and treat those names as part of the public contract. What it must *not* do is bake in how that contract is realized in a particular language: no `@staticmethod` decorators, no `class Foo extends Bar` phrasing, no `List<T>` or `Optional<T>` syntax, no "POJO with static methods" framing.
+
+    The litmus test: if you switched the project from Python to Java (or vice versa), would the functional spec still read correctly with only `***implementation reqs***` updated? If yes, the spec is language-agnostic. If the functional spec itself would need rewording because it referenced a language-specific construct, the construct belongs in implementation reqs instead. The component name (`:CsvToJsonConverter:`) is the same across languages; the syntax used to express "static method on a class" is not.
 - **Keep sentences short and clear — but never at the cost of ambiguity.** Spec lines should be easy to read and understand at a glance. Prefer short, direct sentences and plain words over long sentences and jargon — if a 10-cent word and a 50-cent word say the same thing, use the 10-cent one. This applies to every spec section, not only functional specs: `***definitions***`, `***implementation reqs***`, `***test reqs***`, and `***acceptance tests***` should all be as concise as they can be while staying unambiguous. The hard constraint is in the second half of that rule: **wordy-but-precise always beats terse-but-ambiguous.** If trimming a clause, a qualifier, or a sub-bullet would leave the spec open to more than one reasonable interpretation, leave it in. When a sentence starts to grow because the behavior is genuinely complex, split it into two short sentences (or into a parent line + sub-bullets) rather than dropping detail. Concision is in service of clarity, never the other way around.
 - **Specs must be deterministic enough to both *run* and *use* the software without reading the generated code.** A developer should be able to figure out, from the specs alone, two distinct things:
 
@@ -366,11 +378,29 @@ For implementation details — the exact step sequence, toolchain checks, langua
 
     Concretely, a reader should never have to open `plain_modules/` to answer "how do I start this?" or "how do I call this endpoint?" — those answers must already live in the specs. **Never leave runtime or interface details up to the renderer's discretion** — if the spec doesn't pin them down, two renders can produce two different shapes, and any human or automated consumer of the software is now coupled to an undocumented choice.
 - **Encapsulate functionality in functional specs.** `requires` modules import only functional specs. It is therefore important that the functionality is encapsulated in the functional specs and not in implementation reqs, as those will not be in the context of future functional specs when fixing previous conformance tests of previous functional specs.
+- **Specs must define programmatic interfaces.** Any runtime or interface details must be defined in the functional specs, not in implementation reqs. This means functional specs name the concrete *components* a caller will reach for — utilities, services, methods, functions, fields — and pin down their inputs, outputs, and error behavior, so that callers can use the software without reading the generated code. For example, a spec can require:
+
+    ```plain
+    - Implement :CsvToJsonConverter: as a stateless utility component exposing two operations.
+        - :CsvToJson: takes a CSV row and a list of header strings, returns a JSON object keyed by header name. Infer and convert value types. Empty CSV values must be converted to null. Null values must be preserved — keys with null values must appear in the result, not be omitted. Handle CSV escaping (quoted values, commas within quotes). Raise an error if the number of columns does not match the headers.
+        - :JsonToCsv: takes a JSON object and a list of header strings defining column order, returns a CSV row without a header row. Handle CSV escaping for values containing commas or quotes. Output an empty string for null or missing fields. Extra keys in the JSON object that are not present in the headers list should be silently ignored.
+    ```
+
+    This rule is complementary to the earlier "specs should be language-agnostic" guideline, not in conflict with it. Component names (`:CsvToJsonConverter:`, `:CsvToJson:`, `:JsonToCsv:`) and behavioral contracts belong in functional specs because they survive a language switch unchanged. Language-specific realizations of those contracts — "POJO class with static methods", "Python module with module-level functions", `@staticmethod`, `class Foo`, exception types like `IllegalArgumentException` vs `ValueError`, choice of test framework (`pytest` vs `JUnit`), mocking library, fixture style, assertion syntax — belong in `***implementation reqs***` and `***test reqs***`, because those are exactly what changes when the target language changes. Use `***implementation reqs***` for *how the production code is realized* (language, frameworks, libraries, syntax, error types) and `***test reqs***` for *how the tests are realized* (test framework, test runner, mocking and fixture conventions, parametrization style, naming conventions, file layout). The goal is that swapping languages requires editing only `***implementation reqs***` and `***test reqs***`; the functional spec for `:CsvToJsonConverter:` should read identically whether the project is in Python, Java, or anything else.
+
+## Conflicting Specs and Conformance Test Debugging
+
+The renderer can detect conflicting specs. Two functional specs may be in conflict if conformance tests for a previously passing spec begin to fail after a new spec is rendered. When a conformance test failure occurs, the first step is to determine **where the issue lies**. There are three possible outcomes:
+
+1. **The implementation is incorrect** — the generated code does not correctly implement the functional spec. Fix the spec to clarify intent and re-render.
+2. **The conformance tests are incorrect** — the generated tests do not accurately verify the spec. Adjust `***test reqs***` or `***acceptance tests***` to guide better test generation and re-render.
+3. **The requirements conflict** — the two functional specs are inherently contradictory. One or both specs must be revised to resolve the conflict before re-rendering.
+
+Conflicting specs are the most costly outcome and should be **prevented proactively**. When writing or modifying functional specs, carefully consider how each spec interacts with all previous specs. If ambiguity exists, add explicit detail to the spec to eliminate any possible interpretation that could conflict with earlier specs.
 
 ## Working with Specs
 
 - The `.plain` files are the source of truth. Modify specs to change behavior, then re-render.
-- The `template/` directory contains reusable template specs that define common patterns.
 - The `resources/` directory contains schemas, API specs, transforms, and test fixtures referenced by the specs.
 - Generated code in `plain_modules/` should not be manually edited — changes will be overwritten on the next render.
 
@@ -392,22 +422,6 @@ To change the generated code, **only the corresponding `.plain` spec files may b
 The `test_scripts/` folder contains shell scripts for running unit tests and conformance tests against the generated code. These scripts are the entry point for test execution — see the [Running Tests](#running-tests) section for usage.
 
 The workflow is: read the generated code to understand what it does, identify what is ambiguous or incorrect in the specs, then make changes exclusively in the `.plain` files and re-render.
-
-## Conformance Test Workflow
-
-Each functional spec in a module has its own set of conformance tests, generated per functional spec per module. After a new functional spec is rendered (i.e., its implementation code is generated), conformance tests for that spec are also rendered. Before proceeding, **all previous conformance tests** (from earlier functional specs in the same module) are run. Ideally, all conformance tests of all previous functional specs pass without any changes. If any previously passing conformance test now fails, the failure must be resolved before moving on. Resolution means one of three things: fixing the conformance test, fixing the implementation code (by adjusting the spec), or identifying conflicting specs.
-
-If conformance tests of a previous functional spec need to be changed in order to pass, this is a strong indicator that the functional specs themselves may need to be amended. Needing to modify earlier conformance tests suggests the new functional spec has introduced behavior that is inconsistent with what was previously specified — the specs should be reviewed and clarified to eliminate the ambiguity or conflict.
-
-## Conflicting Specs and Conformance Test Debugging
-
-The renderer can detect conflicting specs. Two functional specs may be in conflict if conformance tests for a previously passing spec begin to fail after a new spec is rendered. When a conformance test failure occurs, the first step is to determine **where the issue lies**. There are three possible outcomes:
-
-1. **The implementation is incorrect** — the generated code does not correctly implement the functional spec. Fix the spec to clarify intent and re-render.
-2. **The conformance tests are incorrect** — the generated tests do not accurately verify the spec. Adjust `***test reqs***` or `***acceptance tests***` to guide better test generation and re-render.
-3. **The requirements conflict** — the two functional specs are inherently contradictory. One or both specs must be revised to resolve the conflict before re-rendering.
-
-Conflicting specs are the most costly outcome and should be **prevented proactively**. When writing or modifying functional specs, carefully consider how each spec interacts with all previous specs. If ambiguity exists, add explicit detail to the spec to eliminate any possible interpretation that could conflict with earlier specs.
 
 ## Common mistakes
 
@@ -468,3 +482,82 @@ GOOD — split into two independent root modules
 ***implementation reqs***
 - :Implementation: should be in react
 ```
+
+
+## `codeplain` CLI reference
+
+```txt
+Render ***plain specs to target code.
+
+positional arguments:
+  filename              Path to the plain file to render. The directory containing this file has highest precedence for template loading, so
+                        you can place custom templates here to override the defaults. See --template-dir for more details about template
+                        loading.
+
+options:
+  -h, --help            show this help message and exit
+  --verbose, -v         Enable verbose output
+  --base-folder BASE_FOLDER
+                        Base folder for the build files
+  --build-folder BUILD_FOLDER
+                        Folder for build files
+  --log-to-file, --no-log-to-file
+                        Enable logging to a file. Defaults to True. Set to False to disable.
+  --log-file-name LOG_FILE_NAME
+                        Name of the log file. Defaults to 'codeplain.log'.Always resolved relative to the plain file directory.If file on
+                        this path already exists, the already existing log file will be overwritten by the current logs.
+  --render-range RENDER_RANGE
+                        Specify a range of functionalities to render (e.g. `1` , `2`, `3`). Use comma to separate start and end IDs. If only
+                        one functionality ID is provided, only that functionality is rendered. Range is inclusive of both start and end IDs.
+  --render-from RENDER_FROM
+                        Continue generation starting from this specific functionality (e.g. `2`). The functionality with this ID will be
+                        included in the output. The functionality ID must match one of the functionalities in your plain file.
+  --force-render        Force re-render of all the required modules.
+  --unittests-script UNITTESTS_SCRIPT
+                        Shell script to run unit tests on generated code. Receives the build folder path as its first argument (default:
+                        'plain_modules').
+  --conformance-tests-folder CONFORMANCE_TESTS_FOLDER
+                        Folder for conformance test files
+  --conformance-tests-script CONFORMANCE_TESTS_SCRIPT
+                        Path to conformance tests shell script. Every conformance test script should accept two arguments: 1) Path to a
+                        folder (e.g. `plain_modules/module_name`) containing generated source code, 2) Path to a subfolder of the conformance
+                        tests folder (e.g. `conformance_tests/subfoldername`) containing test files.
+  --prepare-environment-script PREPARE_ENVIRONMENT_SCRIPT
+                        Path to a shell script that prepares the testing environment. The script should accept the source code folder path as
+                        its first argument.
+  --test-script-timeout TEST_SCRIPT_TIMEOUT
+                        Timeout for test scripts in seconds. If not provided, the default timeout of 120 seconds is used.
+  --api [API]           Alternative base URL for the API. Default: `https://api.codeplain.ai`
+  --api-key API_KEY     API key used to access the API. If not provided, the `CODEPLAIN_API_KEY` environment variable is used.
+  --full-plain          Full preview ***plain specification before code generation.Use when you want to preview context of all ***plain
+                        primitives that are going to be included in order to render the given module.
+  --dry-run             Dry run preview of the code generation (without actually making any changes).
+  --replay-with REPLAY_WITH
+  --template-dir TEMPLATE_DIR
+                        Path to a custom template directory. Templates are searched in the following order: 1) Directory containing the plain
+                        file, 2) Custom template directory (if provided through this argument), 3) Built-in standard_template_library
+                        directory
+  --copy-build          If set, copy the rendered contents of code in `--base-folder` folder to `--build-dest` folder after successful
+                        rendering.
+  --build-dest BUILD_DEST
+                        Target folder to copy rendered contents of code to (used only if --copy-build is set).
+  --copy-conformance-tests
+                        If set, copy the conformance tests of code in `--conformance-tests-folder` folder to `--conformance-tests-dest`
+                        folder successful rendering. Requires --conformance-tests-script.
+  --conformance-tests-dest CONFORMANCE_TESTS_DEST
+                        Target folder to copy conformance tests of code to (used only if --copy-conformance-tests is set).
+  --render-machine-graph
+                        If set, render the state machine graph.
+  --logging-config-path LOGGING_CONFIG_PATH
+                        Path to the logging configuration file.
+  --headless            Run in headless mode: no TUI, no terminal output except a single render-started message. All logs are written to the
+                        log file.
+
+configuration:
+  --config-name CONFIG_NAME
+                        Name of the config file to look for. Looked up in the plain file directory and the current working directory.
+                        Defaults to config.yaml.
+
+```
+
+---
