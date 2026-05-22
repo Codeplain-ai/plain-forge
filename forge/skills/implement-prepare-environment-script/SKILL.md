@@ -175,14 +175,15 @@ Notes:
 
 ## Workflow
 
-1. **Detect the host OS** to pick the script flavor. Run `uname -s 2>/dev/null || echo "$OS"` and apply the rules in [Pick the Shell First](#pick-the-shell-first): `Darwin`/`Linux` → `.sh`, `Windows_NT`/`MINGW*`/`MSYS*`/`CYGWIN*` → `.ps1`. If the project targets both macOS/Linux **and** Windows (multi-OS team or CI), plan to produce **both** `.sh` and `.ps1` files — repeat steps 3–7 for each.
+1. **Detect the host OS** to pick the script flavor. Run `uname -s 2>/dev/null || echo "$OS"` and apply the rules in [Pick the Shell First](#pick-the-shell-first): `Darwin`/`Linux` → `.sh`, `Windows_NT`/`MINGW*`/`MSYS*`/`CYGWIN*` → `.ps1`. If the project targets both macOS/Linux **and** Windows (multi-OS team or CI), plan to produce **both** `.sh` and `.ps1` files — repeat steps 3–8 for each.
 2. Confirm the target **language**, **dependency manifest** (`pom.xml`, `requirements.txt` / `pyproject.toml`, `package.json`, `go.mod`, `Cargo.toml`, ...), and — critically — **read the corresponding `run_conformance_tests_<lang>` script first** if one already exists, so you know what isolation paths and toolchain versions to mirror. Ask if any is unclear.
 3. Read [assets/prepare_environment_java.sh](assets/prepare_environment_java.sh) to refresh the exact structure. Note: that reference still has divergences from the contract above (see Anti-Patterns) — follow the contract, not the bugs.
 4. Translate each of the six pattern steps into the equivalent commands for the target language **and** shell. The toolchain check and dependency install/build are the language-specific parts; the rest is mechanical translation between Bash and PowerShell syntax.
 5. Pick the dependency-isolation mechanism from the [Dependency isolation](#dependency-isolation) table. **Verify it matches the path used by the corresponding `run_conformance_tests_<lang>` script.**
 6. Save the new script to the appropriate `test_scripts/` location (e.g. `test_scripts/prepare_environment_<lang>.sh` / `.ps1`). For Bash, `chmod +x` it.
-7. **Reconcile the conformance script (see next section).** This is mandatory whenever a matching `run_conformance_tests_<lang>` already exists in the project.
-8. After both scripts are in place, do a paired re-read: open prepare and conformance side by side and confirm they agree on working folder name, isolation path, and toolchain version.
+7. **Update `config.yaml` to reference the new script.** Add or update the `prepare-environment-script:` key with the path to the newly created script (e.g., `prepare-environment-script: test_scripts/prepare_environment_<lang>.sh`). This is mandatory — the `codeplain` renderer needs this reference to invoke the prepare script before running conformance tests.
+8. **Reconcile the conformance script (see next section).** This is mandatory whenever a matching `run_conformance_tests_<lang>` already exists in the project.
+9. After both scripts are in place and `config.yaml` is updated, do a paired re-read: open prepare and conformance side by side and confirm they agree on working folder name, isolation path, and toolchain version.
 
 ## Reconcile the existing conformance script
 
@@ -226,3 +227,4 @@ Adding a `prepare_environment_<lang>` script changes the contract for the corres
 - **Don't forget to time the install.** Without the duration log, there's no way to tell whether prepare is actually saving wall-clock time vs. doing the same work the conformance script would have done inline.
 - **Don't leave an existing `run_conformance_tests_<lang>` script untouched after generating prepare.** If the conformance script still does its own staging and install, prepare's work is wiped (by the `rm -rf`) or duplicated (by re-running install) on every run — defeating the purpose of this skill entirely. Always run the [Reconcile the existing conformance script](#reconcile-the-existing-conformance-script) step.
 - **Don't default to Bash without checking the host OS.** A `.sh` script on native Windows (outside Git Bash / WSL) won't even run, and a `.ps1` script on macOS/Linux is equally useless. Always run the detection in [Pick the Shell First](#pick-the-shell-first) before deciding the file extension. If the project supports both, produce both files — and remember to reconcile the matching conformance script in **both** flavors too.
+- **Don't forget to update `config.yaml`.** After creating the prepare environment script, always add or update the `prepare-environment-script:` key in `config.yaml` to reference the new script. Without this entry, the `codeplain` renderer won't know to invoke the prepare script before running conformance tests, and the entire optimization will be bypassed.
