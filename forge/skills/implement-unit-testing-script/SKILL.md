@@ -61,7 +61,16 @@ Shared across both shell flavors:
   - `69` — required toolchain / runtime is not installed.
   - Any other non-zero code — propagated from the underlying test command.
 - **Working folder naming:** `.tmp/<lang>_<arg>` where `<lang>` is a short identifier for the language (`java`, `python`, `node`, `go`, `rust`, ...). All dependency installs, build outputs, caches, and the test run itself live inside this folder. Nothing the script does should touch the source build folder after step 4.
-- **Logging:** print short progress lines (`"Copied from ... to ..."`, `"Installing dependencies into ..."`, `"Running <lang> unittests in ..."`) so failures are easy to triage.
+- **Logging — be as verbose as possible.** The script is the only thing the operator sees between a `codeplain` render and a green/red test result; when it fails, the only forensic evidence anyone has is its stdout/stderr. Treat the script like a production runbook, not a quiet helper. Concretely:
+  - **Announce every step before doing it**, with the exact value of every variable involved — the resolved source folder, the working folder, the language, the toolchain version detected, the isolation root, the dependency-manifest path, the test command about to run. "Installing dependencies" alone is useless; "Installing dependencies from `./requirements.txt` into venv `./.venv` (Python 3.11.6 at `/usr/local/bin/python3`)" is triage-ready.
+  - **Echo every non-trivial command before executing it.** In Bash, use `set -x` for the body of the script (or `echo "+ <cmd>"` immediately before each call); in PowerShell, set `$VerbosePreference = 'Continue'` and use `Write-Verbose` / `Write-Host` to print each command line with its arguments.
+  - **Print clear section banners.** Each of the seven steps gets a banner like `===== [3/7] Working directory setup =====` so a long log can be navigated by eye.
+  - **Print resolved absolute paths**, not just the relative names. Operators reading the log on a different machine need to know where things actually landed.
+  - **Print the toolchain's own `--version` output** (and the path it resolved from) during step 1, even on success. This is the single most useful piece of forensic data when a test passes locally but fails in CI.
+  - **Surface the install command's output verbatim** — do not pipe it to `/dev/null`, do not redirect to a log file inside the working folder. The operator must see every dependency-resolver line in the script's own output stream.
+  - **On failure, print what was about to run before exiting** — the exact command, the working directory, the relevant environment variables (`PYTHONPATH`, `NODE_PATH`, `GOMODCACHE`, `CARGO_HOME`, `MAVEN_OPTS`, `PATH`).
+  - **Print a final summary line** that names the test command, the exit code, and the working folder so the operator knows exactly what to re-run by hand if needed.
+  Verbosity is not noise here — a chatty script that documents itself in its own output is the difference between a 30-second triage and a 30-minute one. Never trade verbosity for terseness.
 
 ### Dependency isolation
 
@@ -108,6 +117,7 @@ Notes:
 4. Pick the dependency-isolation mechanism from the [Dependency isolation](#dependency-isolation) table and use it consistently in both step 6 and step 7.
 5. Save the new script to `assets/run_unittests_<lang>.sh` or `assets/run_unittests_<lang>.ps1`. For Bash, `chmod +x` it.
 6. **Update `config.yaml` to reference the new script.** Add or update the `unit-tests-script:` key with the path to the newly created script (e.g., `unit-tests-script: test_scripts/run_unittests_<lang>.sh`). This is mandatory — the `codeplain` renderer needs this reference to invoke the unit test script during the development workflow.
+7. **Link the script into the base `.plain` files as a linked resource.** Once the script exists on disk, it must be referenced from the project's base `.plain` module(s) into its ***implementation reqs*** section using the `add-resource` skill. After linking, read the spec back to confirm the link path resolves to the script you just wrote.
 
 ## Anti-Patterns
 
@@ -119,3 +129,5 @@ Notes:
 - Don't install dependencies into the user's global location (`~/.m2`, system-wide `pip`, `~/.cargo`, etc.). Always isolate inside `$WORKING_FOLDER` so concurrent runs and other projects can't interfere.
 - Don't run the test command without first verifying the install step succeeded. A failed install followed by a "test" run produces misleading errors that look like test failures.
 - **Don't forget to update `config.yaml`.** After creating the unit test script, always add or update the `unit-tests-script:` key in `config.yaml` to reference the new script. Without this entry, the `codeplain` renderer won't know where to find the unit test script.
+- **Don't forget to link the script as a resource in the base `.plain` files.** A script that is referenced only from `config.yaml` is invisible to the spec contract — the renderer treats `unit-tests-script:` as a build-system pointer, not as part of the test-req contract the model reads. Use the `add-resource` skill to add a markdown link to the script from the `.plain` module that owns the unit-testing test reqs (see Workflow step 7). Omitting the linked resource means the model authors and reviews test-related code without ever seeing the actual runner it has to satisfy.
+- **Don't write a terse script.** Silent steps, `>/dev/null` redirects on the install output, missing `--version` prints, and absent failure banners all make the script harder to debug than the code it is testing. Follow the *Logging — be as verbose as possible* rule under [Conventions](#conventions) literally: every step announces itself, every command is echoed, every failure prints what was about to run and where.
