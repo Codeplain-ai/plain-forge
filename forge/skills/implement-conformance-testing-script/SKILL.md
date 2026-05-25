@@ -213,7 +213,8 @@ Notes:
    - **Activate-only:** [Activating a prepared environment](#activating-a-prepared-environment-activate-only) table — use the matching verify, activate, and test-command columns in steps 4, 6, and 8.
 6. Add the language-appropriate "no tests discovered" guard from [No tests discovered detection](#no-tests-discovered-detection).
 7. Save the new script. For Bash, `chmod +x` it.
-8. **For activate-only scripts only**: smoke-test by running `prepare_environment_<lang>.<sh|ps1> <build> && run_conformance_tests_<lang>.<sh|ps1> <build> <tests>`. If the conformance script errors with "prepared environment missing" right after a successful prepare, the two scripts disagree on either the working-folder path or the isolation location — fix that before declaring done.
+8. **Update `config.yaml` to reference the new script.** Add or update the `conformance-tests-script:` key with the path to the newly created script (e.g., `conformance-tests-script: test_scripts/run_conformance_tests_<lang>.sh`). This is mandatory — the `codeplain` renderer needs this reference to invoke the conformance test script after rendering each functional spec.
+9. **For activate-only scripts only**: smoke-test by running `prepare_environment_<lang>.<sh|ps1> <build> && run_conformance_tests_<lang>.<sh|ps1> <build> <tests>`. If the conformance script errors with "prepared environment missing" right after a successful prepare, the two scripts disagree on either the working-folder path or the isolation location — fix that before declaring done.
 
 ## Anti-Patterns
 
@@ -230,3 +231,4 @@ Notes:
 - **Don't write a cross-shell hybrid** (e.g. a `.sh` that detects PowerShell, or vice versa). Ship one script per shell, named with the appropriate extension.
 - **Don't install dependencies into the user's global location** (`~/.m2`, system-wide `pip`, `~/.cargo`, etc.) in the install-inline variant. Always isolate inside `$WORKING_FOLDER` so concurrent runs and other projects can't interfere.
 - **Don't run the test command without first verifying the install / activation succeeded.** A failed install (or missing prepared env) followed by a "test" run produces misleading errors that look like test failures.
+- **Don't forget to update `config.yaml`.** After creating the conformance test script, always add or update the `conformance-tests-script:` key in `config.yaml` to reference the new script. Without this entry, the `codeplain` renderer won't know where to find the conformance test script.
