@@ -43,8 +43,36 @@ Use standard markdown link syntax inside any spec section:
 
 - Paths are resolved **relative to the `.plain` file location**.
 - Only files in the same folder or subfolders are supported.
-- **No external URLs** — only local file references.
 - No absolute paths.
+- **No external URLs** — only local file references.
+- **No folder paths** — only local file references.
+- Only text-based files are supported.
+
+### A linked resource MUST be a single, text-based file that exists on disk
+
+A linked resource is **always** a single file that exists on disk at the path you reference, **and** that file's content must be text-based. The renderer reads the linked file's bytes and feeds them into the model alongside the spec; a directory, a remote URL, or a binary blob breaks that contract and is one of the most disruptive mistakes you can make when authoring a `.plain` file — the spec looks valid but the renderer either silently ignores the link, fails to read it, or wastes the model's context window on bytes it cannot interpret.
+
+Three things a linked resource **must not** be:
+
+1. **A folder / directory.** `[integrations](src/integrations/)`, `[schemas](resources/schemas/)`, `[host project](../host_project/)` are all invalid — the renderer cannot ingest a directory. If a whole directory's worth of content is relevant, pick the single most representative **file** inside it (a `README.md`, an exemplar source file, a manifest at the directory root) and link **that**.
+2. **A URL / external location.** `[Stripe docs](https://stripe.com/docs/api)`, `[OpenAPI spec](https://example.com/openapi.json)`, any `http://` / `https://` / `ftp://` / `git://` / `s3://` / `gs://` target. Linked resources are local-file only. If a URL's content is essential to the spec, fetch it once, save the response to a text file under `resources/` (e.g. `resources/stripe-docs-snapshot.md`, `resources/example-openapi.yaml`), and link **that file**.
+3. **A binary file.** PNG, JPG, JPEG, GIF, BMP, TIFF, WebP, ICO, PDF, DOCX, XLSX, PPTX, ZIP, TAR, GZ, MP3, MP4, WAV, compiled binaries (`.exe`, `.so`, `.dylib`, `.class`, `.wasm`), and anything else that isn't human-readable text in its raw form. Binary content cannot be meaningfully consumed by the renderer; linking a screenshot, a PDF spec, or a packaged artifact accomplishes nothing except bloating the context. If the information in a binary asset is essential, transcribe it into a text-based form first — a UI screenshot becomes a Markdown description or a structured YAML wireframe under `resources/`; a PDF spec becomes a Markdown extract or the underlying JSON Schema / OpenAPI; an architecture diagram becomes a Mermaid block inside a Markdown file.
+
+If the markdown-link target ends with `/`, contains `://`, points at a path that resolves to a directory, or points at a file with a binary extension (see the list above), **stop** — it cannot be a linked resource. Convert it to a text file under `resources/` first, then link the converted file.
+
+### Do not mention URLs or folder paths in `.plain` content at all
+
+The constraint above is **not** just about markdown link syntax. URLs (any `http://`, `https://`, `ftp://`, `git://`, `s3://`, … string) and folder paths (`src/integrations/`, `../host_project/`, anything ending with `/`, anything that resolves to a directory) **must not appear anywhere in `.plain` content** — not as link targets, not in concept body prose, not in functional-spec text, not in implementation-reqs. Mentioning a URL or a folder in prose is a critical and common mistake because:
+
+- The renderer cannot follow URLs or open folders. A URL or folder reference in prose is a *ghost* dependency: it looks meaningful to a human reader, but it contributes nothing to code generation. Worse, downstream readers (and future you) assume the renderer used the referenced content, so the spec drifts from reality.
+- The fix is always the same: if external content matters, fetch it (or pick one canonical file out of the directory), save it as a text file under `resources/`, and refer to it through a normal linked resource. The concept or spec then names the content through the linked file, not through a URL or folder path string.
+
+The **only** exceptions are URLs and paths that are *values the produced software itself uses at runtime* (e.g. the base URL the integration calls, a database connection path, a CLI argument value). Those are configuration values, not external references, and they belong in the spec because the generated code needs them. A useful litmus test: "Would the renderer benefit from reading the bytes at this URL / folder?" If yes, save it to a text file and link the file. If no (it's a runtime value), it can stay as plain text in the spec.
+
+### What a linked resource CAN be
+
+- A single file in the same folder as the `.plain` file, or in any subfolder of it (`resources/` is the conventional home).
+- A **text-based** file the renderer can read end-to-end: JSON, YAML, XML, HTML, Markdown, plain text, CSV, TSV, source code in any language (`.py`, `.js`, `.ts`, `.go`, `.java`, `.rb`, `.rs`, `.kt`, `.swift`, `.c`, `.cpp`, `.cs`, …), shell scripts, SQL, JSON Schema, OpenAPI, AsyncAPI, Protobuf `.proto`, GraphQL SDL, `.jolt`, `.env.example`, `.toml`, `.ini`, `.proto`, `Dockerfile`, etc.
 
 ## Common Resource Types
 
@@ -70,8 +98,11 @@ Use standard markdown link syntax inside any spec section:
 ## Validation Checklist
 
 - [ ] Resource file exists at the specified path
+- [ ] **Target is a file on disk, not a directory** (the path does not end in `/` and does not resolve to a folder)
+- [ ] **Target is a local path, not a URL** (no `://` anywhere in the target: no `http://`, `https://`, `ftp://`, `git://`, `s3://`, `gs://`, etc.)
+- [ ] **Target is a text-based file** (no binary extensions: `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.ico`, `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.zip`, `.tar`, `.gz`, `.mp3`, `.mp4`, `.wav`, `.exe`, `.so`, `.dylib`, `.class`, `.wasm`, …)
+- [ ] **No URLs or folder paths anywhere in the surrounding `.plain` content** (not as link targets, not in body prose), with the sole exception of URLs / paths that are runtime values the generated software itself uses
 - [ ] Path is relative to the `.plain` file, not absolute
 - [ ] File is in the same folder or a subfolder (no `../` references)
 - [ ] Markdown link syntax is correct: `[display text](relative/path)`
 - [ ] Resource content is relevant and adds value beyond what the spec text says
-- [ ] No external URLs used

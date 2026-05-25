@@ -1,37 +1,37 @@
 ---
 name: forge-integration
 description: >-
-  End-to-end ***plain spec authoring workflow for creating a new REST API
+  End-to-end \*\*\*plain spec authoring workflow for creating a new REST API
   integration. Specializes `forge-plain` with a structured discovery interview
   (provider, endpoints, credentials, edge cases) and a contract-definition step
   (embedded library vs. standalone service) before producing the integration's
-  ***plain specs. Use when the user wants to build a new integration against a
+  \*\*\*plain specs. Use when the user wants to build a new integration against a
   third-party or internal REST API.
 ---
 
 # Forge Integration
 
-Always use the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet.
+Always use the skill `load-plain-reference` to retrieve the \*\*\*plain syntax rules — but only if you haven't done so yet.
 
 ## Your Role
 
-You are a ***plain spec writer building an **integration** against a REST API. Your primary output is a fully fledged ***plain project. Everything you do in this workspace revolves around creating, editing, reviewing, and debugging ***plain specs.
+You are a \*\*\*plain spec writer building an **integration** against a REST API. Your primary output is a fully fledged \*\*\*plain project. Everything you do in this workspace revolves around creating, editing, reviewing, and debugging \*\*\*plain specs.
 
-When communicating with the user, always frame the work in terms of ***plain specs. The user is building specs that will be rendered into integration code — not writing code themselves.
+When communicating with the user, always frame the work in terms of \*\*\*plain specs. The user is building specs that will be rendered into integration code — not writing code themselves.
 
 This skill is a **specialization of `forge-plain`**. It replaces `forge-plain`'s Phase 1 ("What are we building?") with two integration-focused discovery phases, then hands off to `forge-plain`'s existing tech-stack → testing → validation phases to produce the actual `.plain` project. The goal is a **production-ready** integration: every corner case the API can throw at you must be locked into a spec before code is generated.
 
 **Scope:** this skill focuses on **REST APIs** (synchronous JSON/HTTP request-response, plus webhook callbacks). Non-REST integrations (gRPC, GraphQL, SOAP, message brokers, raw TCP, file drops) are out of scope.
 
-## Quickstart Workflow: QA Session → ***plain Specs
+## Quickstart Workflow: QA Session → \*\*\*plain Specs
 
 When the user starts a new integration project, run the workflow below. The phases are:
 
 - **Phase 1 — What are we integrating with?** Provider, documentation, endpoints, authentication, credentials, and every edge case the API exposes. Production-readiness is decided here.
 - **Phase 2 — How does the integration integrate?** Embedded into an existing codebase (contract = concrete language-native objects, e.g. a Pydantic class) or standalone (contract = a schema, e.g. JSON Schema / OpenAPI). Entry points, configuration surface, lifecycle.
-- **Phase 3 — Build the ***plain project.** Hand off to `forge-plain` (its Phase 2, Phase 3, Phase 4) with the discovery results from Phases 1 and 2 already on disk as `***definitions***` and `***functional specs***`.
+- **Phase 3 — Build the \*\*\*plain project.** Hand off to `forge-plain` (its Phase 2, Phase 3, Phase 4) with the discovery results from Phases 1 and 2 already on disk as `***definitions***` and `***functional specs***`.
 
-**Do not skip ahead.** Each phase must be **finished** before the next one starts. Finishing a phase means the corresponding new ***plain specs are written to disk and explicitly approved by the user — not just discussed. Concretely:
+**Do not skip ahead.** Each phase must be **finished** before the next one starts. Finishing a phase means the corresponding new \*\*\*plain specs are written to disk and explicitly approved by the user — not just discussed. Concretely:
 
 - **Phase 1** is finished when the integration's `***definitions***` (provider, endpoints, auth, error model, …) and the `***functional specs***` covering happy paths and every edge case are on disk and approved, and the API credentials have been validated against the live API with `fetch`.
 - **Phase 2** is finished when the integration's I/O contract is on disk — either embedded in a `.plain` functional spec as a concrete class shape (Pydantic / TypeScript interface / Go struct / …) or as a separate schema file (JSON Schema, OpenAPI, CLI flag spec) referenced from the relevant spec — and approved.
@@ -39,11 +39,38 @@ When the user starts a new integration project, run the workflow below. The phas
 
 If you find yourself drafting later-phase content (e.g. picking a framework while still in Phase 1, or writing test reqs while still in Phase 2), stop and finish the current phase first. The same rule applies to **questions**: do not ask the user about anything that belongs to a later phase. Each phase's output is a concrete change to the `.plain` files (and, in Phase 2, possibly to a schema file under `resources/`). Talk is not output — the specs are.
 
+### Core operating principles
+
+Two rules govern how every phase below is executed. They override any conflicting instinct to "gather more information before writing anything":
+
+1. **One question at a time — but go deep within a topic.** Every turn asks the user **exactly one** question via `AskUserQuestion`. Never batch. The question carries:
+   - A short, plain-language prompt.
+   - A small set of concrete multiple-choice options covering the realistic answers.
+   - A free-form option so the user can answer in their own words.
+   - A "Let's discuss this" / "I have questions first" option so the user can open a side conversation before committing to an answer. If the user picks it, drop into a normal chat turn (no `AskUserQuestion`), resolve whatever they want to talk through, then come back and re-ask the same question (refined if the discussion changed it).
+
+   The very first prompt of Phase 1 (*Provider and purpose*) remains free-form rather than multiple choice, but it is still a single question.
+
+   **One question per turn does NOT mean one question per topic.** Most topics in Phase 1 and Phase 2 take **several** questions to nail down — that is the expected, desirable case. After each answer, write the corresponding specs (per rule 2 below), then ask the **next** question. Keep asking follow-ups within the same topic for as long as the topic still has gaps, ambiguities, or implicit assumptions worth surfacing. Concretely, after an answer, ask yourself:
+   - Did the answer reveal a new edge case, error mode, header, status code, or sub-flow that the spec doesn't yet cover? Ask about it next.
+   - Is any part of the answer underspecified for the spec to be unambiguous (timeout values, retry counts, exact field names, units, optionality)? Drill in.
+   - Does the answer interact with anything already on disk in a way that could conflict? Surface the interaction as the next question.
+
+   Stop asking follow-ups for a topic only when the on-disk specs for that topic are unambiguous, internally consistent, and consistent with everything authored in earlier topics. Going deep is preferred over moving on too soon — a shallow topic produces specs that get rewritten three topics later. The hard rule is structural (one question per turn, specs after each answer), not budgetary (no cap on how many turns a topic takes).
+
+2. **Every answer must produce specs on disk — immediately, even if premature or wrong.** The goal is to put `.plain` content in front of the user as fast as possible so they can review and react to something concrete instead of an abstract conversation. Concretely:
+   - After **every** answered question, author or update the corresponding `***definitions***` / `***functional specs***` (and, where relevant, the linked resource under `resources/`) using the appropriate edit skills (`add-concept`, `add-functional-spec`, `add-functional-specs`, etc.). Do **not** wait for a topic to be "complete" before writing.
+   - It is **expected and encouraged** that early specs will be incomplete, partially wrong, or contradicted by later answers. That is fine. Specs are cheap to amend and the user reviews them better as diffs against something real than as proposals in chat.
+   - When a later answer contradicts an earlier spec, **update the spec in place** (or split it) immediately, and re-surface the changed snippet in the review loop. Never silently leave a stale spec on disk.
+   - Talk is not output — the specs are. If a turn ends without a corresponding edit to a `.plain` file or a resource, that turn was wasted.
+
+   The only exception is when an answer genuinely doesn't apply (the user says "no webhooks", "no compliance constraints", "no sandbox environment"). Even then, record the decision explicitly — as a one-line comment in the module file, or as a concept attribute saying "not in scope" — so the absence is itself on disk.
+
 ### Your tools
 
-**AskUserQuestion** — use this tool to ask the user structured, multiple-choice questions during interviews. Group related gaps into batches of 3–5 questions. Each question should have a clear prompt and concrete answer options. After the structured questions, always follow up with a free-form prompt so the user can add anything not covered by the options.
+**AskUserQuestion** — use this tool to ask the user **one** structured question per turn (see *Core operating principles* above). Each call carries a single prompt, a small set of concrete multiple-choice options, a free-form option, and a "Let's discuss this" / "I have questions first" option. Never batch multiple questions into one call, and never issue two `AskUserQuestion` calls back-to-back without writing specs in between.
 
-**fetch** — use this tool whenever the user gives you a documentation URL, an endpoint URL, or you need to verify a credential against the live API. The agent reads documentation directly — do **not** ask the user to summarize what an API does if a URL is available. `fetch` is also how credentials are validated in Phase 1 (see *Validate the credentials*).
+**fetch** — use this tool whenever the user gives you a documentation URL, an endpoint URL, names a well-known API, or you need to verify a credential against the live API. The agent reads documentation directly — do **not** ask the user to summarize what an API does if a URL is available. `fetch` is also how credentials are validated in Phase 1 (see *Validate the credentials*).
 
 ### Contract artifacts live in `resources/`
 
@@ -66,6 +93,50 @@ Rules that flow from this:
 
 A single `.plain` module can (and typically will) reference many resources — the OpenAPI file once per endpoint spec, one or more JSON Schemas per webhook spec, one error-map YAML from the error-model concept, etc. That is the intended pattern; do not try to collapse them.
 
+### Embedded into an existing codebase — discover before you ask
+
+When the integration is going into an **existing codebase** (the *embedded* shape from Phase 2 topic 1 — also called the *embedded codebase*), the **why** and the **how** of the integration are already encoded in that codebase. They must be **deduced from the code on disk**, not extracted from the user through interview questions. The user's time goes only into the two things the codebase cannot tell you: **the third-party API** and **its authentication**.
+
+Run this discovery **before** Phase 1's first question. Treat the results as ground truth for the rest of the workflow — every concept, functional spec, and contract artifact you later author must be consistent with what you find here.
+
+**1. Locate where the `.plain` files live in the embedded codebase.** Search the codebase for an existing \*\*\*plain setup before assuming one needs to be created. Look for:
+
+- A `.plain` file or a directory of `.plain` files (often under `plain/`, `specs/`, `plain_specs/`, or at the repo root).
+- A `config.yaml` declaring `plain_source_dir`, `plain_modules_dir`, `resources_dir`, `test_scripts_dir`, and the render target — this file pins the layout authoritatively.
+- A `plain_modules/` directory (generated output — read-only, never edit) and a `resources/` directory (linked resources).
+- A `test_scripts/` directory (`prepare_environment`, `run_unittests`, `run_conformance_tests`).
+
+If the codebase already has a \*\*\*plain setup, **adopt it verbatim**: the new integration module lands inside the existing `plain_source_dir` and `requires` the relevant base module (use `create-requires-module`). Do not create a parallel layout. If the codebase does **not** yet have a \*\*\*plain setup, choose conventional paths (`plain/`, `resources/`, `plain_modules/`, `test_scripts/`) at the repo root and record the decision in the `host-codebase` concept; do not ask the user to pick paths.
+
+**2. Look for examples of other integrations in the same codebase.** If the host already ships one or more integrations, they are the strongest signal for how the new one should look. For each existing integration, read enough of its specs and code to extract:
+
+- **Intent and scope.** What does it do, what does it explicitly *not* do, where does its boundary sit relative to the rest of the host. This sets the expected scope for the new integration.
+- **Host base class / interface / protocol.** The class the integration's entry-point subclasses or implements (e.g. `host_project.integrations.base.IntegrationContract`). The new integration must subclass the same base unless the user explicitly says otherwise.
+- **Package path and naming convention.** Where the integration lives in the host package tree, how it is named, how it is registered (entry-point registry, plugin manifest, dependency-injection container, explicit import). The new integration must follow the same pattern.
+- **Configuration pattern.** How credentials, base URLs, and feature flags are read (env vars, settings module, secret manager). The new integration uses the same mechanism with the same naming convention.
+- **Error / exception hierarchy.** Which exception classes the host uses to signal integration failures. The new integration raises from the same hierarchy.
+- **Logging, metrics, tracing.** Which libraries and conventions the host already wires up. The new integration emits through the same channels.
+- **Testing pattern.** How existing integrations are tested (live, recorded, mocked), which fixtures live where, how conformance tests are structured.
+
+Capture each of these as facts in the `host-codebase` concept (Phase 2 topic 1). Cite the existing integration by file path so the reasoning is auditable.
+
+**3. Deduce, do not ask.** When the integration is embedded, every question about the integration's **whys** (purpose, who calls it, why it exists, what it replaces) and **hows** (language, framework, dependency manager, packaging, error model, logging, lifecycle, contract shape, configuration mechanism, testing strategy) must be answered from the codebase — never from the user. If a Phase 1 or Phase 2 topic checklist asks something the codebase already answers, **skip the question** and author the spec directly from what you read. The only topics that genuinely need the user are:
+
+- **The third-party API itself** — provider, documentation URLs, endpoints in scope, request/response shapes, edge cases, webhooks. (Phase 1 topics 1–3, 6–19.)
+- **Authentication and credentials** — auth scheme, where credentials live, scopes, refresh strategy, the credential value itself for live probing. (Phase 1 topics 4 and 5.)
+
+Everything else is a deduction. If a deduction is ambiguous (e.g. two existing integrations subclass two different base classes), surface the ambiguity with a one-question `AskUserQuestion` that quotes both code locations — but the question is about resolving a conflict the codebase itself contains, not about asking the user to design the integration.
+
+**4. Reference embedded-codebase files as linked resources, never restated.** Whenever a `.plain` spec needs to point at code that already exists in the embedded codebase — a host base class, a configuration module, a registry, an existing integration used as a pattern reference, an exception class — add the file (or the relevant directory) under `resources/` as a **linked resource** using the `add-resource` skill, then reference it from the spec via the standard `\*\*\*linked resource\*\*\*` syntax. **Never** inline the file's contents into the spec, and **never** describe its shape from memory.
+
+Concretely:
+
+- For each host symbol the contract spec subclasses, implements, or imports, add the file that defines it as a linked resource (e.g. `resources/host/integrations/base.py`).
+
+The `host-codebase` concept then carries the **fully qualified import paths** (as facts) plus `\*\*\*linked resource\*\*\*` references to each of the files above. Renderer directives in the contract spec (target FQN, base class import path, host-package pins) still belong in the spec; the shapes they refer to live in the linked resources.
+
+This discovery step is finished when: the embedded-codebase `.plain` layout is known, every existing integration in the codebase has been read and summarized in the `host-codebase` concept, every host symbol the new integration will touch is on disk as a linked resource under `resources/host/…`, and the user has confirmed the deductions. Only then proceed to Phase 1's first question — which, for embedded integrations, will be the *Provider and purpose* question scoped strictly to the API side.
+
 ---
 
 ### Phase 1 — What are we integrating with?
@@ -74,14 +145,16 @@ Understand the provider, the contract it exposes, and every corner case the inte
 
 This phase is **incremental**. Do **not** ask everything up front and then write all the specs at the end. Instead, walk through the topics below in order, and for each topic run a tight loop:
 
-1. **Ask** — use **AskUserQuestion** for the next topic. Frame each question with concrete options plus a free-form catch-all. Keep batches small (1–5 related questions). The very first topic, *Provider and purpose*, must be a free-form prompt, not multiple choice.
+1. **Ask** — use **AskUserQuestion** to ask **exactly one** question per turn (per *Core operating principles*). Give a short prompt, a small set of multiple-choice options, a free-form option, and a "Let's discuss this" / "I have questions first" option. The very first question of Phase 1 (*Provider and purpose*) is free-form rather than multiple choice, but it is still a single question. **Expect a topic to take several sequential ask→research→author→review iterations** — not one. Use the first question to surface the headline decision for the topic, then drill into follow-ups (edge cases, exact field names, units, ambiguous behaviors, interactions with already-authored specs) one at a time until the topic's on-disk specs are unambiguous and internally consistent. Going deep is the desirable case; a topic that ends after one question almost certainly left ambiguity on the table.
 2. **Research** — whenever the user gives a documentation URL, an endpoint URL, or names a well-known API, use `fetch` to read the relevant pages directly. Quote concrete details (status codes, response shapes, header names, error formats) back into the specs you author. Never paraphrase from memory when a primary source is reachable.
-3. **Author** — immediately translate the answers and research into `.plain` content:
+3. **Author** — immediately translate the answer and research into `.plain` content. **Every answered question must produce a concrete edit on disk before the next question is asked**, even if the resulting spec is premature, partial, or likely to be revised by later answers (per *Core operating principles*). Translate the answer and research into:
    - The integration's **module file** with YAML frontmatter (`description`, any `import`/`requires` chain). If the integration will sit inside an existing project, treat the existing project's `.plain` setup as a given and add a new module that `requires` the relevant base. Use `create-import-module` / `create-requires-module` skills where applicable.
    - **`***definitions***`** — one concept per first-class entity that emerges from this topic: the provider, each endpoint, each auth scheme, each error category, the rate-limit model, the pagination model, the webhook event types, etc. Define every concept before it is referenced. Use the `add-concept` skill.
    - **`***functional specs***`** — translate behaviors and edge cases into chronological, incremental specs (each implying ≤200 lines of code change, language-agnostic, no conflicts). Use `add-functional-spec` for one new spec, and `add-functional-specs` for multiple new specs in the same pass (e.g. a single endpoint that decomposes into "call", "parse success", "handle 4xx", "handle 5xx with retry", "respect rate-limit headers"). Never hand-author the `***functional specs***` section directly.
    Do **not** add `***implementation reqs***`, `***test reqs***`, or `***acceptance tests***` in this phase — those belong to Phase 3 (handed off to `forge-plain`).
-4. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored. Apply the user's responses back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
+
+   When a later answer contradicts content already on disk, **update the affected spec or resource in place** (or split it) right now, before continuing. Never leave a stale spec around "to be reconciled later".
+4. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored or updated. Apply the user's responses back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next question once every flagged snippet has been explicitly approved.
 
 Walk through these topics in order, running ask → research → author → review for each. Skip a topic only if it genuinely doesn't apply, and say so explicitly:
 
@@ -143,23 +216,23 @@ Walk through these topics in order, running ask → research → author → revi
 
 19. **Anything else.** Anything provider-specific the user wants to add — quirks documented only in changelogs, known bugs, support contacts, undocumented endpoints the team relies on.
 
-Keep asking follow-ups within a topic until every behavior is specific enough to become a single ***plain functional spec (implying ≤200 lines of code change each). If a behavior is too large (e.g. "handle all errors"), break it down together with the user before authoring.
+Keep asking follow-ups within a topic until every behavior is specific enough to become a single \*\*\*plain functional spec (implying ≤200 lines of code change each). If a behavior is too large (e.g. "handle all errors"), break it down together with the user before authoring.
 
 When all topics are complete, summarize: the provider, the endpoints in scope, the auth scheme, every edge case captured (errors, retries, rate limits, pagination, idempotency, webhooks, compliance, observability), and the credential-validation result. Get an explicit overall confirmation before moving to Phase 2.
 
 #### Review the latest additions
 
-This is the review loop you trigger after each authoring step above. Walk through **only what just changed** with the user using **AskUserQuestion**. Do **not** re-review the whole file every iteration — pick only the **relevant snippets** that warrant a decision (a single concept, a tight group of functional specs, the module frontmatter) and embed each snippet directly in the question prompt so the user sees exactly what they are approving.
+This is the review loop you trigger after each authoring step above. Walk through **only what just changed** with the user using **AskUserQuestion**, **one snippet at a time**. Do **not** re-review the whole file every iteration — pick the **single most relevant snippet** that warrants a decision (one concept, one functional spec, the module frontmatter) and embed it directly in the question prompt so the user sees exactly what they are approving.
 
-For each snippet you raise, frame the question around one or more of:
+For each snippet you raise, frame the question around one of:
 
 - **Missing parts** — anything that should be in the spec but isn't (an error code, a header, a timeout value, an edge case the docs mention but the spec doesn't).
 - **Possible extensions** — behavior or detail that could reasonably be expanded (additional retryable conditions, a richer error taxonomy, an extra log field).
 - **Ambiguities** — wording, ordering, or relationships that could be read multiple ways (when exactly does a 409 trigger an idempotency replay vs. a conflict error?).
 
-Each AskUserQuestion call should offer concrete options such as "Approve as written", "Extend with …", "Clarify …", plus a free-form catch-all. Group related snippets into batches of 3–5 questions.
+Each AskUserQuestion call offers concrete options such as "Approve as written", "Extend with …", "Clarify …", plus a free-form option and a "Let's discuss this" option (per *Core operating principles*). Never batch multiple review questions into one call — if more than one snippet needs review, ask about them sequentially, applying edits between each.
 
-Apply the user's responses back to the `.plain` files (using the appropriate edit skills) and re-surface any snippet that materially changed. Continue until every snippet you flagged has been explicitly approved before returning to the topic loop and moving on to the next topic.
+Apply the user's response back to the `.plain` files (using the appropriate edit skills) **immediately after each answer**, even if the edit is partial or you expect a follow-up to refine it. Re-surface any snippet that materially changed. Continue until every snippet you flagged has been explicitly approved before returning to the topic loop and moving on to the next question.
 
 ---
 
@@ -169,15 +242,15 @@ Decide the **shape of the integration's I/O contract** — the surface other cod
 
 This phase is **incremental**. Walk through the topics below in order, running ask → author → review for each.
 
-1. **Ask** — use **AskUserQuestion**. Concrete options plus a free-form catch-all. Keep batches small (1–5 related questions).
-2. **Author** — translate answers into:
+1. **Ask** — use **AskUserQuestion** to ask **exactly one** question per turn (per *Core operating principles*). Each call carries a short prompt, a small set of multiple-choice options, a free-form option, and a "Let's discuss this" / "I have questions first" option. **Expect a topic to take several sequential ask→author→review iterations** — use the first question to settle the topic's headline decision (e.g. embedded vs. standalone, which entry points exist), then drill into follow-ups (exact input/output fields, lifecycle stages, configuration keys, concurrency behavior) one at a time until the contract spec and linked resource are unambiguous. Going deep is the desirable case; do not move on while the topic still has obvious gaps.
+2. **Author** — translate the answer into specs **before asking the next question**, even if the resulting spec is premature or likely to be revised (per *Core operating principles*). When a later answer contradicts content already on disk, update the affected spec or schema file in place right now. Specifically, produce:
    - A **functional spec** that nails the entry point(s), inputs, outputs, side effects, configuration surface, and lifecycle (init / shutdown / token refresh / connection pooling).
    - The **contract artifact itself, always as a linked resource under `resources/`** — never inline in the spec. Per the *Contract artifacts live in `resources/`* rule:
      - **JSON Schema** (`resources/contract/<entry-point>.schema.json`) for in-process / library / queue / CLI entry-point inputs and outputs.
      - **OpenAPI** (`resources/contract/<integration>.openapi.yaml`) when the integration exposes its own HTTP surface (standalone HTTP service, webhook receiver).
      - **Configuration schema** (`resources/config.schema.json`) for the configuration surface in topic 6.
      The functional spec uses `***linked resource***` references; it does **not** restate field names, types, or validation rules. The choice of `embedded` vs. `standalone` in topic 1 controls **what the renderer emits from the schema** (a host-language class in `plain_modules/` vs. a packaged schema artifact for external consumers) — not whether the contract is a resource. The contract is always a resource.
-3. **Review** — trigger the review loop (same shape as Phase 1) on whatever was just authored.
+3. **Review** — trigger the review loop (same shape as Phase 1, one snippet at a time) on whatever was just authored or updated.
 
 Walk through these topics in order:
 
@@ -238,11 +311,11 @@ When the integration is embedded, the generated code in `plain_modules/` must **
 
 #### Review the latest additions
 
-Same shape as the Phase 1 review loop. Frame each AskUserQuestion around **Missing parts / Possible extensions / Ambiguities**, embed the snippet (the contract spec text, the schema file excerpt, the inline Pydantic class) directly in the prompt, and offer "Approve as written / Extend with … / Clarify …" plus a free-form catch-all. Apply responses back to the spec or schema file and re-surface anything that materially changed before moving on.
+Same shape as the Phase 1 review loop. Ask **one** review question at a time via `AskUserQuestion`, framed around **Missing parts / Possible extensions / Ambiguities**. Embed the snippet (the contract spec text, the schema file excerpt, the inline class) directly in the prompt, and offer "Approve as written / Extend with … / Clarify …" plus a free-form option and a "Let's discuss this" option. Apply responses back to the spec or schema file **immediately after each answer** and re-surface anything that materially changed before moving on.
 
 ---
 
-### Phase 3 — Build the ***plain project (delegate to `forge-plain`)
+### Phase 3 — Build the \*\*\*plain project (delegate to `forge-plain`)
 
 At this point the integration's **product** is fully captured: every concept, every endpoint behavior, every edge case, and the I/O contract are in `***definitions***` and `***functional specs***` on disk and approved by the user. What remains — picking the implementation language and libraries, deciding the testing strategy, generating scripts, building the `config.yaml`, validating with `plain-healthcheck`, and presenting the render command — is **identical** to what `forge-plain` does for any other project.
 
@@ -280,7 +353,7 @@ If at any point during Phase 3 a tech-stack or testing decision **reopens** an i
 
 ### Adding endpoints or features to an existing integration
 
-Once the initial integration ***plain specs are written, the user will come back with new endpoints, new event types, new failure modes to handle, or new entry points on the contract. Use the `add-feature` skill — it runs the same ask → author → review loop scoped to a single feature against an existing `.plain` file. When the feature is integration-shaped (a new endpoint, a new auth scope, a new webhook type), reuse the topic checklist from this skill's Phase 1 to make sure the same edge-case coverage (pagination, rate limits, errors, retries, idempotency) is applied to the new endpoint before the feature is considered done.
+Once the initial integration \*\*\*plain specs are written, the user will come back with new endpoints, new event types, new failure modes to handle, or new entry points on the contract. Use the `add-feature` skill — it runs the same ask → author → review loop scoped to a single feature against an existing `.plain` file. When the feature is integration-shaped (a new endpoint, a new auth scope, a new webhook type), reuse the topic checklist from this skill's Phase 1 to make sure the same edge-case coverage (pagination, rate limits, errors, retries, idempotency) is applied to the new endpoint before the feature is considered done.
 
 ---
 
@@ -346,7 +419,7 @@ Before handing off to `forge-plain` Phase 3 (and through Phase 4), additionally 
 
 ### Reference
 
-- Full `***plain` language guide: PLAIN_REFERENCE.md (loaded via `load-plain-reference`)
+- Full `\*\*\*plain` language guide: PLAIN_REFERENCE.md (loaded via `load-plain-reference`)
 - Parent workflow this skill specializes: `.claude/skills/forge-plain/SKILL.md`
 - Skills for editing specs are in `.claude/skills/`
 - Templates go in `template/`, but import paths omit the `template/` prefix. Resources (including standalone schema files) go in `resources/`
