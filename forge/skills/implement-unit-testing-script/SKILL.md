@@ -107,6 +107,7 @@ Notes:
 3. Translate each of the seven steps above into the equivalent commands for the target language **and** shell. The toolchain check, dependency install, and test invocation are the language-specific parts; the rest is mechanical translation between Bash and PowerShell syntax.
 4. Pick the dependency-isolation mechanism from the [Dependency isolation](#dependency-isolation) table and use it consistently in both step 6 and step 7.
 5. Save the new script to `assets/run_unittests_<lang>.sh` or `assets/run_unittests_<lang>.ps1`. For Bash, `chmod +x` it.
+6. **Update `config.yaml` to reference the new script.** Add or update the `unit-tests-script:` key with the path to the newly created script (e.g., `unit-tests-script: test_scripts/run_unittests_<lang>.sh`). This is mandatory — the `codeplain` renderer needs this reference to invoke the unit test script during the development workflow.
 
 ## Anti-Patterns
 
@@ -117,3 +118,4 @@ Notes:
 - Don't write a cross-shell hybrid (e.g. a `.sh` that detects PowerShell, or vice versa). Ship one script per shell, named with the appropriate extension.
 - Don't install dependencies into the user's global location (`~/.m2`, system-wide `pip`, `~/.cargo`, etc.). Always isolate inside `$WORKING_FOLDER` so concurrent runs and other projects can't interfere.
 - Don't run the test command without first verifying the install step succeeded. A failed install followed by a "test" run produces misleading errors that look like test failures.
+- **Don't forget to update `config.yaml`.** After creating the unit test script, always add or update the `unit-tests-script:` key in `config.yaml` to reference the new script. Without this entry, the `codeplain` renderer won't know where to find the unit test script.
