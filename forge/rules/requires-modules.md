@@ -10,8 +10,14 @@ When creating or editing a `.plain` file that uses `requires`, always follow the
 ## What requires does
 - `requires` establishes a **build ordering** — the required module is built before the current one
 - The required module's generated code (`plain_modules/<required_module>`) is copied as the starting point
-- The required module's `***functional specs***` become visible as **previous functional specs**
-- Only `exported_concepts` from the required module are available — not its full definitions
+- The required module's `***functional specs***` become visible as **previous functional specs** — this property **is transitive**
+- Only `exported_concepts` from the required module are available — not its full definitions — and this property **is not transitive**
+
+## Tech stack must match (hard rule)
+- Because the required module's generated code is copied as the starting point and the renderer continues building on top of it with a single toolchain, two modules can only be linked with `requires` when they target the **same language, framework, and runtime**
+- A runtime / network dependency between systems is **not** a reason to use `requires`
+- Example of the mistake: a React frontend that talks to a Python/FastAPI backend over HTTP must **not** `requires: [backend]` — the stacks differ
+- Model that pair as two independent root modules (each with its own `config.yaml` and test scripts) and express the contract through a shared API schema in `resources/` or shared concepts in an `import`ed template — never through `requires`
 
 ## Build order, not necessarily dependency
 - The current module does not need to extend or depend on the required module's code

@@ -17,6 +17,39 @@ const AGENTS = {
 };
 const SCOPES = ["project", "global"];
 
+const BANNER = `\x1b[38;2;224;255;110m██████╗ ██╗      █████╗ ██╗███╗   ██╗      ███████╗ ██████╗ ██████╗  ██████╗ ███████╗
+██╔══██╗██║     ██╔══██╗██║████╗  ██║      ██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝
+██████╔╝██║     ███████║██║██╔██╗ ██║█████╗█████╗  ██║   ██║██████╔╝██║  ███╗█████╗
+██╔═══╝ ██║     ██╔══██║██║██║╚██╗██║╚════╝██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝
+██║     ███████╗██║  ██║██║██║ ╚████║      ██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗
+╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝      ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝\x1b[0m
+`;
+
+const TAGLINE = "turn ideas into ***plain specs.";
+
+function stripAnsi(s) {
+  return s.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function bannerWidth() {
+  return stripAnsi(BANNER)
+    .split("\n")
+    .reduce((max, line) => Math.max(max, line.length), 0);
+}
+
+function printBanner() {
+  if (!process.stdout.isTTY) return;
+  process.stdout.write("\n" + BANNER + "\n");
+
+  const width = bannerWidth();
+  const pad = Math.max(0, Math.floor((width - TAGLINE.length) / 2));
+  const tag = TAGLINE.replace(
+    "***plain",
+    "\x1b[38;2;121;252;150m***plain\x1b[0m",
+  );
+  process.stdout.write(" ".repeat(pad) + tag + "\n\n");
+}
+
 function usage() {
   console.log(`Usage: plain-forge install [options]
 
@@ -90,7 +123,7 @@ function promptChoice(question, choices) {
         render();
       } else if (key.name === "return") {
         cleanup();
-        output.write(`  \x1b[32m${choices[index]}\x1b[0m\n`);
+        output.write(`  \x1b[32m${choices[index]}\x1b[0m\n\n`);
         resolve(choices[index]);
       } else if (key.name === "escape" || (key.ctrl && key.name === "c")) {
         cleanup();
@@ -126,8 +159,10 @@ function copyTree(srcDir, destDir) {
 }
 
 async function cmdInstall(args) {
+  printBanner();
+
   let agent = args.agent;
-  if (!agent) agent = await promptChoice("Which agent?", Object.keys(AGENTS));
+  if (!agent) agent = await promptChoice("Which agent ?", Object.keys(AGENTS));
   if (!Object.hasOwn(AGENTS, agent)) {
     console.error(
       `unknown agent "${agent}". valid: ${Object.keys(AGENTS).join(", ")}`,
@@ -136,7 +171,7 @@ async function cmdInstall(args) {
   }
 
   let scope = args.scope;
-  if (!scope) scope = await promptChoice("Scope?", SCOPES);
+  if (!scope) scope = await promptChoice("Scope ?", SCOPES);
   if (!SCOPES.includes(scope)) {
     console.error(`unknown scope "${scope}". valid: ${SCOPES.join(", ")}`);
     process.exit(2);
@@ -162,6 +197,54 @@ async function cmdInstall(args) {
   console.log(`  skills: ${skillsCount}`);
   console.log(`  rules:  ${rulesCount}`);
   console.log(`  docs:   ${docsCount}`);
+  console.log();
+  printNextSteps(agent);
+}
+
+function printNextSteps(agent) {
+  const bold = (s) => `\x1b[1;97m${s}\x1b[0m`;
+  const dim = (s) => `\x1b[2m${s}\x1b[0m`;
+  const plain = (s) => `\x1b[38;2;121;252;150m${s}\x1b[0m`;
+  const codeplain = (s) => `\x1b[38;2;224;255;110m${s}\x1b[0m`;
+  const link = (s) => `\x1b[4;38;2;95;175;255m${s}\x1b[0m`;
+
+  console.log(`\x1b[1mnext steps:\x1b[0m`);
+  console.log(
+    `  1. open a project folder and start your ${agentLabel(agent)} session.`,
+  );
+  console.log(`  2. invoke one of:`);
+  console.log(
+    `       ${bold("forge-plain")}        — start a brand-new ${plain("***plain")} project from scratch`,
+  );
+  console.log(
+    `       ${bold("init-plain-project")} — scaffold a minimal ${plain("***plain")} project to grow feature-by-feature`,
+  );
+  console.log(
+    `       ${bold("add-feature")}        — add a feature to an existing ${plain("***plain")} project`,
+  );
+  console.log();
+  console.log(
+    `prerequisite: install the ${codeplain("codeplain")} CLI to render your specs into code — ${link("https://www.codeplain.ai/")}`,
+  );
+  console.log(
+    `usage guide: ${link("https://github.com/Codeplain-ai/plain-forge#usage")}`,
+  );
+  console.log();
+}
+
+function agentLabel(agent) {
+  switch (agent) {
+    case "claude":
+      return "Claude Code";
+    case "codex":
+      return "Codex";
+    case "forgecode":
+      return "ForgeCode";
+    case "universal":
+      return "AI coding agent";
+    default:
+      return "agent";
+  }
 }
 
 async function main() {

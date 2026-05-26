@@ -21,11 +21,18 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 - Algorithm descriptions: specific approaches when behavior alone is insufficient
 - Performance guidance: memory constraints, streaming requirements, batching strategies
 - Language-specific constructs: generics, annotations, framework-specific types and idioms
+- **Unit-test guidance: framework, structure, mocking conventions, file layout** — unit tests are part of the generated codebase, so requirements that shape them are implementation reqs
 
 ## What does NOT belong here
 - Behavior and features → `***functional specs***`
 - Concept definitions → `***definitions***`
-- Conformance test instructions → `***test reqs***`
+- **Conformance-test guidance** → `***test reqs***`
+- **Acceptance-test scenarios** → `***acceptance tests***` nested under the relevant functional spec
+
+## Unit tests vs conformance tests (common mistake)
+- Unit-test guidance (`:UnitTests:` framework, structure, mocking) goes **here**, not in `***test reqs***`
+- `***test reqs***` is exclusively for `:ConformanceTests:` — framework, execution command, mocking policy, environment setup
+- Putting unit-test guidance in `***test reqs***` is one of the most common authoring mistakes; the rendered code will silently miss those requirements because the unit-test generator only reads `***implementation reqs***`
 
 ## Encapsulation warning
 - `requires` modules only receive functional specs from their dependencies — not implementation reqs

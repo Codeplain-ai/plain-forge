@@ -26,7 +26,10 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
 
 ## Language agnosticism
 - Write in terms of behavior, concepts, and domain logic
-- Language-specific guidance belongs in `***implementation reqs***`
+- Avoid language-specific terminology: generics syntax, framework annotations, language-specific collection types, decorator syntax, base-class keywords, framings like "POJO" or "dataclass"
+- General technical terms that are not language-specific are fine: null values, JSON types, HTTP status codes, REST endpoints, etc.
+- **Naming concrete components is encouraged.** Functional specs can and should refer to `:CsvToJsonConverter:` and its methods `:CsvToJson:` / `:JsonToCsv:` and pin down their inputs, outputs, and error behavior — those names are part of the public contract and survive a language switch. What they must **not** do is bake in how the contract is realized (`@staticmethod`, `class Foo extends Bar`, `List<T>`, etc.)
+- **Litmus test:** if the project switched from Python to Java (or vice versa), would the functional spec read correctly with only `***implementation reqs***` updated? If yes, the spec is language-agnostic. If the spec itself would need rewording, the construct belongs in implementation reqs.
 
 ## Disambiguation
 - Each functional spec must be unambiguous — the renderer should have only one reasonable interpretation
@@ -43,6 +46,10 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
 - Functionality must be self-contained in the spec text
 - `requires` modules only receive functional specs — do not rely on implementation reqs to convey behavior
 - Behavior that downstream modules need must be expressed in functional specs, not elsewhere
+
+## Line length
+- See [`line-length.md`](line-length.md) — applies to every section, but bites hardest here because functional specs trend long
+- Hard limit: 120 characters. When a line gets too long, split at a natural clause boundary into nested `- ` bullets — **never** use bare indented continuation lines (invalid ***plain syntax)
 
 ## Acceptance tests
 - Nest `***acceptance tests***` under a functional spec when verification criteria are needed

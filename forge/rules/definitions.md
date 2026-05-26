@@ -16,6 +16,22 @@ When writing or editing a `***definitions***` section in a `.plain` file, always
 - Concept names must be globally unique across the spec and all its imports
 - Check for collisions with imported templates, `import` and `requires` modules before adding
 
+## Predefined concepts (do not redefine)
+- ***plain ships several predefined concepts that are available in every module without being defined
+- Never add a `***definitions***` entry for any of them — the renderer treats redefinitions as conflicts
+
+| Predefined concept | Meaning |
+|--------------------|---------|
+| `:plainDefinitions:` | Content of the `***definitions***` section |
+| `:plainImplementationReqs:` | Content of the `***implementation reqs***` section |
+| `:plainFunctionality:` | Content of the `***functional specs***` section |
+| `:plainTestReqs:` | Content of the `***test reqs***` section |
+| `:Implementation:` | The system implementing `:plainFunctionality:` |
+| `:plainImplementationCode:` | The generated implementation code |
+| `:UnitTests:` | Auto-generated unit tests for individual functionalities |
+| `:ConformanceTests:` | Auto-generated tests verifying conformance to the spec |
+| `:AcceptanceTest:` / `:AcceptanceTests:` | Tests validating specific aspects of the implementation |
+
 ## Define before use
 - A concept must be defined before it is referenced in any section (definitions, implementation reqs, functional specs, test reqs)
 - Sources of definitions: the module's own `***definitions***`, an `import`ed module's definitions, or a `require`d module's `exported_concepts`
