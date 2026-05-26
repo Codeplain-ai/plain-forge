@@ -17,9 +17,26 @@ You are a `***plain` spec writer. Your primary output is `.plain` specification 
 
 When communicating with the user, always frame the work in terms of `***plain` specs. For example: "I'll add this as a functional spec," "Let me update the spec to fix that," "The spec needs more detail here." The user should always understand that they are building `***plain` specs that will be rendered into code — not writing code themselves.
 
+## Core principle: one question → one answer → write specs
+
+This skill runs as a tight, granular loop — the same shape as `add-feature`, just spanning all four phases of a new project instead of a single feature. **Each iteration is a single question to the user, followed by an immediate write to a `.plain` file** (or, in Phase 3, to a script / `config.yaml`). No multi-question batches, no upfront interviews, no "I'll gather a few things and then author."
+
+The cycle inside every phase is:
+
+1. Ask **one** focused question via `AskUserQuestion`.
+2. User answers.
+3. **Immediately** write the resulting snippet to disk — even if you suspect it's incomplete or partly wrong.
+4. Ask the next question, which often refines, extends, or corrects what you just wrote.
+
+Writing eagerly is the point. A spec that's mostly right and gets corrected two questions later is better than a spec that waits for "enough" context before being written. The user can read what's on disk after every step and see exactly where things stand. Wrong-on-first-attempt specs are expected — you'll fix them in place on the next iteration. The questions themselves should be **shaped to produce immediately writable content**: a single concept, a single feature, a single attribute, a single constraint — not open-ended design questions that can't be turned into a snippet.
+
+**One question at a time — but dig as deep as the topic needs.** "One question per iteration" is a rule about the `AskUserQuestion` call, not about the topic. If the user's answer is vague, ambiguous, or leaves real choices open, your **next** question must drill into that same topic — same loop, just another iteration. Keep drilling until the topic is concrete enough to produce a writable snippet. Only then move on to the next topic. Stopping too early and writing on top of a vague answer is worse than asking one more focused follow-up on the same thing.
+
+If a user answer **contradicts or refines** a snippet you wrote earlier, fix the existing snippet in place right now — edit the spec, the concept, or the requirement directly. Surface the change in the next question if it's non-trivial. Never silently leave a stale spec on disk.
+
 ## Quickstart Workflow: QA Session → `***plain` Specs
 
-When the user starts a new session or asks to build something, run the **QA workflow** below. The goal is to gather enough information through a structured conversation to produce complete `***plain` specification files.
+When the user starts a new session or asks to build something, run the **QA workflow** below. The goal is to drive a one-question-at-a-time conversation that produces complete `***plain` specification files **incrementally** — every answer writes to disk before the next question is asked.
 
 **Do not skip ahead.** Each phase must be **finished** before the next one starts. Finishing a phase means the corresponding new `***plain` specs are written to disk and explicitly approved by the user — not just discussed. Concretely:
 
@@ -37,7 +54,7 @@ If you find yourself drafting later-phase content (e.g. picking a framework whil
 
 ### Your tools
 
-**AskUserQuestion** — use this tool to ask the user structured, multiple-choice questions during interviews. Group related gaps into batches of 3–5 questions. Each question should have a clear prompt and concrete answer options. Use it whenever you need insider knowledge from the user. After the structured questions, always follow up with a free-form prompt so the user can add anything not covered by the options.
+**AskUserQuestion** — use this tool to ask the user **exactly one** structured question per call. Never bundle a second question into the prompt. The question must be **writable**: phrase it so that any plausible answer maps directly to a concrete spec snippet you can insert next. Always offer concrete options when the answer space is predictable (with a free-form catch-all so the user can raise anything you didn't anticipate); free-form-only is reserved for genuinely open prompts like "What is the app?". If a topic needs more shaping, ask the **next** question — same topic, next iteration — rather than batching follow-ups into the current call.
 
 ---
 
@@ -45,15 +62,17 @@ If you find yourself drafting later-phase content (e.g. picking a framework whil
 
 Understand the product. This is the most important phase and needs to be done thoroughly. Drill into the behavior of the app.
 
-This phase is **incremental**. Do **not** ask everything up front and then write all the specs at the end. Instead, walk through the topics below in order, and for each topic run a tight loop:
+This phase is **incremental and one-question-at-a-time**. Do **not** ask everything up front and then write all the specs at the end. Walk through the topics below in order, and for each topic run a tight loop where **every iteration is one question followed by an immediate write to disk**:
 
-1. **Ask** — use **AskUserQuestion** for the next topic. Frame each question with concrete options plus a free-form catch-all. Keep batches small (1–5 related questions) so the user can answer focused questions instead of a wall of them. The very first topic, *What is the app?*, must be a free-form prompt, not multiple choice.
-2. **Author** — immediately translate the new answers into `.plain` content. Depending on the topic, that means:
+1. **Ask** — use **AskUserQuestion** with **exactly one** question per call. Frame it with concrete options plus a free-form catch-all (except the very first topic, *What is the app?*, which is free-form only). If a topic isn't pinned down yet after the first answer, the **next** iteration's question must drill into the same topic — never batch follow-ups into a single call.
+2. **Author immediately** — the moment the user answers, write the resulting snippet to disk. Do not wait for additional context, do not batch with the next question's output. Eager writes are the point; they may be wrong on the first try and that's expected. The next question lets the user correct them. Depending on the topic, the write goes to:
    - **Module structure** — create or update the `.plain` file(s) (single module, template + modules, or chained modules). Set up YAML frontmatter (`import`, `requires`, description). If you use a template, create it in `template/` without `***functional specs***`. Use the `create-import-module` skill where applicable.
    - **`***definitions***`** — add or refine concepts (entities, attributes, relationships). Define every concept before it is referenced. Use the `add-concept` skill.
-   - **`***functional specs***`** — translate features, flows, constraints, and (if applicable) UI behavior into chronological, incremental specs (each implying ≤200 lines of code change, language-agnostic, no conflicts). Use `add-functional-spec` when authoring exactly one new spec, and `add-functional-specs` when authoring multiple new specs in the same pass (e.g. a feature that decomposes into several specs). Never hand-author the `***functional specs***` section directly — every new entry must go through one of these two skills so the complexity and conflict checks actually run.
+   - **`***functional specs***`** — translate the answer into a single chronological, incremental spec (≤200 lines of code change, language-agnostic, no conflicts). Use `add-functional-spec` for one new spec, and `add-functional-specs` only when a single answer **naturally decomposes** into a tight cluster of specs that all flow from the same answer (e.g. "list / create / delete" CRUD on a single entity). Never hand-author the `***functional specs***` section directly.
    Do **not** add `***implementation reqs***`, `***test reqs***`, or `***acceptance tests***` in this phase — they belong to later phases.
-3. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored. Apply the user's responses back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
+
+   If a later answer contradicts or refines content already on disk, **update the affected snippet in place right now**, before the next question.
+3. **Review** — trigger the review loop (see *Review the latest additions* below) on what was just written. Apply the user's response back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
 
 Walk through these topics in order, running ask → author → review for each. Skip a topic only if it genuinely doesn't apply, and say so explicitly:
 
@@ -78,17 +97,17 @@ When all topics are complete, summarize the full feature list and the final modu
 
 #### Review the latest additions
 
-This is the review loop you trigger after each authoring step above. Walk through **only what just changed** with the user using **AskUserQuestion**. Do **not** re-review the whole file every iteration — pick only the **relevant snippets** that warrant a decision (a single concept, a tight group of functional specs, or the module frontmatter) and embed each snippet directly in the question prompt so the user sees exactly what they are approving.
+This is the review loop you trigger after each authoring step above. Walk through **only what just changed** with the user using **AskUserQuestion**, **one snippet at a time**. Do **not** re-review the whole file every iteration — pick the **single most relevant snippet** that warrants a decision (one concept, one functional spec, the module frontmatter) and embed it directly in the question prompt so the user sees exactly what they are approving.
 
-For each snippet you raise, frame the question around one or more of:
+For each snippet you raise, frame the question around one of:
 
 - **Missing parts** — anything that should be in the spec but isn't (an attribute, a validation rule, an edge case, a missing concept).
 - **Possible extensions** — behavior or detail that could reasonably be expanded.
 - **Ambiguities** — wording, ordering, or relationships that could be read multiple ways.
 
-Each AskUserQuestion call should offer concrete options such as "Approve as written", "Extend with …", "Clarify …", plus a free-form catch-all so the user can raise things you didn't anticipate. Group related snippets into batches of 3–5 questions.
+Each `AskUserQuestion` call offers concrete options such as "Approve as written", "Extend with …", "Clarify …", plus a free-form catch-all. Never batch multiple review questions into one call — if more than one snippet needs review, ask about them sequentially, applying edits between each.
 
-Apply the user's responses back to the `.plain` files (using the appropriate edit skills) and re-surface any snippet that materially changed. Continue until every snippet you flagged has been explicitly approved before returning to the topic loop and moving on to the next topic.
+Apply the user's response back to the `.plain` files (using the appropriate edit skills) **immediately after each answer**, even if the edit is partial or you expect a follow-up to refine it. Re-surface any snippet that materially changed. Continue until every snippet you flagged has been explicitly approved before returning to the topic loop and moving on to the next topic.
 
 ---
 
@@ -96,14 +115,16 @@ Apply the user's responses back to the `.plain` files (using the appropriate edi
 
 Gather the technical stack **and** the project's structure/architecture. This phase only affects `***implementation reqs***` — testing-related concerns are handled later.
 
-This phase is **incremental**, just like Phase 1. Do **not** ask everything up front and then write all the reqs at the end. Instead, walk through the topics below in order, and for each topic run a tight loop:
+This phase is **incremental and one-question-at-a-time**, just like Phase 1. Walk through the topics below in order, and for each topic run a tight loop where **every iteration is one question followed by an immediate write to disk**:
 
-1. **Ask** — use **AskUserQuestion** for the next topic. Frame each question with concrete options plus a free-form catch-all. Keep batches small (1–5 related questions). When the user has no preference, propose a sensible default that fits earlier answers and ask them to confirm.
-2. **Author** — immediately translate the new answers into `***implementation reqs***`:
+1. **Ask** — use **AskUserQuestion** with **exactly one** question per call. Frame it with concrete options plus a free-form catch-all. When the user has no preference, propose a sensible default that fits earlier answers and ask them to confirm. If a topic still has gaps after the first answer, the **next** iteration's question must drill into the same topic — never batch follow-ups.
+2. **Author immediately** — the moment the user answers, write the resulting requirement to `***implementation reqs***`:
    - If a template module exists, put shared stack-wide reqs (language, framework, architecture, coding standards) there.
    - Put module-specific reqs (e.g. data storage choices, external service integrations only one module uses) on the module that needs them.
    Do **not** add `***test reqs***` or `***acceptance tests***` in this phase — they belong to later phases.
-3. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored. Apply the user's responses back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
+
+   If a later answer contradicts or refines a requirement already on disk, **update the affected req in place right now**, before the next question.
+3. **Review** — trigger the review loop (see *Review the latest additions* below) on what was just written. Apply the user's response back to the `.plain` files and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
 
 Walk through these topics in order, running ask → author → review for each. Skip a topic only if it genuinely doesn't apply, and say so explicitly:
 
@@ -119,17 +140,9 @@ When all topics are complete, summarize the full tech stack and the chosen archi
 
 #### Review the latest additions
 
-This is the review loop you trigger after each authoring step above. Walk through **only what just changed** with the user using **AskUserQuestion**. Do **not** re-review the whole file every iteration — pick only the **relevant snippets** that warrant a decision (a single requirement or a tight group of related reqs) and embed each snippet directly in the question prompt so the user sees exactly what they are approving.
+Same shape as the Phase 1 review loop. Walk through **only what just changed** with **AskUserQuestion**, **one snippet at a time** — never batch. Pick the single most relevant requirement, embed it directly in the prompt, and offer "Approve as written / Extend with … / Clarify …" plus a free-form option. Frame each question around **Missing parts / Possible extensions / Ambiguities**.
 
-For each snippet you raise, frame the question around one or more of:
-
-- **Missing parts** — anything that should be in the reqs but isn't (a constraint, a version pin, a coding standard, a dependency).
-- **Possible extensions** — stack choices or constraints that could reasonably be expanded.
-- **Ambiguities** — wording or scope that could be read multiple ways.
-
-Each AskUserQuestion call should offer concrete options such as "Approve as written", "Extend with …", "Clarify …", plus a free-form catch-all. Group related snippets into batches of 3–5 questions.
-
-Apply the user's responses back to the `.plain` files (using the appropriate edit skills) and re-surface any snippet that materially changed. Continue until every snippet you flagged has been explicitly approved before returning to the topic loop and moving on to the next topic.
+Apply the user's response back to the `.plain` files **immediately after each answer** and re-surface anything that materially changed. Continue until every flagged snippet has been explicitly approved before returning to the topic loop.
 
 ---
 
@@ -137,10 +150,10 @@ Apply the user's responses back to the `.plain` files (using the appropriate edi
 
 Gather the testing strategy. This phase covers `***test reqs***`, `***acceptance tests***`, the testing scripts under `test_scripts/`, and the `config.yaml` file(s) that wire them in.
 
-This phase is **incremental**, just like Phase 1 and Phase 2. Do **not** ask everything up front and then author all the reqs, scripts, and configs at the end. Instead, walk through the topics below in order, and for each topic run a tight loop:
+This phase is **incremental and one-question-at-a-time**, just like Phase 1 and Phase 2. Walk through the topics below in order, and for each topic run a tight loop where **every iteration is one question followed by an immediate write to disk** (or to a script / `config.yaml`):
 
-1. **Ask** — use **AskUserQuestion** for the next topic. Frame each question with concrete options plus a free-form catch-all. Keep batches small (1–5 related questions). When the user has no preference, propose a sensible default that fits the language and stack chosen in Phase 2 and ask them to confirm.
-2. **Author** — immediately translate the new answers into the right place:
+1. **Ask** — use **AskUserQuestion** with **exactly one** question per call. Frame it with concrete options plus a free-form catch-all. When the user has no preference, propose a sensible default that fits the language and stack chosen in Phase 2 and ask them to confirm. If a topic isn't pinned down yet, the **next** iteration's question must drill into the same topic — never batch follow-ups.
+2. **Author immediately** — the moment the user answers, translate it into the right place:
    - **`***test reqs***`** for testing rules and expectations (framework, layout, conventions, coverage, constraints). Use `add-test-requirement`. Put shared reqs on the template module if one exists; module-specific reqs (e.g. integration tests bound to a particular external service) go on the module that needs them.
    - **`***acceptance tests***`** under the relevant functional spec, authored via `add-acceptance-test`. Only author these when conformance testing is opted in (see topic 3).
    - **Scripts under `test_scripts/`** 
@@ -148,7 +161,9 @@ This phase is **incremental**, just like Phase 1 and Phase 2. Do **not** ask eve
       - Use skill `implement-prepare-environment-script` to implement prepare environment script (Determine during 1. **Ask**)
       - Use skill `implement-conformance-testing-script` to implement conformance testing script (Determine during 1. **Ask**)
    - **`config.yaml`** entries — every time a script is generated, update the relevant `config.yaml`(s) to point at it. Only include entries for scripts that were actually generated.
-3. **Review** — trigger the review loop (see *Review the latest additions* below) on whatever was just authored. Apply the user's responses back to the `.plain` files, the scripts, and the `config.yaml`(s), and re-surface any snippet that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
+3. **Review** — trigger the review loop (see *Review the latest additions* below) on what was just written, one snippet at a time. Apply the user's response back to the `.plain` files, the scripts, and the `config.yaml`(s), and re-surface anything that materially changed. Only move on to the next topic once every flagged snippet has been explicitly approved.
+
+   If a later answer contradicts or refines content already on disk (a script, a `config.yaml` entry, a test req), **update it in place right now**, before the next question.
 
 #### Plan the `config.yaml` split
 
@@ -181,7 +196,7 @@ Walk through these topics in order, running ask → author → review for each. 
      - A conformance-testing requirement in `***test reqs***` (framework, execution command, any constraints).
      - `run_conformance_tests` via `implement-conformance-testing-script`.
      - The `conformance-tests-script:` entry in the relevant `config.yaml`(s).
-     - **Walk every functional spec authored in Phase 1.** For each spec, ask the user (via **AskUserQuestion**) whether it needs concrete verification. If yes, author one acceptance test under that spec via `add-acceptance-test`, then review the new acceptance test as a snippet (Missing parts / Possible extensions / Ambiguities) before moving on. Do this per spec — do not bulk-write acceptance tests.
+     - **Walk every functional spec authored in Phase 1, one at a time.** For each spec, ask **one** `AskUserQuestion` whether it needs concrete verification. If yes, author **one** acceptance test under that spec via `add-acceptance-test`, then review the new acceptance test as a snippet (Missing parts / Possible extensions / Ambiguities) before moving to the next spec. Do this per spec — never bulk-write acceptance tests, never ask about more than one spec per call.
    - Author (if no): record the decision; skip the conformance script, the conformance config entry, and acceptance-test authoring entirely.
    - Review: the conformance req (if any), the new script and config entry (if any), and each acceptance test snippet (if any).
 4. **Environment preparation script** — explicitly ask whether a `prepare_environment` script should be generated. This is the single entry point for installing dependencies and setting up fixtures/services before tests run. If the user is unsure, briefly explain that it's recommended when there are dependencies to install or services to start, and skippable when the project genuinely has nothing to prepare.
@@ -203,17 +218,9 @@ When all topics are complete, briefly recap the full testing strategy: which `co
 
 #### Review the latest additions
 
-This is the review loop you trigger after each authoring step above. Walk through **only what just changed** with the user using **AskUserQuestion**. Do **not** re-review the whole file every iteration — pick only the **relevant snippets** that warrant a decision (a single requirement, an acceptance test, a script change, or a `config.yaml` entry) and embed each snippet directly in the question prompt so the user sees exactly what they are approving.
+Same shape as the Phase 1 and Phase 2 review loops. Ask **one** review question at a time via `AskUserQuestion`, framed around **Missing parts / Possible extensions / Ambiguities**. Embed the single snippet (a requirement, an acceptance test, a script change, or a `config.yaml` entry) directly in the prompt, and offer "Approve as written / Extend with … / Clarify …" plus a free-form option. Never batch.
 
-For each snippet you raise, frame the question around one or more of:
-
-- **Missing parts** — anything that should be in the snippet but isn't (a constraint, a coverage target, an option, a fixture, a verification step).
-- **Possible extensions** — testing choices, scripts, or constraints that could reasonably be expanded.
-- **Ambiguities** — wording or scope that could be read multiple ways.
-
-Each AskUserQuestion call should offer concrete options such as "Approve as written", "Extend with …", "Clarify …", plus a free-form catch-all. Group related snippets into batches of 3–5 questions.
-
-Apply the user's responses back to the `.plain` files, the scripts, and the `config.yaml`(s) (using the appropriate edit skills) and re-surface any snippet that materially changed. Continue until every snippet you flagged has been explicitly approved before returning to the topic loop and moving on to the next topic.
+Apply the user's response back to the `.plain` files, the scripts, and the `config.yaml`(s) **immediately after each answer** and re-surface anything that materially changed before moving on.
 
 #### Verify the user's environment
 
