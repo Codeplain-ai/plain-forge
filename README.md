@@ -100,6 +100,17 @@ Once the plugin is installed, all plain-forge skills become available in your Co
 2. Answer the questions. plain-forge writes the `.plain` files for you as you go through the four phases.
 3. Render the specs into code (see [Rendering specs](#rendering-specs) below).
 
+### Starting a new project — incremental workflow
+
+If you'd rather skip the full upfront interview and build the specs feature-by-feature, use this lighter loop:
+
+1. Invoke `init-plain-project`. It asks just for the base technology, the project kind, and whether conformance testing is enabled, then scaffolds the project skeleton: `template/base.plain` with the base `***implementation reqs***` and `***test reqs***`, a stub top-level `<project>.plain` (frontmatter only — no functional specs, no concepts), the unit-test script, an optional conformance-test script, an optional prepare-environment script, and a `config.yaml` wired to whichever scripts were generated. No `codeplain --dry-run` is run.
+2. From there, either:
+   - **Converse with the agent.** Just describe the next feature in plain English; the agent will invoke `add-feature` for you and run its one-question-at-a-time loop until the feature is on disk.
+   - **Invoke `add-feature` manually** whenever you want to drive the loop yourself.
+3. Repeat step 2 for each feature you want to add. The specs grow incrementally and `plain-healthcheck` is run as the final automated step of every `add-feature` pass.
+4. Render the specs into code (see [Rendering specs](#rendering-specs) below).
+
 ### Adding a feature to an existing project
 
 1. Invoke `add-feature`.
@@ -187,6 +198,7 @@ The build is idempotent — re-running it produces no `git diff`.
 | Skill | Description |
 |-------|-------------|
 | `forge-plain` | End-to-end QA interview that produces complete `.plain` spec files for a new project |
+| `init-plain-project` | Lightweight project initializer — scaffolds `template/base.plain` (base impl + test reqs), a stub top-level module, the testing scripts, and `config.yaml`. No functional specs, no concepts, no dry-run. Pair with `add-feature` to grow the project feature-by-feature. |
 | `add-feature` | Interview the user about a single feature, then write all the specs for it |
 | `run-codeplain` | **Experimental.** Launch a `codeplain` render and supervise it end-to-end — tails `codeplain.log`, watches generated code appear, detects pathologies (stuck conformance loops, complexity errors, missing concepts, render failures), and on approval stops the renderer, hands off to the right spec-edit skill, and resumes with `--render-from`. The default render path is still the manual `codeplain <module>.plain` command. |
 

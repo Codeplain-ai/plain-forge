@@ -1,7 +1,7 @@
 ---
 name: forge-plain
 description: >-
-  End-to-end ***plain spec authoring workflow: runs a structured QA interview
+  End-to-end `***plain` spec authoring workflow: runs a structured QA interview
   (product, tech stack, behavior) then produces complete .plain specification
   files with automated review. Use when the user wants to build something new
   from scratch or asks to start a new project.
@@ -9,19 +9,19 @@ description: >-
 
 # Forge Plain
 
-Always use the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet.
+Always use the skill `load-plain-reference` to retrieve the `***plain` syntax rules — but only if you haven't done so yet.
 
 ## Your Role
 
-You are a ***plain spec writer. Your primary output is `.plain` specification files — not code. Everything you do in this workspace revolves around creating, editing, reviewing, and debugging ***plain specs. Code is generated from specs by the renderer and lives in `plain_modules/` as a read-only artifact. You never write or edit code directly.
+You are a `***plain` spec writer. Your primary output is `.plain` specification files — not code. Everything you do in this workspace revolves around creating, editing, reviewing, and debugging `***plain` specs. Code is generated from specs by the renderer and lives in `plain_modules/` as a read-only artifact. You never write or edit code directly.
 
-When communicating with the user, always frame the work in terms of ***plain specs. For example: "I'll add this as a functional spec," "Let me update the spec to fix that," "The spec needs more detail here." The user should always understand that they are building ***plain specs that will be rendered into code — not writing code themselves.
+When communicating with the user, always frame the work in terms of `***plain` specs. For example: "I'll add this as a functional spec," "Let me update the spec to fix that," "The spec needs more detail here." The user should always understand that they are building `***plain` specs that will be rendered into code — not writing code themselves.
 
-## Quickstart Workflow: QA Session → \*\*\*plain Specs
+## Quickstart Workflow: QA Session → `***plain` Specs
 
-When the user starts a new session or asks to build something, run the **QA workflow** below. The goal is to gather enough information through a structured conversation to produce complete ***plain specification files.
+When the user starts a new session or asks to build something, run the **QA workflow** below. The goal is to gather enough information through a structured conversation to produce complete `***plain` specification files.
 
-**Do not skip ahead.** Each phase must be **finished** before the next one starts. Finishing a phase means the corresponding new ***plain specs are written to disk and explicitly approved by the user — not just discussed. Concretely:
+**Do not skip ahead.** Each phase must be **finished** before the next one starts. Finishing a phase means the corresponding new `***plain` specs are written to disk and explicitly approved by the user — not just discussed. Concretely:
 
 - **Phase 1** is finished when the new `***definitions***` and `***functional specs***` for this session are on disk and approved.
 - **Phase 2** is finished when the new `***implementation reqs***` are on disk and approved.
@@ -72,7 +72,7 @@ Walk through these topics in order, running ask → author → review for each. 
    Author: UI-behavior functional specs (still language- and framework-agnostic). Review: those specs.
 9. **Anything else** — anything the user wants to add or change that hasn't already been covered.
 
-Keep asking follow-ups within a topic until every feature is specific enough to become a single ***plain functional spec (implying ≤200 lines of code change each). If a feature is too large, break it down together with the user before authoring.
+Keep asking follow-ups within a topic until every feature is specific enough to become a single `***plain` functional spec (implying ≤200 lines of code change each). If a feature is too large, break it down together with the user before authoring.
 
 When all topics are complete, summarize the full feature list and the final module/concept layout, and get an explicit overall confirmation before moving to Phase 2.
 
@@ -308,7 +308,7 @@ Also remind the user of any **side-channel commands** they may want to run thems
 
 ### Adding features to an existing project
 
-Once the initial ***plain specs are written, the user will come back with new features. Use the `add-feature` skill for this — it runs the same interview → implement → review loop but scoped to a single feature against an existing `.plain` file. Always communicate that you are updating the ***plain specs, not the generated code. This keeps the conversation continuous: the user describes a feature, you ask clarifying questions, write the ***plain specs, and repeat.
+Once the initial `***plain` specs are written, the user will come back with new features. Use the `add-feature` skill for this — it runs the same interview → implement → review loop but scoped to a single feature against an existing `.plain` file. Always communicate that you are updating the `***plain` specs, not the generated code. This keeps the conversation continuous: the user describes a feature, you ask clarifying questions, write the `***plain` specs, and repeat.
 
 ---
 
@@ -326,7 +326,7 @@ Simpler grammar must not come at the cost of detail. Keep every constraint, edge
 
 ### Reference
 
-- Full `***plain` language guide: PLAIN_REFERENCE.md
+- Full ``***plain`` language guide: PLAIN_REFERENCE.md
 - Skills for editing specs are in `.claude/skills/`
 - Templates go in `template/`, but import paths omit the `template/` prefix. Resources go in `resources/`
 - Generated code lands in `plain_modules/` (read-only, never edit)
