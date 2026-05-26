@@ -19,73 +19,82 @@ Each phase is **incremental**, not a single long questionnaire. plain-forge walk
 
 ## Getting Started
 
-plain-forge ships as a set of skills that plug into your AI coding tool of choice. Install it once, then invoke `forge-plain` (or `add-feature` to add a feature to an existing ***plain project) from any project.
+plain-forge ships as a set of skills, rules, and docs that plug into your AI coding tool of choice. Install it once, then invoke `forge-plain` (or `add-feature` to add a feature to an existing ***plain project) from any project.
 
-### Install with the `skills` CLI (any runtime)
+### Install with `npx plain-forge install` (recommended)
 
-The fastest way to add plain-forge is the `skills` CLI. The `--all` flag installs **every** plain-forge skill at once:
+The primary install path. Works for every supported runtime and is the only installer that ships **all** plain-forge content (skills, rules, **and** docs) — the other methods below are limited or agent-specific.
 
 ```bash
-npx skills add Codeplain-ai/plain-forge --skill '*'
+npx plain-forge install
 ```
 
-#### Install into a specific runtime
-
-If you only use one runtime, pass `--agent` to target just that one (you can repeat the flag to pick several):
+This prompts you to pick an agent and a scope using an arrow-key menu. You can also pass both flags non-interactively:
 
 ```bash
-# Just Claude Code
+npx plain-forge install --agent claude --scope project
+```
+
+**Agent options:**
+
+| `--agent` | Installs into | Use when |
+|-----------|---------------|----------|
+| `claude` | `.claude/` | You use Claude Code |
+| `codex` | `.codex/` | You use the OpenAI Codex CLI |
+| `forgecode` | `.forgecode/` | You use ForgeCode |
+| `universal` | `.agents/` | You want a runtime-neutral layout that any agent reading from `.agents/` can pick up |
+
+**Scope options:**
+
+| `--scope` | Installs into | Use when |
+|-----------|---------------|----------|
+| `project` | `./<agent-dir>/` in the current working directory | You want plain-forge in just this project |
+| `global` | `~/<agent-dir>/` in your home directory | You want plain-forge available in every project on the machine |
+
+Each install writes three subfolders under the chosen directory:
+
+```
+<agent-dir>/
+  skills/    # every plain-forge skill
+  rules/     # spec-writing rules (loaded as workspace instructions)
+  docs/      # shared reference docs
+```
+
+Re-running `npx plain-forge install` overwrites the destination silently, so it doubles as the upgrade path — `npx plain-forge@latest install` pulls the newest release every time.
+
+### Alternative install paths (skills only — no rules or docs)
+
+These work but only install the skill files. Rules and docs do **not** travel with them, so use them only if you have a reason not to use `npx plain-forge install`.
+
+#### `npx skills` CLI
+
+```bash
 npx skills add Codeplain-ai/plain-forge --skill '*' --agent claude-code
-
-# Just Codex
-npx skills add Codeplain-ai/plain-forge --skill '*' --agent codex
-
-# Just OpenCode
-npx skills add Codeplain-ai/plain-forge --skill '*' --agent opencode
-
-# Any combination, non-interactive
-npx skills add Codeplain-ai/plain-forge --skill '*' --agent opencode --agent codex --agent claude-code
 ```
 
-If you'd rather use the native install flow for a specific runtime, the per-tool instructions below still work.
+Replace `--agent claude-code` with `codex` or `opencode` to target a different runtime, or repeat the flag for several at once.
 
-### Install in Claude Code
+#### Claude Code native plugin flow
 
-Requires the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and configured. Inside any Claude Code session, run the following **three commands**, one after the other (copy and paste each one separately):
-
-**1.** Register this repository as a plugin marketplace:
+Requires the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Inside a Claude Code session, run the following **three commands** one after the other:
 
 ```text
 /plugin marketplace add Codeplain-ai/plain-forge
-```
-
-**2.** Install the `plain-forge` plugin from it:
-
-```text
 /plugin install plain-forge@plain-forge
-```
-
-**3.** Reload plugins so Claude Code picks up the newly installed skills:
-
-```text
 /reload-plugins
 ```
 
-Without the reload, the plain-forge skills won't be visible in the current session even though the install succeeded. Once all three commands have run, all plain-forge skills become available.
+Without the reload the skills won't appear in the current session.
 
-### Install in Codex
+#### Codex native plugin flow
 
-Requires the [OpenAI Codex CLI](https://developers.openai.com/codex/cli/reference) installed and signed in. Installation is **two steps**, but only the first one is a shell command:
-
-**1.** From your shell, register this repository as a Codex marketplace:
+Requires the [OpenAI Codex CLI](https://developers.openai.com/codex/cli/reference). From your shell:
 
 ```bash
 codex plugin marketplace add Codeplain-ai/plain-forge
 ```
 
-**2.** Inside Codex, open the plugin directory, pick the `plain-forge` marketplace, and install the plugin from there. (The Codex CLI does not currently expose a `codex plugin install` equivalent — installation has to be triggered from the in-app plugin directory.)
-
-Once the plugin is installed, all plain-forge skills become available in your Codex sessions.
+Then, inside Codex, open the plugin directory, pick the `plain-forge` marketplace, and install the plugin from there. (Codex's CLI does not currently expose a `codex plugin install` equivalent.)
 
 ## Usage
 
