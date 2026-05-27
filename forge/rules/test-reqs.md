@@ -13,6 +13,12 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 - Acceptance tests are nested under individual functional specs, not here
 - Behavioral requirements go in `***functional specs***`, not here
 
+## `:ConformanceTests:` lives here (hard rule)
+- **Everything** about `:ConformanceTests:` goes in `***test reqs***` — paths, approach, packages, framework, execution command, mocking / network policy, fixtures, pass criteria, environment prerequisites
+- `:ConformanceTests:` live outside the generated codebase (typically in a separate project under `conformance_tests/<module>/`), so requirements that shape them belong in test reqs by definition
+- The conformance-test generator reads **only** `***test reqs***` — anything about `:ConformanceTests:` placed elsewhere (e.g. `***implementation reqs***`) is silently ignored
+- Author each `:ConformanceTests:` requirement via `add-test-requirement` and phrase it in terms of `:ConformanceTests:` so the partition stays visible at a glance
+
 ## What belongs here
 - Test framework: which framework to use (e.g., pytest, Unittest, xUnit)
 - Execution method: the command to run the tests

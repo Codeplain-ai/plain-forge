@@ -182,7 +182,6 @@ plain-forge keeps a single canonical source of truth under `forge/` and uses tin
 forge/                       # canonical, runtime-neutral content
   skills/                    # all skills used during spec writing
   rules/                     # workspace rules for spec validation
-  docs/                      # shared docs (PLAIN_REFERENCE.md, etc.)
 
 runtimes/                    # per-runtime adapters
   claude/

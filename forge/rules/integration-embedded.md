@@ -9,6 +9,8 @@ When an integration `.plain` module is **embedded** — meaning the generated co
 
 Embedded means: the host codebase already exists, has its own language / framework / dependency manager / packaging layout, and the integration must conform to all of that without negotiation.
 
+> **For test-script authoring**, also follow [`integration-embedded-testing.md`](integration-embedded-testing.md). It defines the per-script contract (`prepare_environment_<lang>`, `run_unittests_<lang>`, `run_conformance_tests_<lang>`) — staging into the host vs `.tmp/`, arg validation, exit codes, output parsing, the three `***implementation reqs***` entries the spec must declare so the scripts can be generated, and a Java / Maven reference implementation. This file (`integration-embedded.md`) only summarizes the test-script wiring; the testing rule is the source of truth.
+
 ## The host codebase dictates the tech stack (hard rule)
 
 - Language, framework, dependency manager, packaging layout, coding standards, error model, logging library, and architecture are **inherited** from the host — they are **never chosen** by the integration spec
@@ -129,10 +131,11 @@ See [`integration-embedded-testing.md`](integration-embedded-testing.md) for the
 ### Invariants the scripts must enforce
 
 - **Host root is a parameter, not a literal.** No script may hardcode an absolute host path. Read the host root from an env var (e.g. `HOST_CODEBASE_ROOT`) with a sensible default matching the user's layout (e.g. `../host_project`). Surface the env var in each script's `--help` / usage banner. Capture this env var in the integration's configuration concept so it has exactly one declared name across specs, scripts, and runtime
-- **Target package path is read from the `host-codebase` concept** — never inferred from a heuristic. The renderer writes that path into the generated module's location too, so the copy destination is unambiguous
+- **Everything about `:UnitTests:` is declared in `***implementation reqs***`** — paths, approach, packages, framework, conventions. The prepare and unit-test scripts derive their copy destinations and test-filter argument from these reqs. See [`integration-embedded-testing.md`](integration-embedded-testing.md) for the exact reqs the spec must author (phrased in terms of `:UnitTests:`)
+- **Everything about `:ConformanceTests:` is declared in `***test reqs***`** — paths, approach, packages, framework, execution command, pass criteria, mocking policy. The conformance script derives its build and run steps from these reqs. See [`integration-embedded-testing.md`](integration-embedded-testing.md) for the exact reqs (phrased in terms of `:ConformanceTests:`)
+- **The two groups never overlap.** `:UnitTests:` facts belong only in `***implementation reqs***`; `:ConformanceTests:` facts belong only in `***test reqs***`. Neither lives in the `host-codebase` concept
 - **Destructive ops are scoped to the module's own package path** under the host's source tree. `rm -rf` never touches the host's `src/main/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root. Only the module-specific package directories are wiped
 - **Each script is idempotent.** Re-running the same script with the same `$1` yields the same result
-- **`***test reqs***` must document the script contract** — name the env var the host root is read from, the target package path inside the host where `$1` is copied, and the language-appropriate install + test commands. The renderer reads this req and emits the right script bodies
 
 ## Embedded-specific completion checklist
 
@@ -147,10 +150,11 @@ Before declaring an embedded integration done, in addition to the shared checkli
 - [ ] `prepare_environment` copies `$1` into the host's source tree at the module's package path, cleans the host's build-output directory, and runs the host's install / build so the conformance suite can resolve the integration from the local dependency cache
 - [ ] `run_unittests` runs the same copy-into-host sequence (self-contained — does not depend on `prepare_environment` having run) and invokes the host's test runner scoped to the module's package
 - [ ] `run_conformance_tests` copies `$2` into `.tmp/<lang>_conformance/`, `cd`s in, builds the conformance project, and runs it against the host build that `prepare_environment` already installed
-- [ ] Host codebase root is read from a named env var (default value documented in each script's usage) — never hardcoded
-- [ ] Target package path inside the host where `$1` is copied is read from the `host-codebase` concept — never inferred
+- [ ] Host codebase root is read from a named env var (default value documented in each script's usage) — never hardcoded; the env var name is captured in the integration's configuration concept
+- [ ] `***implementation reqs***` declares **everything about `:UnitTests:`** — integration source path, `:UnitTests:` source path, `:UnitTests:` package, framework + conventions, lint / static-analysis gate — per [`integration-embedded-testing.md`](integration-embedded-testing.md)
+- [ ] `***test reqs***` declares **everything about `:ConformanceTests:`** — source location, framework + execution command, package, mocking / network policy, pass criteria, build / install needs — per [`integration-embedded-testing.md`](integration-embedded-testing.md)
+- [ ] Neither group is duplicated across sections: `:UnitTests:` facts never appear in `***test reqs***`, `:ConformanceTests:` facts never appear in `***implementation reqs***`, and neither lives in the `host-codebase` concept
 - [ ] Every `rm -rf` in the scripts is scoped to the module's own package directory under the host's source tree — never targets the host's `src/main/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root
-- [ ] A `***test reqs***` entry documents the script contract (env var name, target package path inside the host, install + test commands)
 
 ## Anti-patterns specific to embedded integrations
 

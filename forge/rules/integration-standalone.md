@@ -100,15 +100,17 @@ Separate from the provider's API version (which lives in the provider OpenAPI fi
 
 Capture as a contract-version concept; pin the version in every published schema.
 
-## Testing — live vs recorded, sandbox credentials, webhooks
+## Testing — live conformance, secrets from env, webhooks
 
-Standalone integrations get tested in isolation, so the testing strategy must be explicit (capture each decision as a `***test reqs***` entry):
+`:ConformanceTests:` for a standalone integration **run against the live provider** (see [`integrations.md`](integrations.md) → *`:ConformanceTests:` always run against the live integration*). The testing strategy is captured as `***test reqs***` entries authored via `add-test-requirement`:
 
-- **Live vs. recorded conformance tests.** Live tests hit the provider (requires sandbox creds in CI, may be rate-limited). Recorded tests use VCR-style cassettes or prerecorded responses under `resources/fixtures/`. Mock-server tests use a local stub (WireMock, Mockoon, MSW). Each has tradeoffs — pick one (or a mix) and document it
-- **Sandbox credentials in CI.** If live tests are in scope, name where credentials come from (CI secret store, dedicated test tenant) and the rotation / leak-response policy
-- **Webhook tests** (if webhooks are in scope) must cover signature verification end-to-end — including invalid signatures and replay attempts
-- **Rate-limit tests.** Tests that exercise the 429 path must **not** exhaust the live API's quota — use a local mock for those cases
-- **Idempotency tests.** Run the same mutating call twice (with the same idempotency key) and assert the same response — either against the live sandbox or against a recorded duplicate fixture
+- **Conformance is live by default.** No VCR cassettes, no prerecorded responses for the calls under test, no mock servers. A green conformance run that never touched the provider proves nothing. Recorded responses under `resources/fixtures/` exist for unit tests and for grounding the OpenAPI schemas — not for conformance
+- **Secrets come from environment variables.** Pin every credential as an env-var name (e.g. `<PROVIDER>_API_KEY`, `<PROVIDER>_CLIENT_ID` + `<PROVIDER>_CLIENT_SECRET`) in `***test reqs***` and in the auth concept. Use the names the provider's docs use so users don't have to translate
+- **The user supplies values via `.env` or the shell.** The project ships `.env.example` (gitignored `.env` for real values). CI provides the same env-var names from its secret store. The conformance script may optionally `source` a `.env` from the project root if one exists; it must verify every required var is set after that optional load and fail fast (exit `69`) on missing vars
+- **Sandbox credentials in CI.** Name where credentials come from (CI secret store, dedicated test tenant), the rotation / leak-response policy, and the env-var names CI must set
+- **Webhook tests** (if webhooks are in scope) must cover signature verification end-to-end — including invalid signatures and replay attempts. Signing keys are env vars, like every other secret
+- **Rate-limit (429) tests.** The 429 path must **not** exhaust the live API's quota — use a local mock for that specific endpoint, document the exception in `***test reqs***`. Every other path remains live
+- **Idempotency tests.** Run the same mutating call twice (with the same idempotency key) against the live sandbox and assert the same response
 
 ## Standalone-specific completion checklist
 

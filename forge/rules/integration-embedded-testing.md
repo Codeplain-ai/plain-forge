@@ -5,7 +5,7 @@ globs: "**/*.plain"
 
 # Rules for embedded-integration test scripts
 
-When an embedded integration ships its three `test_scripts/` (prepare-environment, unit, conformance) — whether you author them by hand or via the `implement-*-testing-script` skills — these rules apply on top of the shared testing-script rules in [PLAIN_REFERENCE.md](../docs/PLAIN_REFERENCE.md) (exit-code conventions, the activate-only vs install-inline conformance distinction, `VERBOSE=1`, etc.).
+When an embedded integration ships its three `test_scripts/` (prepare-environment, unit, conformance) — whether you author them by hand or via the `implement-*-testing-script` skills — these rules apply on top of the shared testing-script rules in PLAIN_REFERENCE.md (exit-code conventions, the activate-only vs install-inline conformance distinction, `VERBOSE=1`, etc.).
 
 ## Staging model (read this first)
 
@@ -24,46 +24,97 @@ This deliberately writes into the host's `src/main/...` and `src/test/...` (or t
 
 This rule covers the **mechanics each script must obey** regardless of language: argument handling, exit codes, idempotency, path resolution, output parsing, and the "what NOT to put here" guard rails. The language-specific install / test commands come from the skills; the contract below is invariant.
 
-## What the `.plain` spec must declare in `***implementation reqs***`
+## What the `.plain` spec must declare
 
-The three scripts are generated from facts in the integration's spec. For an embedded integration, those facts cannot be inferred — they have to be **declared explicitly** in `***implementation reqs***` so the renderer (and the `implement-*-testing-script` skills) can fill them into the three placeholders that every script body needs:
+The three scripts are generated from facts in the integration's spec. For an embedded integration, those facts cannot be inferred — they have to be **declared explicitly** in the right section, partitioned by which predefined concept they describe:
+
+- **Everything about `:UnitTests:`** — paths, approach, packages, framework, conventions, fixtures, mocking policy — lives in `***implementation reqs***`. Unit tests are part of the generated codebase, so requirements that shape them are implementation reqs (see [`impl-reqs.md`](impl-reqs.md))
+- **Everything about `:ConformanceTests:`** — paths, approach, packages, framework, execution command, pass criteria, mocking policy — lives in `***test reqs***`. Conformance tests are external to the generated codebase, so requirements that shape them are test reqs (see [`test-reqs.md`](test-reqs.md))
+
+Authors use `add-implementation-requirement` for the first group and `add-test-requirement` for the second. The two groups are parallel — each predefined concept owns a complete authoring story in its own section.
+
+### In `***implementation reqs***` — everything about `:UnitTests:`
+
+These reqs feed `run_unittests_<lang>`. `prepare_environment_<lang>` is **not** part of the unit-test workflow — it exists for conformance (see the next subsection) and reads its own facts from `***test reqs***`. At minimum, declare:
 
 1. **Integration source path inside the host** — where `$1/<source>/*` gets copied to. Example: `src/main/java/com/example/integrations/foo`
-2. **Integration test source path inside the host** — where `$1/<tests>/*` gets copied to, and where `:UnitTests:` are discovered. Example: `src/test/java/com/example/integrations/foo`
-3. **Test package for the test-filter argument** — the fully qualified package the test runner uses to scope discovery. Example: `com.example.integrations.foo`
+2. **`:UnitTests:` source path inside the host** — where `$1/<tests>/*` gets copied to, and where the test runner discovers unit tests. Example: `src/test/java/com/example/integrations/foo`
+3. **Fully qualified `:UnitTests:` package** — the package the test runner uses to scope discovery via its filter argument. Example: `com.example.integrations.foo`
+4. **`:UnitTests:` framework and conventions** — JUnit / pytest / Jest / Go's `testing` / etc., plus naming conventions (`*Test`, `test_*`, `*.test.ts`, …), fixture / mock / assertion style, file layout inside the test package
+5. **Quality gates that run alongside `:UnitTests:`** — Checkstyle / ESLint / Pylint / Ruff / `go vet` / `cargo clippy` — whatever the host project requires
 
-Author one `***implementation reqs***` entry per fact (use the `add-implementation-requirement` skill). Phrase each one in terms of `:UnitTests:` (the predefined concept) and the integration's other concepts, not as raw paths floating in the spec — that keeps the reqs reviewable and the renderer can resolve them when emitting scripts:
+Author the location facts as one tight group, phrased in terms of `:UnitTests:`:
 
 ```plain
 - :UnitTests: of :Implementation: live in `src/test/java/com/example/integrations/foo` inside the host codebase.
   - The corresponding integration source code lives in `src/main/java/com/example/integrations/foo`.
-  - The fully qualified test package used for test discovery is `com.example.integrations.foo`.
+  - The fully qualified package used for :UnitTests: discovery is `com.example.integrations.foo`.
+  - :UnitTests: use JUnit 5 with the host's Checkstyle profile applied via `mvn checkstyle:check`.
 ```
 
-These three facts feed directly into the script bodies:
+These facts feed directly into the prepare and unit-test script bodies:
 
 ```bash
 # clean existing code from the host
 rm -rf $MAIN_PROJECT_FOLDER/<integration source path>/*
-rm -rf $MAIN_PROJECT_FOLDER/<integration test source path>/*
+rm -rf $MAIN_PROJECT_FOLDER/<:UnitTests: source path>/*
 
 # create destinations and copy generated code into the host
 mkdir -p $MAIN_PROJECT_FOLDER/<integration source path>
-mkdir -p $MAIN_PROJECT_FOLDER/<integration test source path>
+mkdir -p $MAIN_PROJECT_FOLDER/<:UnitTests: source path>
 cp -R $1/<integration source path>/* $MAIN_PROJECT_FOLDER/<integration source path>
-cp -R $1/<integration test source path>/* $MAIN_PROJECT_FOLDER/<integration test source path>
+cp -R $1/<:UnitTests: source path>/* $MAIN_PROJECT_FOLDER/<:UnitTests: source path>
 
-# run the unit tests scoped to the integration's package
-mvn test -Dtest='<test package>.**.*Test' checkstyle:check
+# run :UnitTests: scoped to the integration's package
+mvn test -Dtest='<:UnitTests: package>.**.*Test' checkstyle:check
 ```
 
-Rules that flow from this:
+### In `***test reqs***` — everything about `:ConformanceTests:`
 
-- **The three paths must agree.** The source path, the test-source path, and the test package describe the same module from three angles. A mismatch (e.g. test path `src/test/java/com/example/foo` but test package `com.example.bar`) silently produces a green build with stale or zero tests
-- **Paths are host-relative**, not absolute. `MAIN_PROJECT_FOLDER` comes from `HOST_CODEBASE_ROOT` (per the configuration concept); the paths above join onto it
+These reqs feed `run_conformance_tests_<lang>`. At minimum, declare:
+
+1. **`:ConformanceTests:` source location** — where the conformance suite lives in the project (typically a sibling folder, e.g. `conformance_tests/<module>/`); the renderer passes the resolved path as `$2`
+2. **`:ConformanceTests:` framework and execution command** — `mvn test --no-transfer-progress`, `pytest`, `npm test`, `go test ./...`, etc., with any flags / profiles the project requires
+3. **Fully qualified `:ConformanceTests:` package** (or path / pattern) used to scope discovery, if the runner needs one
+4. **`:ConformanceTests:` network and secrets policy** — by default the suite runs against the **live provider** (see [`integrations.md`](integrations.md) → *`:ConformanceTests:` always run against the live integration*). Declare the env-var names the script reads (e.g. `<PROVIDER>_API_KEY`), whether the script loads a `.env` file before running, and any specific endpoints that are mocked because they can't be exercised live safely (429, forced 5xx)
+5. **`:ConformanceTests:` pass criteria** — the strict criteria from [*Pass criteria (strict)*](#pass-criteria-strict): at least one test ran AND zero failures / errors / skipped. Reaffirm this in the spec so the renderer knows the runner must parse the test tool's stdout
+6. **`:ConformanceTests:` build / install needs** — anything the conformance project needs before `mvn test` (or equivalent) will work: dependencies, fixtures, schema files, generated stubs
+
+Author the conformance facts as one or more entries, phrased in terms of `:ConformanceTests:`:
+
+```plain
+- :ConformanceTests: of :Implementation: live in `conformance_tests/foo/` and are implemented with JUnit 5 + Maven.
+  - The fully qualified package used for :ConformanceTests: discovery is `com.example.integrations.foo.conformance`.
+  - :ConformanceTests: are run via `mvn test --no-transfer-progress`; the host's Surefire plugin must be installed.
+  - :ConformanceTests: run against the live :ProviderName: sandbox — no mocking of provider calls.
+  - The conformance script reads `<PROVIDER>_API_KEY` (and any additional secrets) from the shell or from a `.env` file at the project root and fails fast (exit `69`) if any required var is missing after the optional `.env` load.
+  - The 429 (rate-limit) and forced-5xx paths use a local mock for that specific endpoint; every other path is live.
+  - :ConformanceTests: pass only when the Surefire summary line shows at least one test ran with zero failures, zero errors, and zero skipped.
+```
+
+These facts feed directly into the conformance script body:
+
+```bash
+# stage :ConformanceTests: source into the scratch directory
+find "$DIR" -mindepth 1 -exec rm -rf {} +
+cp -R $2/* $DIR
+cd $DIR
+
+# build the conformance project, then run :ConformanceTests:
+mvn clean install -DskipTests
+output=$(mvn test --no-transfer-progress 2>&1)
+
+# parse Surefire summary against the declared pass criteria, then exit accordingly
+```
+
+### Rules common to both sections
+
+- **The paths must agree across reqs.** The `:UnitTests:` source path, the `:UnitTests:` package, and the integration source path describe the same module from three angles. Same for the `:ConformanceTests:` location and its package. A mismatch (e.g. test path `src/test/java/com/example/foo` but test package `com.example.bar`) silently produces a green build with stale or zero tests
+- **Paths are host-relative**, not absolute. `MAIN_PROJECT_FOLDER` comes from `HOST_CODEBASE_ROOT` (declared in the configuration concept); the paths above join onto it
 - **The renderer's output folder `$1` mirrors the same layout.** `$1/<integration source path>/*` exists because the renderer emits the generated code into the same package directories it'll be copied into — the `cp -R` is a straight overlay, not a path translation
-- **Each fact lives in one place.** If two `***implementation reqs***` entries declare slightly different test paths, the renderer can't tell which to use. Author the three reqs as a tight group (the example above is one bullet with two sub-bullets) so a future reviewer sees them together
-- **For non-Java languages**, the three facts have language-specific equivalents — Python: `src/foo/`, `tests/foo/`, `tests.foo`; Node: `src/foo/`, `test/foo/`, `test/foo/**/*.test.ts`. The `implement-*-testing-script` skills know the mapping per language, but the spec still has to declare the host-relative paths so the skill knows where to copy
+- **Each fact lives in one place.** If two `***implementation reqs***` entries declare slightly different `:UnitTests:` paths (or two `***test reqs***` entries declare slightly different `:ConformanceTests:` packages), the renderer can't tell which to use. Author each group as a tight cluster (one bullet with sub-bullets) so a future reviewer sees them together
+- **Never duplicate a fact across sections.** `:UnitTests:` facts belong **only** in `***implementation reqs***`; `:ConformanceTests:` facts belong **only** in `***test reqs***`. The two groups never overlap — the script generators read each from its own section
+- **For non-Java languages**, the facts have language-specific equivalents — Python: `src/foo/`, `tests/foo/`, `tests.foo`; Node: `src/foo/`, `test/foo/`, `test/foo/**/*.test.ts`. The `implement-*-testing-script` skills know the mapping per language, but the spec still has to declare the host-relative paths and packages so the skill knows what to put in the script bodies
 
 ## Common contract (all three scripts)
 
@@ -157,6 +208,37 @@ Required steps:
 6. **Parse the captured output strictly** (see *Pass criteria* below) — don't trust the test tool's exit code alone
 7. On the failure path: print the captured output unconditionally so the renderer (and the user) can see what failed
 8. On the success path: print the output only if `VERBOSE=1`
+
+### Secrets and `.env` handling
+
+`:ConformanceTests:` run against the live provider (per [`integrations.md`](integrations.md) → *`:ConformanceTests:` always run against the live integration*), so the conformance script needs the user's credentials at runtime.
+
+- **Credentials are read from environment variables** named in `***test reqs***` and the auth concept. Never from a literal, never from a file checked into the repo
+- **The script may optionally load a `.env` file** before running the suite. Typical pattern in Bash:
+
+  ```bash
+  ENV_FILE="${ENV_FILE:-$MAIN_PROJECT_FOLDER/.env}"
+  if [ -f "$ENV_FILE" ]; then
+      echo "Loading env from $ENV_FILE"
+      set -a; . "$ENV_FILE"; set +a
+  fi
+  ```
+
+  PowerShell uses the equivalent `Get-Content` + `Set-Item Env:` loop. Absence of `.env` is **not** an error — CI provides the same vars directly through the shell
+- **Verify required env vars exist after the optional `.env` load** and fail fast if any are missing:
+
+  ```bash
+  for var in PROVIDER_API_KEY PROVIDER_ACCOUNT_ID; do
+      if [ -z "${!var:-}" ]; then
+          printf "Error: %s is required for :ConformanceTests:\n" "$var" >&2
+          exit 69
+      fi
+  done
+  ```
+
+- **Export the resolved vars** (already in scope thanks to `set -a`) so child processes started by the test runner inherit them — Maven, pytest, npm, Go all read env vars from their parent process
+- **Never log credential values.** Echo the env-var **name** when reporting "loaded", not its value. Redact in any error path that dumps captured output
+- **Document the secret names twice** — once in the auth concept (for the runtime), once in `***test reqs***` for `:ConformanceTests:` (for the script). They must be the same names; a divergence means the script reads different credentials than the runtime does, and conformance silently tests the wrong account
 
 ### Pass criteria (strict)
 

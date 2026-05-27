@@ -183,13 +183,19 @@ prepare-environment-script: test_scripts/prepare_environment_<language>.<sh|ps1>
 
 Use `.sh` on macOS/Linux and `.ps1` on Windows, matching what testing scripts. Preserve any existing fields in a `config.yaml` you are updating.
 
+**Hard partition reminder.** Throughout this phase:
+
+- **Everything about `:UnitTests:`** (framework, layout, packages, conventions, execution command, coverage, mocking policy — every fact) is authored into `***implementation reqs***` via `add-implementation-requirement`. The unit-test generator reads only that section
+- **Everything about `:ConformanceTests:`** (framework, layout, packages, execution command, mocking policy, environment prereqs — every fact) is authored into `***test reqs***` via `add-test-requirement`. The conformance-test generator reads only that section
+- A topic that mixes both kinds of facts is split: unit facts go to impl reqs, conformance facts go to test reqs. They never share a bullet
+
 Walk through these topics in order, running ask → author → review for each. Skip a topic only if it genuinely doesn't apply, and say so explicitly:
 
-1. **Testing framework** — e.g. pytest, Jest, JUnit, Go's `testing` package. If the user has no preference, suggest one that fits the language chosen in Phase 2.
-   - Author: a framework requirement in `***test reqs***` at the appropriate scope (template if shared, otherwise on the module). Generate `run_unittests` (and any framework config files it needs, e.g. `pytest.ini`, `jest.config.js`) via `implement-unit-testing-script`. Add the `unittests-script:` entry to the relevant `config.yaml`(s), creating each file if it doesn't exist yet.
+1. **Unit-test framework** — e.g. pytest, Jest, JUnit, Go's `testing` package. If the user has no preference, suggest one that fits the language chosen in Phase 2.
+   - Author: a `:UnitTests:` framework requirement in `***implementation reqs***` at the appropriate scope (template if shared, otherwise on the module) — e.g. "`:UnitTests:` should use pytest" plus "`:UnitTests:` are run via `pytest tests/`". Generate `run_unittests` (and any framework config files it needs, e.g. `pytest.ini`, `jest.config.js`) via `implement-unit-testing-script`. Add the `unittests-script:` entry to the relevant `config.yaml`(s), creating each file if it doesn't exist yet.
    - Review: the framework req, the generated script paths, and the new `config.yaml` entry.
-2. **Test types in scope** — unit tests and integration tests. Which combinations does the user want? How do tests map to the architectural layers established in Phase 2 (e.g. one test module per service, repository tests with an in-memory store, etc.)?
-   - Author: a test-types/scope requirement in `***test reqs***` describing which types are in scope and how they map to the architecture.
+2. **Unit-test types and architecture mapping** — unit tests and integration tests. Which combinations does the user want? How do tests map to the architectural layers established in Phase 2 (e.g. one test module per service, repository tests with an in-memory store, etc.)?
+   - Author: a `:UnitTests:` scope / architecture requirement in `***implementation reqs***` describing which types are in scope and how they map to the architecture — phrased in terms of `:UnitTests:` so the partition is visible.
    - Review: that requirement.
 3. **Conformance testing** — explicitly ask whether conformance/end-to-end tests should be part of the project. Conformance testing drives whether `run_conformance_tests` is generated and whether `***acceptance tests***` are authored. If the user is unsure, briefly explain the tradeoff (extra scripts + per-spec acceptance tests vs. lighter setup) and let them choose.
    - Author (if yes):
@@ -203,11 +209,11 @@ Walk through these topics in order, running ask → author → review for each. 
    - Author (if yes): `prepare_environment` via `implement-prepare-environment-script`; add the `prepare-environment-script:` entry to the relevant `config.yaml`(s); if the script's responsibilities are non-trivial and worth pinning in the spec, also add a brief `***test reqs***` entry describing what `prepare_environment` is responsible for.
    - Author (if no): record the decision; skip the script and the config entry.
    - Review: the script (if any), the new config entry (if any), and the test req (if any).
-5. **Test layout & conventions** — directory layout for tests, naming conventions, fixtures/mocks strategy, anything that constrains the *shape* of test code beyond what topics 1 and 2 already established.
-   - Author: layout/convention requirements in `***test reqs***` at the appropriate scope.
+5. **Test layout & conventions** — directory layout, naming conventions, fixtures / mocks strategy, anything that constrains the *shape* of test code beyond what topics 1–4 already established. Ask about both kinds of tests where applicable; keep their facts in separate reqs in separate sections.
+   - Author: `:UnitTests:` layout / convention requirements in `***implementation reqs***`; `:ConformanceTests:` layout / convention requirements in `***test reqs***` (only when conformance is enabled). Phrase each one with the predefined concept it shapes so the partition is visible.
    - Review: each requirement snippet.
-6. **Execution & tooling** — how tests are run (commands, runners, options), coverage targets, CI integration, any environment setup tests rely on beyond `prepare_environment`. If the agreed execution command or options differ from what the script generated in topic 1 (or 3, or 4) currently uses, update the affected script(s) now.
-   - Author: execution requirements in `***test reqs***`; update any affected scripts under `test_scripts/`.
+6. **Execution & tooling** — how tests are run (commands, runners, options), coverage targets, CI integration, any environment setup tests rely on beyond `prepare_environment`. Split by concept the same way as topic 5. If the agreed execution command or options differ from what the script generated in topic 1 (or 3, or 4) currently uses, update the affected script(s) now.
+   - Author: `:UnitTests:` execution requirements in `***implementation reqs***`; `:ConformanceTests:` execution requirements in `***test reqs***`. Update any affected scripts under `test_scripts/`.
    - Review: each requirement snippet and any modified script.
 7. **Other testing constraints** — performance/load expectations, deterministic seeds, network isolation, secrets handling, anything stack-wide that constrains *how* tests are written and that hasn't already been covered.
    - Author: each constraint as its own requirement at the appropriate scope.

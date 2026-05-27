@@ -12,6 +12,12 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 - Observable behavior (endpoints, business rules, user-facing features) belongs in `***functional specs***`
 - Internal structure, technology choices, and coding guidance belong here
 
+## `:UnitTests:` lives here (hard rule)
+- **Everything** about `:UnitTests:` goes in `***implementation reqs***` — paths, approach, packages, framework, conventions, fixtures, mocking policy, file layout, naming, lint / static-analysis gates
+- `:UnitTests:` are part of the generated codebase (they sit inside `plain_modules/<module>/` alongside the implementation), so requirements that shape them are implementation reqs by definition
+- The unit-test generator reads **only** `***implementation reqs***` — anything about `:UnitTests:` placed elsewhere (e.g. `***test reqs***`) is silently ignored
+- Author each `:UnitTests:` requirement via `add-implementation-requirement` and phrase it in terms of `:UnitTests:` so the partition stays visible at a glance
+
 ## What belongs here
 - Technology choices: language, framework, runtime version
 - Architectural constraints: patterns, layering, dependency rules

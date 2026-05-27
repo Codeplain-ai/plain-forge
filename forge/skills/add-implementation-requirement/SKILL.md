@@ -38,7 +38,15 @@ Implementation reqs are free-form instructions that steer code generation. Commo
 
 - **Behavior and features** — those go in `***functional specs***`
 - **Concept definitions** — those go in `***definitions***`
-- **Test instructions** — those go in `***test reqs***`
+- **Conformance-test instructions** — those go in `***test reqs***`. Note: **unit-test instructions belong HERE**, not in `***test reqs***` — see *Unit-test guidance belongs here* below
+
+## Unit-test guidance belongs here
+
+**Everything about `:UnitTests:` goes in `***implementation reqs***`** — paths, approach, packages, framework (JUnit / pytest / Jest / Go's `testing` / …), conventions, fixtures, mocking policy, file layout, naming, lint / static-analysis gates. Unit tests are part of the generated codebase, so requirements that shape them are implementation reqs by definition.
+
+- The unit-test generator reads **only** `***implementation reqs***`; anything about `:UnitTests:` placed in `***test reqs***` is silently ignored
+- Phrase each `:UnitTests:` requirement in terms of the predefined `:UnitTests:` concept so the partition stays visible at a glance
+- `***test reqs***` is exclusively for `:ConformanceTests:` — see [`add-test-requirement`](../add-test-requirement/SKILL.md)
 
 ## Key Principle: HOW vs WHAT
 

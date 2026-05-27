@@ -58,15 +58,17 @@ Use **AskUserQuestion** for one tight batch covering:
 
 Create the import module with `create-import-module`. It must contain:
 
-- `***implementation reqs***` — the base stack as requirements:
+- `***implementation reqs***` — the base stack as requirements **and everything about `:UnitTests:`**:
   - Programming language and version.
   - Primary framework (if any).
   - Dependency / package manager.
   - Project kind as a constraint (e.g. ":Implementation: should be a REST API service.").
+  - `:UnitTests:` framework (pytest / Jest / JUnit / Go's `testing` / …) and the command used to run them — phrased in terms of `:UnitTests:` so the partition is explicit.
   - Anything else the user added in the free-form catch-all.
-- `***test reqs***` — the base testing rules:
-  - Unit testing framework and the command used to run it.
-  - ":ConformanceTests: must be implemented and executed - do not skip tests." — only if conformance testing is enabled. Add framework + command for conformance tests too.
+- `***test reqs***` — the base **conformance**-testing rules (only added if conformance testing is enabled):
+  - ":ConformanceTests: must be implemented and executed - do not skip tests."
+  - The `:ConformanceTests:` framework and the command used to run them.
+  - **Do NOT** put unit-test framework / command here — that lives in `***implementation reqs***` above.
 
 Do **not** add a `***definitions***` section to `template/base.plain`. This skill does not author any concepts. Use only the predefined concepts (`:Implementation:`, `:ConformanceTests:`) in the reqs — no project-specific concepts like `:AppName:` or `:App:`. Do not declare `required_concepts` either.
 

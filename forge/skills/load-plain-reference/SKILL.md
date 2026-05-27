@@ -1,7 +1,7 @@
 ---
 name: load-plain-reference
 description: >-
-  Loads the full ***plain language reference into context: syntax, section types
+  Loads the full ***plain language reference into context (PLAIN_REFERENCE.md): syntax, section types
   (definitions, implementation reqs, test reqs, functional specs, acceptance tests),
   concept notation, frontmatter (import/requires/required_concepts/exported_concepts),
   templates, linked resources, module model, and authoring best practices. Use whenever

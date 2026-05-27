@@ -51,6 +51,39 @@ Documentation lies — it goes stale, omits undocumented fields, describes a dif
 - **Only `GET` / `HEAD` / `OPTIONS` on the cross-check.** Mutating calls (`POST`, `PATCH`, `PUT`, `DELETE`) require explicit per-call user confirmation and must target a sandbox account.
 - **Credentials are never written to `.plain` files or summaries.** Reference them by env-var name only.
 
+## `:ConformanceTests:` always run against the live integration (hard rule)
+
+Integrations exist to talk to a real third-party (or internal) API. Their `:ConformanceTests:` therefore **always run against the live integration** — no VCR cassettes, no recorded fixtures, no `nock` / `WireMock` / `MSW` mocks for the calls under test. A "green" conformance run that never touched the provider proves nothing about the integration.
+
+- The integration's `:ConformanceTests:` **must** make real network calls to the provider (typically a sandbox / staging environment, occasionally production for read-only paths). Fixtures under `resources/fixtures/` exist for unit tests and for grounding the schemas in the OpenAPI file — they are **not** a substitute for live conformance
+- The only exceptions are paths that **cannot** be exercised live safely:
+  - **Rate-limit (429) tests** — must not exhaust the live quota; use a local mock for that specific endpoint
+  - **Deliberately destructive failure modes** (forced 5xx) the provider doesn't let you trigger — same; mock the specific endpoint
+  Document each exception explicitly in `***test reqs***`; everything else is live by default
+
+### Secrets come from the environment
+
+Live conformance needs credentials. The integration spec must pin every credential as **an env var name, never a literal value**, and the conformance script must read those env vars at runtime:
+
+- **Author the env-var names in `***test reqs***`** (using `:ConformanceTests:`) and again in the auth concept. Examples: `STRIPE_API_KEY`, `GITHUB_TOKEN`, `SALESFORCE_CLIENT_ID` + `SALESFORCE_CLIENT_SECRET`. Use names that match what the provider's own docs use, so a user copying values from the provider console doesn't need to translate
+- **The user supplies the values out-of-band**, either:
+  - in a `.env` file at the project root (`.env` is gitignored; the project ships `.env.example` with the names but no values), or
+  - exported in the shell that invokes the test scripts (CI uses the same names from its secret store)
+- **`run_conformance_tests_<lang>` reads the env vars at runtime.** If a required var is missing, the script must fail fast with `Error: <NAME> is required for :ConformanceTests:` and exit `69` (per the testing-script exit-code conventions). Never default to a placeholder, never use a value baked into the script
+- **The script may optionally load a `.env` file** before running the suite — typical pattern is to look for `.env` in the project root and `source` / `dotenv -e` it if present, but never fail when it's absent (since CI provides the vars directly via the shell). If a `.env` loader is used, the script must verify each required var is set **after** loading, not before
+- **The conformance suite reads the same env-var names** the integration's runtime reads — so a credential that works at runtime is the same credential that exercises the suite
+- **Credentials never appear in `.plain` files, commits, summaries, logs, or fixtures.** The cross-check (see *Live API must be cross-checked*) already requires redacting credentials from saved fixtures; the same rule applies to conformance logs
+
+The `.plain` spec should make this discoverable. A minimal `***test reqs***` block for an integration looks like:
+
+```plain
+- :ConformanceTests: run against the live :ProviderName: sandbox — no mocking of provider calls.
+  - Credentials are read from the environment, never from a file checked into the repo.
+  - The conformance script reads `<PROVIDER>_API_KEY` (and any additional secrets) from the shell or from a `.env` file at the project root.
+  - The script must verify every required env var is set after the optional `.env` load and fail fast with a clear error if any is missing.
+  - The 429 (rate-limit) and forced-5xx paths use a local mock for that specific endpoint; every other path is live.
+```
+
 ## Embedded vs standalone — pick the shape early
 
 Every integration is either **embedded** (lives as a library/module inside an existing host codebase) or **standalone** (a service, daemon, CLI, scheduled job, or container). The choice is captured as a concept (`integration-shape: embedded | standalone`) so later specs can reference it.
