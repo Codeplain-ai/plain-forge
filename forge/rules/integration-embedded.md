@@ -16,6 +16,29 @@ Embedded means: the host codebase already exists, has its own language / framewo
 - If a Phase 3 (`forge-plain`) tech-stack question seems to push back on a host rule, treat the host as ground truth and rewrite the question
 - Implementation reqs added in Phase 3 are **transcribed** from the host stack verbatim — host language and exact version, host framework + version, dependency manager and manifest path, packaging layout, host conventions the contract must follow, and every host-package version the contract pins
 
+## Project layout — the integration lives under `plain/` at the host root
+
+The embedded integration's `.plain` specs (and the rest of the ***plain project — `template/`, `resources/`, `test_scripts/`, `config.yaml`, generated `plain_modules/`) live in a single top-level `plain/` folder at the host repository root, alongside the host's own source tree:
+
+```
+<host repo>/
+├── docs/
+├── plain/          # ← the embedded ***plain integration lives here
+│   ├── <module>.plain
+│   ├── template/
+│   ├── resources/
+│   ├── test_scripts/
+│   ├── plain_modules/     # generated; gitignored
+│   └── config.yaml
+└── src/            # host source tree (Java, Python, etc.)
+```
+
+This keeps the integration self-contained in one directory the user can `cd` into to render, while leaving the host's own source layout untouched.
+
+- If the host **already** has a `plain/` directory, adopt it verbatim — see step 1 of *Discover before you ask* below
+- If the host does **not** yet have one, create `plain/` at the repo root; do not invent a different name (`specs/`, `plain_specs/`, …)
+- The three test scripts still `cd` into `$HOST_CODEBASE_ROOT` (the host repo root) to compile and run tests against the host project; the `plain/` folder is the integration's **authoring** root, not its **runtime** root
+
 ## Discover before you ask
 
 Run host discovery **before** the first Phase 1 question. Treat the results as ground truth for everything that follows.
@@ -91,47 +114,25 @@ The renderer reads the directives from the spec and the shapes from the linked s
 - If two reqs are in tension (one from the host, one newly authored), the host wins; rewrite or drop the newly authored req
 - Do not author a req that re-declares something the host already enforces — that's a maintenance burden with no benefit
 
-## Test-script wiring — merge `plain_modules` into the host, run tests there
+## Test-script wiring — copy into the host, run tests there
 
-Embedded integrations are tested **inside a working copy of the host codebase** with the generated `plain_modules/` overlaid on top. Both `run_unittests_<lang>` and `run_conformance_tests_<lang>` follow this pattern — neither uses `PYTHONPATH` / `NODE_PATH` tricks to stitch two trees together at import time. The host *is* the runtime environment; the generated module is dropped into it and exercised as if it had always lived there.
+Embedded integrations are tested **inside the host codebase itself**. The prepare and unit-test scripts copy the renderer's output (`$1`, i.e. `plain_modules/<module>/`) into the host's source tree at the module's package path, then compile / test the host project in place. Only the conformance script uses a `.tmp/` scratch folder, because the conformance suite is a separate project that consumes the host build as a dependency.
 
 This matters because the integration's generated code references host symbols by their full import path (e.g. `from host_project.integrations.base import IntegrationContract`). Those imports only resolve cleanly when the test process is rooted in the host's package layout — anything else creates path edge cases that bite later in conformance failures.
 
-### The merge step (used by both `prepare_environment` and `run_unittests`)
+See [`integration-embedded-testing.md`](integration-embedded-testing.md) for the full per-script contract (arg validation, exit codes, idempotency, output parsing, pass criteria, cross-cutting rules). The summary that belongs in *this* file:
 
-Both scripts stage their own working copy under `.tmp/<lang>_<arg>/` per the shared testing-script rules (input folders are read-only). Inside that working folder:
-
-1. **Copy the host codebase into the working folder.** Use a recursive copy (`rsync -a --delete`, `cp -R`, or `robocopy`) so each test run starts from a clean, identical host tree
-2. **Overlay `plain_modules/<module>/` into the host's package tree at the target package path** recorded in the `host-codebase` concept (e.g. `plain_modules/integrations/<provider>/` → `<host_copy>/host_project/integrations/<provider>/`). Use a copy that overwrites — the generated module replaces any same-named files in the host copy
-3. **Install dependencies inside the merged tree.** The host's own manifest (`pyproject.toml` / `package.json` / `go.mod` / …) drives the install. The integration's extra dependencies are layered on top by either (a) the renderer having written them into the host's manifest already, or (b) the script installing them explicitly after the host install
-4. **Run the test command from inside the merged tree** — `cwd` is `<host_copy>`, and the test runner discovers tests using the host's normal layout
-
-### Per-script responsibilities
-
-- **`prepare_environment_<lang>`** performs the full merge once per render (host copy + plain_modules overlay + dependency install + any build artifacts) into `.tmp/<lang>_<arg>/`. The N subsequent `run_conformance_tests_<lang>` invocations attach to this populated folder (activate-only variant — see the shared testing-script rules)
-- **`run_unittests_<lang>`** performs its **own** merge into its **own** `.tmp/<lang>_<arg>/` working folder — it does not share `prepare`'s folder, and it does not depend on `prepare` having run. The host copy + overlay + install steps are duplicated inside the unit-test script for self-containedness
-- **`run_conformance_tests_<lang>`** does **not** re-merge. It `cd`s into the working folder that `prepare_environment` populated and runs the conformance command against the merged tree
-
-### Language-specific merge primitives
-
-| Language | Host copy | Overlay | Dependency install | Test invocation (inside merged tree) |
-|----------|-----------|---------|--------------------|--------------------------------------|
-| Python | `rsync -a <host>/ .tmp/python_<arg>/` | `rsync -a plain_modules/<module>/ .tmp/python_<arg>/<host_pkg_path>/` | `cd .tmp/python_<arg> && pip install -e .` (then integration extras) | `cd .tmp/python_<arg> && pytest …` |
-| Node.js | `rsync -a <host>/ .tmp/node_<arg>/` | `rsync -a plain_modules/<module>/ .tmp/node_<arg>/<host_pkg_path>/` | `cd .tmp/node_<arg> && npm ci` (then integration extras) | `cd .tmp/node_<arg> && npm test …` |
-| Go | `rsync -a <host>/ .tmp/go_<arg>/` | `rsync -a plain_modules/<module>/ .tmp/go_<arg>/<host_pkg_path>/` | `cd .tmp/go_<arg> && go mod tidy` | `cd .tmp/go_<arg> && go test ./…` |
-| Java / Kotlin | `rsync -a <host>/ .tmp/java_<arg>/` | `rsync -a plain_modules/<module>/ .tmp/java_<arg>/<host_pkg_path>/` | `cd .tmp/java_<arg> && mvn -q -DskipTests install` | `cd .tmp/java_<arg> && mvn test …` |
-| Rust | `rsync -a <host>/ .tmp/rust_<arg>/` | `rsync -a plain_modules/<module>/ .tmp/rust_<arg>/<host_pkg_path>/` | `cd .tmp/rust_<arg> && cargo fetch` | `cd .tmp/rust_<arg> && cargo test …` |
-
-Adjust the language-specific install / test commands to whatever the host's manifest actually uses (Poetry instead of pip, pnpm instead of npm, Gradle instead of Maven, …). The merge primitive itself does not change.
+- **`prepare_environment_<lang>`** copies `$1` into the host's source tree at the module's package path, cleans the host's build-output directory, then runs the host's install / build (e.g. `mvn clean install -DskipTests`). The conformance suite later resolves the integration from the host's local dependency cache
+- **`run_unittests_<lang>`** repeats the same copy into the host (self-contained — must work without `prepare_environment` having run first), then runs the module's unit tests + lint scoped to the module's package
+- **`run_conformance_tests_<lang>`** copies `$2` (the conformance-tests folder) into `.tmp/<lang>_conformance/`, `cd`s in, builds the conformance project, and runs it against the build that `prepare_environment` already installed into the host
 
 ### Invariants the scripts must enforce
 
 - **Host root is a parameter, not a literal.** No script may hardcode an absolute host path. Read the host root from an env var (e.g. `HOST_CODEBASE_ROOT`) with a sensible default matching the user's layout (e.g. `../host_project`). Surface the env var in each script's `--help` / usage banner. Capture this env var in the integration's configuration concept so it has exactly one declared name across specs, scripts, and runtime
-- **Target package path is read from the `host-codebase` concept** — never inferred from a heuristic. The renderer writes that path into the generated module's location too, so the overlay destination is unambiguous
-- **The host source tree is read-only.** The merge writes into `.tmp/<lang>_<arg>/`; the user's `<host>` checkout is never modified. If a script appears to need to write into `<host>`, it is buggy — the working copy under `.tmp/` is what's mutable
-- **Each merge is idempotent.** Re-running the script (or two scripts back-to-back) yields the same merged tree
-- **No new `config.yaml` key is needed** — the merge happens inside the scripts. The renderer reads the `host-codebase` concept (for the package path) and the configuration concept (for `HOST_CODEBASE_ROOT`) to wire the script bodies correctly
-- **`***test reqs***` must document the merge contract** — name the merge primitive (`rsync` / `cp -R` / `robocopy`), the env var the host root is read from, the target package path inside the host where `plain_modules/<module>/` is overlaid, and the language-appropriate install + test commands. The renderer reads this req and emits the right script bodies
+- **Target package path is read from the `host-codebase` concept** — never inferred from a heuristic. The renderer writes that path into the generated module's location too, so the copy destination is unambiguous
+- **Destructive ops are scoped to the module's own package path** under the host's source tree. `rm -rf` never touches the host's `src/main/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root. Only the module-specific package directories are wiped
+- **Each script is idempotent.** Re-running the same script with the same `$1` yields the same result
+- **`***test reqs***` must document the script contract** — name the env var the host root is read from, the target package path inside the host where `$1` is copied, and the language-appropriate install + test commands. The renderer reads this req and emits the right script bodies
 
 ## Embedded-specific completion checklist
 
@@ -143,13 +144,13 @@ Before declaring an embedded integration done, in addition to the shared checkli
 - [ ] Every host file the integration touches is linked at its **original host-relative path** — no host file has been copied into `resources/host/` or anywhere else, and no host file contents are inlined in any spec
 - [ ] `forge-plain` Phase 2's tech-stack decisions are transcribed verbatim from the host (no independent stack choices)
 - [ ] Host-package version pins are copied into `***implementation reqs***`
-- [ ] `prepare_environment` copies the host into `.tmp/<lang>_<arg>/`, overlays `plain_modules/<module>/` at the target package path, installs the merged tree's dependencies, and is the working folder conformance attaches to
-- [ ] `run_unittests` runs the same host-copy + overlay + install sequence into its **own** `.tmp/<lang>_<arg>/` and invokes the test runner from inside the merged tree
-- [ ] `run_conformance_tests` `cd`s into `prepare_environment`'s populated working folder and runs the conformance command from there — it does not re-merge and does not use import-path stitching
+- [ ] `prepare_environment` copies `$1` into the host's source tree at the module's package path, cleans the host's build-output directory, and runs the host's install / build so the conformance suite can resolve the integration from the local dependency cache
+- [ ] `run_unittests` runs the same copy-into-host sequence (self-contained — does not depend on `prepare_environment` having run) and invokes the host's test runner scoped to the module's package
+- [ ] `run_conformance_tests` copies `$2` into `.tmp/<lang>_conformance/`, `cd`s in, builds the conformance project, and runs it against the host build that `prepare_environment` already installed
 - [ ] Host codebase root is read from a named env var (default value documented in each script's usage) — never hardcoded
-- [ ] Target package path (where `plain_modules/<module>/` is overlaid inside the host copy) is read from the `host-codebase` concept — never inferred
-- [ ] The host source tree itself is never written to — every script mutation lands in `.tmp/<lang>_<arg>/`
-- [ ] A `***test reqs***` entry documents the merge contract (primitive used, env var name, target package path inside the host, install + test commands)
+- [ ] Target package path inside the host where `$1` is copied is read from the `host-codebase` concept — never inferred
+- [ ] Every `rm -rf` in the scripts is scoped to the module's own package directory under the host's source tree — never targets the host's `src/main/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root
+- [ ] A `***test reqs***` entry documents the script contract (env var name, target package path inside the host, install + test commands)
 
 ## Anti-patterns specific to embedded integrations
 
@@ -160,6 +161,6 @@ Before declaring an embedded integration done, in addition to the shared checkli
 - **Hardcoding the host codebase path in any spec or script.** Read it from the env var declared in the configuration concept
 - **Asking the user to design the integration's tech stack.** Read it from the host's manifest files
 - **Authoring an integration spec that contradicts an existing integration in the same host** without first surfacing the conflict and getting explicit user confirmation
-- **Wiring tests with `PYTHONPATH` / `NODE_PATH` / Go `replace` directives instead of physically merging `plain_modules/<module>/` into a host copy.** The import-stitching approach is forbidden — every embedded test run starts by overlaying the generated module onto a working copy of the host tree
-- **Writing into the user's `<host>` checkout from any test script.** The host source is read-only; the merged tree lives in `.tmp/<lang>_<arg>/`
-- **Sharing one `.tmp/` working folder between `run_unittests` and `run_conformance_tests`.** Each script stages its own copy; only `run_conformance_tests` attaches to the folder `prepare_environment` populated
+- **Wiring tests with `PYTHONPATH` / `NODE_PATH` / Go `replace` directives instead of physically copying `$1` into the host's package tree.** The import-stitching approach is forbidden — every prepare / unit test starts by copying the generated module into the host's source tree at the module's package path
+- **Letting an `rm -rf` in a test script reach the host's `src/main/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root.** Destructive ops are scoped strictly to the module's own package directory. A wrong package path in the script silently does nothing and copies files in the wrong place — both produce a green build with stale code
+- **Running conformance tests against a stale local dependency cache.** `prepare_environment` must run before conformance for the conformance project to resolve the integration from `~/.m2` (or the language equivalent). If conformance gets invoked without a fresh prepare, dependent on which build last hit the cache, the suite tests the wrong code
