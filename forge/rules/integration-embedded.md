@@ -38,12 +38,27 @@ Run host discovery **before** the first Phase 1 question. Treat the results as g
 - The renderer is allowed to redefine **only** symbols the host does not provide and the contract schema does not capture
 - Naming the symbol by FQN is not optional decoration — it tells the renderer where the type comes from, which prevents a duplicate definition under `plain_modules/`
 
-## Add host files as linked resources, never restate them
+## Link host files at their original path — never copy them into `resources/`
 
-- Every host file the integration touches (base classes, configuration modules, registries, exception classes, lifecycle hooks) is added under `resources/host/` via the `add-resource` skill and referenced from the relevant spec using `***linked resource***` syntax
+The integration's `.plain` module lives **inside the host codebase** (per the "adopt the host's `.plain` setup verbatim" step). That means host source files are already reachable as linked resources via their host-relative paths. The integration spec references them **in place**; it never duplicates them under `resources/host/`.
+
+- Every host file the integration touches (base classes, configuration modules, registries, exception classes, lifecycle hooks) is referenced from the relevant spec using `***linked resource***` syntax with the **path as it exists in the host codebase** — e.g. `[base.py](host_project/integrations/base.py)` if the `.plain` module sits next to `host_project/`
+- **Do NOT copy host files into `resources/host/`.** A copy creates a second source of truth that drifts the moment the host file is edited; the rendered code will then disagree with whatever the host actually ships
+- **Do NOT add host files via the `add-resource` skill's default copy behavior** when that behavior would duplicate the file — point at the existing host path directly
 - **Never inline a host file's contents** into a spec
-- **Never describe a host symbol's shape from memory** — the renderer reads the linked file's bytes and that is the source of truth
-- This obeys the broader [`linked-resources.md`](linked-resources.md) rules — a directory is not a valid link, a URL is not a valid link, a binary is not a valid link
+- **Never describe a host symbol's shape from memory** — the renderer reads the linked file's bytes at its host path and that is the source of truth
+- This still obeys the broader [`linked-resources.md`](linked-resources.md) rules: a directory is not a valid link, a URL is not a valid link, a binary is not a valid link. Only the *location* changes — host files live where the host put them, not under `resources/`
+
+### What still belongs under `resources/`
+
+This rule applies to **host source code only**. Other artifacts still live under `resources/` exactly like in a non-embedded project:
+
+- **Contract schemas authored by the integration** — `resources/contract/<entry-point>.schema.json`
+- **Configuration schema** — `resources/config.schema.json`
+- **Captured probe responses** (from the live-API cross-check) — `resources/fixtures/<endpoint>.<case>.json`
+- **Static lookup tables** the integration owns — `resources/error-map.yaml`, `resources/retry-policy.yaml`, etc.
+
+The rule of thumb: if the host wrote it and ships it, link it where the host put it. If the integration is authoring it for the first time, it goes under `resources/`.
 
 ## The contract spec declares inheritance, not duplication
 
@@ -125,7 +140,7 @@ Before declaring an embedded integration done, in addition to the shared checkli
 - [ ] `host-codebase` concept records host root path, host language + version, host dependency manager + manifest, target package path, host base class import path, target generated-class FQN, and the host conventions the contract follows
 - [ ] Contract spec carries renderer directives (target language, target file path, target class name, host base class to subclass, host-package pins) and **links** to the contract schema; no class body is inlined
 - [ ] Every host symbol referenced in any spec uses its fully qualified import path and is tagged "imported from the host codebase; do not redefine"
-- [ ] Every host file the integration touches has been added under `resources/host/` as a linked resource — no host file contents are inlined in any spec
+- [ ] Every host file the integration touches is linked at its **original host-relative path** — no host file has been copied into `resources/host/` or anywhere else, and no host file contents are inlined in any spec
 - [ ] `forge-plain` Phase 2's tech-stack decisions are transcribed verbatim from the host (no independent stack choices)
 - [ ] Host-package version pins are copied into `***implementation reqs***`
 - [ ] `prepare_environment` copies the host into `.tmp/<lang>_<arg>/`, overlays `plain_modules/<module>/` at the target package path, installs the merged tree's dependencies, and is the working folder conformance attaches to
@@ -140,7 +155,8 @@ Before declaring an embedded integration done, in addition to the shared checkli
 
 - **Choosing a different language, framework, or dependency manager than the host.** The host stack is inherited; cross-stack `requires` chains are forbidden by [`requires-modules.md`](requires-modules.md)
 - **Redefining a host class under `plain_modules/`.** Reference the host symbol by FQN; let the renderer import it
-- **Inlining a host base class body into the contract spec.** Add the host file as a linked resource under `resources/host/` and reference it
+- **Inlining a host base class body into the contract spec.** Reference the host file as a linked resource **at its original host-relative path** — do not inline its contents and do not copy it into `resources/`
+- **Copying host source files into `resources/host/` (or anywhere under `resources/`).** That creates a second source of truth that silently drifts from the host. Link the host file in place; the integration `.plain` module already lives inside the host codebase, so the path resolves naturally
 - **Hardcoding the host codebase path in any spec or script.** Read it from the env var declared in the configuration concept
 - **Asking the user to design the integration's tech stack.** Read it from the host's manifest files
 - **Authoring an integration spec that contradicts an existing integration in the same host** without first surfacing the conflict and getting explicit user confirmation

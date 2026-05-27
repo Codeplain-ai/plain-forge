@@ -59,6 +59,28 @@ Test reqs are bullet points in the `***test reqs***` section:
 
 Reference predefined concepts like `:ConformanceTests:` and any defined `:Concepts:` where they add clarity.
 
+## Line syntax (hard rule)
+
+**Every line inside `***test reqs***` must be its own list item starting with `- `.** ***plain has no concept of bare continuation lines — indented prose without a leading `- ` is **invalid syntax** and the renderer will reject it.
+
+- Hard limit: 120 characters per line. If a sentence is too long, **split it at a natural clause boundary into nested `- ` bullets** — never wrap onto an unprefixed line.
+- Nested clarifications are also `- ` items, indented under the parent. The indentation alone is not enough; the leading `- ` is required.
+
+BAD — bare continuation lines (invalid ***plain syntax, will not render):
+
+```plain
+- :ConformanceTests: must mock all external HTTP calls so that the
+  test suite remains hermetic and does not depend on network access.
+```
+
+GOOD — every line starts with `- `:
+
+```plain
+- :ConformanceTests: must mock all external HTTP calls.
+  - The test suite must remain hermetic.
+  - Tests must not depend on network access.
+```
+
 ## Validation Checklist
 
 - [ ] Describes conformance testing concerns, not unit tests or behavior

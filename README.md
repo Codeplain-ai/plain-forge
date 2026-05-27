@@ -4,18 +4,39 @@
 
 # plain-forge
 
-A conversational spec-writing tool that runs in any AI coding agent (Claude Code, Codex, OpenCode, and more) and is built on the [***plain](https://plainlang.org) specification language. Describe what you want to build in plain English, and plain-forge guides you through a structured interview to produce complete `.plain` spec files — which then generate production-ready code via the [Codeplain](https://codeplain.ai) renderer.
+A toolkit for working with [***plain](https://plainlang.org) projects from inside your AI coding agent of choice — Claude Code, Codex, ForgeCode, OpenCode, and any other agent that reads from a standard skills directory. plain-forge ships skills, rules, and docs that turn a conversation into complete `.plain` spec files, then keeps maintaining them across the lifetime of the project. The specs are rendered into production-ready code by the [codeplain](https://codeplain.ai) renderer.
 
-## How It Works
+## What plain-forge does
 
-The main entry point is `forge-plain`. It turns a conversation into ***plain specs through four phases:
+plain-forge is organized around four kinds of work, each with its own entry-point skill (and a long tail of supporting skills behind it).
 
-1. **What are we building?** — Walk through the product: description, users, scope, core entities, key features, user flows, business rules, and (if applicable) UI behavior. Produces the `***definitions***` and `***functional specs***` for each module.
-2. **What technologies should it use?** — Pick the stack and architecture: language, frameworks, data storage, external services, project structure, and any other stack-wide constraints. Produces the `***implementation reqs***`.
-3. **How should testing be done?** — Decide the testing strategy: framework, test types in scope, conformance/acceptance tests, environment-preparation scripts, layout, and execution. Produces the `***test reqs***`, any `***acceptance tests***`, the runnable scripts under `test_scripts/`, and the `config.yaml`(s) wiring them in. plain-forge then probes your machine to confirm everything those scripts need is actually installed.
-4. **Validate and hand off** — plain-forge identifies the final module in the dependency chain and runs `codeplain <module>.plain --dry-run` itself to catch any static errors (syntax, undefined concepts, broken `import`/`requires` chains, complexity violations, conflicts). It fixes the `.plain` files until the dry-run passes, then hands you the exact `codeplain <module>.plain` command (plus any test scripts) so the real render starts from a clean spec.
+### 1. Bootstrap a new project
 
-Each phase is **incremental**, not a single long questionnaire. plain-forge walks one topic at a time, runs an **ask → author → review** loop on every topic — structured questions, immediate edits to the `.plain` files (and `test_scripts/` / `config.yaml` in Phase 3), then snippet-by-snippet confirmation — and only moves on once every flagged snippet is explicitly approved.
+Pick whichever entry point matches how much upfront design you want:
+
+- **`forge-plain`** — full end-to-end interview. One question at a time, immediate writes to disk, covers product → tech stack → testing → validation in four phases. Produces a complete `.plain` project with `config.yaml`, test scripts, and a successful `codeplain --dry-run` before handing off.
+- **`init-plain-project`** — lightweight scaffold. Asks only about the base technology, project kind, and whether conformance testing is on; emits a template module, a stub top-level module, the testing scripts, and a `config.yaml`. No interview, no specs — pair it with `add-feature` to grow the project feature by feature.
+
+### 2. Grow an existing project
+
+- **`add-feature`** — takes a feature request in plain English and runs the same one-question-at-a-time loop that `forge-plain` uses, scoped to a single feature against an existing `.plain` file.
+- **Per-section authoring skills** — `add-functional-spec`, `add-functional-specs`, `add-implementation-requirement`, `add-test-requirement`, `add-concept`, `add-acceptance-test`, `add-resource`, `add-template`. Each enforces the relevant ***plain syntax rules (concept uniqueness, complexity limits, line-length, linked-resource constraints, …) so hand-authoring doesn't drift from the language.
+- **Module-management skills** — `create-import-module`, `create-requires-module`, `refactor-module`, `consolidate-concepts` for restructuring as the project grows.
+
+### 3. Validate and maintain
+
+- **`plain-healthcheck`** — the verification gate. Inventories every `.plain` module, validates every `config.yaml`, and dry-runs every top module with the right config. Returns `PASS` / `FAIL` with a numbered punch-list when something is broken.
+- **`init-config-file`** — assembles the canonical `config.yaml` per part of a project from the decisions made during interviewing.
+- **`check-plain-env`** — probes the host machine for everything the project needs (language toolchains, external services, system binaries, drivers, `codeplain` itself) and emits a `PASS` / `WARN` / `FAIL` report with OS-specific install commands.
+- **`analyze-func-specs`** / **`analyze-if-func-spec-too-complex`** / **`break-down-func-spec`** / **`resolve-spec-conflict`** — the spec-quality toolchain that runs behind `add-feature` and `forge-plain` but can also be invoked directly when reviewing or refactoring.
+
+### 4. Debug and render
+
+- **`debug-specs`** — when the rendered app misbehaves, this traces the generated code back to the spec that caused it and fixes the spec (never the generated code).
+- **`run-codeplain`** — experimental supervised render. Launches `codeplain` for you, tails the log, watches generated code appear under `plain_modules/`, and detects pathologies (stuck conformance loops, complexity errors, missing concepts, render failures). On approval it stops the renderer, hands off to the right spec-edit skill, and resumes.
+- **`implement-unit-testing-script`** / **`implement-conformance-testing-script`** / **`implement-prepare-environment-script`** — generate the per-language testing scripts that the renderer and you both invoke. New languages can be added by these skills without touching any other part of the project.
+
+Each skill operates on the same one-question-at-a-time, write-immediately, refine-through-follow-ups loop. Specs land on disk after every answer; later answers fix earlier writes in place. There is no batched interview, no "I'll gather context first," and no hand-authored functional specs — every new spec goes through the authoring skills so the complexity and conflict checks actually run.
 
 ## Getting Started
 

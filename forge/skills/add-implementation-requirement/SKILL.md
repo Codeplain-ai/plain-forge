@@ -60,6 +60,30 @@ Implementation reqs are bullet points in the `***implementation reqs***` section
 
 Reference defined `:Concepts:` where they add clarity. Implementation reqs in non-leaf sections apply to all subsections.
 
+## Line syntax (hard rule)
+
+**Every line inside a section must be its own list item starting with `- `.** ***plain has no concept of bare continuation lines — indented prose without a leading `- ` is **invalid syntax** and the renderer will reject it.
+
+- Hard limit: 120 characters per line. If a sentence is too long, **split it at a natural clause boundary into nested `- ` bullets** — never wrap onto an unprefixed line.
+- Nested detail is also a `- ` item, indented under its parent. The indentation alone is not enough; the leading `- ` is required.
+
+BAD — bare continuation lines (invalid ***plain syntax, will not render):
+
+```plain
+- :Implementation: tech stack will be finalized in Phase 2.
+  - Until then, treat this section as a placeholder so the renderer accepts
+    the file. Phase 2 will replace this with language, framework, HTTP
+    client, packaging, and architecture decisions.
+```
+
+GOOD — every line starts with `- `:
+
+```plain
+- :Implementation: tech stack will be finalized in Phase 2.
+  - Until then, treat this section as a placeholder so the renderer accepts the file.
+  - Phase 2 will replace it with language, framework, HTTP client, packaging, and architecture decisions.
+```
+
 ## Encapsulation Warning
 
 `requires` modules only receive functional specs from their dependencies — not implementation reqs. If downstream modules need certain behavior to be visible, that behavior must be expressed in functional specs, not here.
