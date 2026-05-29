@@ -9,12 +9,12 @@ When an integration `.plain` module is **embedded** — meaning the generated co
 
 Embedded means: the host codebase already exists, has its own language / framework / dependency manager / packaging layout, and the integration must conform to all of that without negotiation.
 
-> **For test-script authoring**, also follow [`integration-embedded-testing.md`](integration-embedded-testing.md). It defines the per-script contract (`prepare_environment_<lang>`, `run_unittests_<lang>`, `run_conformance_tests_<lang>`) — staging into the host vs `.tmp/`, arg validation, exit codes, output parsing, the three `***implementation reqs***` entries the spec must declare so the scripts can be generated, and a Java / Maven reference implementation. This file (`integration-embedded.md`) only summarizes the test-script wiring; the testing rule is the source of truth.
+> **For test-script authoring**, also follow [`integration-embedded-testing.md`](integration-embedded-testing.md). It defines the per-script contract (`prepare_environment_<lang>`, `run_unittests_<lang>`, `run_conformance_tests_<lang>`) — staging into the host vs `.tmp/`, arg validation, exit codes, output parsing, the three `***implementation reqs***` entries the spec must declare so the scripts can be generated. This file (`integration-embedded.md`) only summarizes the test-script wiring; the testing rule is the source of truth.
 
 ## The host codebase dictates the tech stack (hard rule)
 
 - Language, framework, dependency manager, packaging layout, coding standards, error model, logging library, and architecture are **inherited** from the host — they are **never chosen** by the integration spec
-- Do not re-ask the user about any of these in any phase — they are facts to be discovered from the host's manifest files (`pyproject.toml`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, …) and source tree
+- Do not re-ask the user about any of these in any phase — they are facts to be discovered from the host's manifest files (`pyproject.toml`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, …) and other integrations.
 - If a Phase 3 (`forge-plain`) tech-stack question seems to push back on a host rule, treat the host as ground truth and rewrite the question
 - Implementation reqs added in Phase 3 are **transcribed** from the host stack verbatim — host language and exact version, host framework + version, dependency manager and manifest path, packaging layout, host conventions the contract must follow, and every host-package version the contract pins
 

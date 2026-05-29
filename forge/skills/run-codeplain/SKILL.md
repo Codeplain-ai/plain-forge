@@ -212,56 +212,7 @@ What to extract from the framework output — stay framework-agnostic, look for 
 - **Stack traces**: which file under the prepared working folder threw, and at which line. Map the file back to `plain_modules/<module>/src/...` to find the code the spec is supposed to be governing.
 - **"No test files found" / "No tests collected"**: the script ran but discovered nothing. Almost always a path/glob mismatch in the staged working folder, not a spec problem. Treat as Pathology F.
 
-Always set the logs to be verbose in `config.yaml` and make sure the following logging_config.yaml exists and is set:
-
-```yaml
-version: 1
-disable_existing_loggers: false
-
-root:
-  level: DEBUG
-
-loggers:
-  codeplain:
-    level: DEBUG
-    propagate: true
-  git:
-    level: DEBUG
-    propagate: true
-  transitions:
-    level: DEBUG
-    propagate: true
-  transitions.extensions.diagrams:
-    level: DEBUG
-    propagate: true
-  anthropic:
-    level: DEBUG
-    propagate: true
-  openai:
-    level: DEBUG
-    propagate: true
-  google:
-    level: DEBUG
-    propagate: true
-  google_genai:
-    level: DEBUG
-    propagate: true
-  httpx:
-    level: DEBUG
-    propagate: true
-  httpcore:
-    level: DEBUG
-    propagate: true
-  urllib3:
-    level: DEBUG
-    propagate: true
-  requests:
-    level: DEBUG
-    propagate: true
-  asyncio:
-    level: DEBUG
-    propagate: true
-```
+Always set the logs to be verbose in `config.yaml`. 
 
 ### 2. Renderer memory under `plain_modules/<module>/.memory/`
 

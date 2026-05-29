@@ -28,7 +28,7 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
 - Write in terms of behavior, concepts, and domain logic
 - Avoid language-specific terminology: generics syntax, framework annotations, language-specific collection types, decorator syntax, base-class keywords, framings like "POJO" or "dataclass"
 - General technical terms that are not language-specific are fine: null values, JSON types, HTTP status codes, REST endpoints, etc.
-- **Naming concrete components is encouraged.** Functional specs can and should refer to `:CsvToJsonConverter:` and its methods `:CsvToJson:` / `:JsonToCsv:` and pin down their inputs, outputs, and error behavior — those names are part of the public contract and survive a language switch. What they must **not** do is bake in how the contract is realized (`@staticmethod`, `class Foo extends Bar`, `List<T>`, etc.)
+- **Naming concrete components is encouraged.** Functional specs can and should refer to concrete domain components, services, or entities (e.g., `:PaymentProcessor:`, `:UserRepository:`, `:DataConverter:`) and their operations (e.g., `:ChargeCard:`, `:FindById:`), pinning down their inputs, outputs, and error behavior. Those names are part of the public contract and survive a language switch. What they must **not** do is bake in how the contract is realized (`@staticmethod`, `class Foo extends Bar`, `List<T>`, `async def`, etc.)
 - **Litmus test:** if the project switched from Python to Java (or vice versa), would the functional spec read correctly with only `***implementation reqs***` updated? If yes, the spec is language-agnostic. If the spec itself would need rewording, the construct belongs in implementation reqs.
 
 ## Disambiguation
