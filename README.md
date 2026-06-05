@@ -81,7 +81,19 @@ Each install writes three subfolders under the chosen directory:
   docs/      # shared reference docs
 ```
 
-Re-running `npx plain-forge install` overwrites the destination silently, so it doubles as the upgrade path — `npx plain-forge@latest install` pulls the newest release every time.
+`install` refuses to run if plain-forge is already present at the target directory — it prints a message pointing you at `update` and exits non-zero. Use `update` (below) to refresh an existing install.
+
+#### Updating an existing install
+
+```bash
+npx plain-forge@latest update
+```
+
+`update` auto-detects every plain-forge install in the current folder and in your home directory (across all agent layouts) and refreshes each one in place — no agent/scope prompts. For each install it compares the version recorded in the manifest against the version you're running: if the package version did not increase, it leaves that install untouched and tells you it's already up to date. Unlike `install`, it also **prunes** files that were removed from the package (e.g. a deleted skill) by consulting a manifest (`<agent-dir>/.plain-forge/manifest.json`) that records exactly which files plain-forge wrote. Your own skills and any third-party skills sharing the same directory are never in that manifest, so they are never touched.
+
+Each deprecated file is confirmed individually before it's deleted — you'll see its path and a `[y/N]` prompt. Denied files stay on disk and remain tracked, so the next `update` re-offers them. Pass `--yes` (or `-y`) to remove all deprecated files without prompting (useful in CI); when there's no interactive terminal and `--yes` is not given, nothing is deleted.
+
+Installs that predate the manifest (anyone who installed before this feature existed) have no manifest to read. `update` still finds them by their skill footprint: if the `forge-plain`, `add-feature`, `debug-specs`, and `load-plain-reference` skills are all present in an agent directory, it's treated as a plain-forge install. Such installs are refreshed without pruning (overwrite-only), and gain a manifest going forward so later updates can prune.
 
 ### Alternative install paths (skills only — no rules or docs)
 

@@ -32,7 +32,8 @@
   ],
   "scripts": {
     "build": "tsx bin/forge-build.ts",
-    "clean": "tsx bin/forge-build.ts --clean"
+    "clean": "tsx bin/forge-build.ts --clean",
+    "test": "node --test \"test/**/*.test.mjs\""
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
