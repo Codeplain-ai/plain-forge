@@ -95,6 +95,27 @@ Each deprecated file is confirmed individually before it's deleted — you'll se
 
 Installs that predate the manifest (anyone who installed before this feature existed) have no manifest to read. `update` still finds them by their skill footprint: if the `forge-plain`, `add-feature`, `debug-specs`, and `load-plain-reference` skills are all present in an agent directory, it's treated as a plain-forge install. Such installs are refreshed without pruning (overwrite-only), and gain a manifest going forward so later updates can prune.
 
+#### Removing an install
+
+```bash
+npx plain-forge uninstall
+```
+
+`uninstall` reads the install manifest (`<agent-dir>/.plain-forge/manifest.json`) and deletes **exactly** the files plain-forge wrote, then the manifest itself, then any directory left empty (including the agent directory). Your own skills and third-party content are never in the manifest, so they are never touched.
+
+By default it removes **every** agent layout in the **project** scope (the current folder). Narrow it with flags:
+
+```bash
+npx plain-forge uninstall --agent claude --scope global
+```
+
+| Flag | Default | Values |
+|------|---------|--------|
+| `--agent` | `*` (all agents) | `claude`, `codex`, `forgecode`, `universal`, or `*` |
+| `--scope` | `project` | `project` (cwd) or `global` (home directory) |
+
+If an install has **no manifest** (e.g. one that predates manifests), `uninstall` cannot tell which files are plain-forge's, so it refuses to delete anything: it prints an error, lists the directories to clean up by hand, and exits non-zero. Refresh such an install with `update` first (which writes a manifest going forward), then `uninstall`.
+
 ## Usage
 
 ### Prerequisites

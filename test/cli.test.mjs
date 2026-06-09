@@ -422,3 +422,87 @@ describe("cli update (integration)", () => {
     assert.match(created.version, /\d+\.\d+\.\d+/);
   });
 });
+
+describe("cli uninstall (integration)", () => {
+  test("removes exactly the manifested files, the manifest, and the empty agent dir", () => {
+    const project = mkTmp();
+    const home = mkTmp();
+    runCli(["install", "--agent", "claude", "--scope", "project"], {
+      cwd: project,
+      home,
+    });
+    const base = path.join(project, ".claude");
+    assert.ok(fs.existsSync(base));
+
+    const res = runCli(["uninstall", "--agent", "claude", "--scope", "project"], {
+      cwd: project,
+      home,
+    });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /uninstalled claude \(project\)/);
+    // Nothing of plain-forge survives — the whole agent dir is gone since it
+    // held only plain-forge content.
+    assert.equal(fs.existsSync(base), false, "empty agent dir is pruned");
+  });
+
+  test("deletes only manifested files, leaving user-owned content in place", () => {
+    const project = mkTmp();
+    const home = mkTmp();
+    runCli(["install", "--agent", "claude", "--scope", "project"], {
+      cwd: project,
+      home,
+    });
+    const base = path.join(project, ".claude");
+    const mine = path.join(base, "skills", "my-skill", "SKILL.md");
+    write(mine, "mine");
+
+    const res = runCli(["uninstall", "--agent", "claude"], { cwd: project, home });
+    assert.equal(res.status, 0, res.stderr);
+    // User skill survives; the agent dir survives because it still holds it.
+    assert.equal(fs.existsSync(mine), true, "user file untouched");
+    assert.equal(readManifest(base), null, "manifest removed");
+    assert.equal(
+      fs.existsSync(path.join(base, "skills", "forge-plain")),
+      false,
+      "plain-forge skill removed",
+    );
+  });
+
+  test("default agent is * — removes every manifested install in the scope", () => {
+    const project = mkTmp();
+    const home = mkTmp();
+    runCli(["install", "--agent", "claude", "--scope", "project"], { cwd: project, home });
+    runCli(["install", "--agent", "codex", "--scope", "project"], { cwd: project, home });
+
+    const res = runCli(["uninstall"], { cwd: project, home });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /uninstalled 2 installation\(s\)/);
+    assert.equal(fs.existsSync(path.join(project, ".claude")), false);
+    assert.equal(fs.existsSync(path.join(project, ".codex")), false);
+  });
+
+  test("no manifest → error, files left in place, exit 1", () => {
+    const project = mkTmp();
+    const home = mkTmp();
+    const base = path.join(project, ".claude");
+    plantLegacySignature(base); // a plain-forge install with no manifest
+
+    const res = runCli(["uninstall", "--agent", "claude"], { cwd: project, home });
+    assert.equal(res.status, 1, "missing manifest is a failure");
+    assert.match(res.stderr, /manifest .* is missing/);
+    assert.match(res.stderr, /remove plain-forge's files manually/);
+    assert.match(res.stderr, new RegExp(path.join(base, "skills").replace(/[.\\]/g, "\\$&")));
+    // Nothing deleted.
+    assert.equal(
+      fs.existsSync(path.join(base, "skills", "forge-plain")),
+      true,
+      "legacy files are left untouched",
+    );
+  });
+
+  test("nothing installed → friendly message, exit 0", () => {
+    const res = runCli(["uninstall"], { cwd: mkTmp(), home: mkTmp() });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /no plain-forge installation found/);
+  });
+});

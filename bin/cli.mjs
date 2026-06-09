@@ -78,8 +78,9 @@ function usage() {
   console.log(`Usage: plain-forge <command> [options]
 
 Commands:
-  install   Install plain-forge into an agent directory
-  update    Refresh every existing plain-forge install in cwd and $HOME
+  install     Install plain-forge into an agent directory
+  update      Refresh every existing plain-forge install in cwd and $HOME
+  uninstall   Remove a plain-forge install using its manifest
 
 Install options:
   --agent <claude|codex|forgecode|universal>   Target agent layout
@@ -90,16 +91,25 @@ Update options:
   -y, --yes                                    Remove deprecated files without
                                                confirming each one
 
+Uninstall options:
+  --agent <claude|codex|forgecode|universal|*> Which install to remove
+                                               (default: * — every agent)
+  --scope <project|global>                     Where to look (default: project)
+
 Examples:
   plain-forge install --agent claude --scope project
   plain-forge install --agent universal --scope global
   plain-forge update
   plain-forge update --yes
+  plain-forge uninstall
+  plain-forge uninstall --agent claude --scope global
 
 "install" fails if plain-forge is already installed at the target — use
 "update" to refresh it. Missing install flags are prompted interactively.
 "update" auto-detects installs and prunes only files plain-forge wrote
-(confirming each removal), leaving your own and third-party skills untouched.`);
+(confirming each removal), leaving your own and third-party skills untouched.
+"uninstall" deletes exactly the files recorded in the install manifest, then
+the manifest itself; an install with no manifest is reported and left in place.`);
 }
 
 function parseArgs(argv) {
@@ -488,6 +498,95 @@ async function cmdUpdate(args) {
   }
 }
 
+async function cmdUninstall(args) {
+  printBanner();
+
+  const scope = args.scope ?? "project";
+  if (!SCOPES.includes(scope)) {
+    console.error(`unknown scope "${scope}". valid: ${SCOPES.join(", ")}`);
+    process.exit(2);
+  }
+
+  // Default agent is "*" — every agent layout. A named agent narrows to one.
+  const agentArg = args.agent ?? "*";
+  let agents;
+  if (agentArg === "*" || agentArg === "all") {
+    agents = Object.keys(AGENTS);
+  } else if (Object.hasOwn(AGENTS, agentArg)) {
+    agents = [agentArg];
+  } else {
+    console.error(
+      `unknown agent "${agentArg}". valid: ${Object.keys(AGENTS).join(", ")}, or "*" for all`,
+    );
+    process.exit(2);
+  }
+
+  const root = scope === "global" ? os.homedir() : process.cwd();
+
+  let found = 0;
+  let removed = 0;
+  let hadError = false;
+
+  for (const agent of agents) {
+    const baseDir = path.join(root, AGENTS[agent]);
+    if (!fs.existsSync(baseDir)) continue;
+
+    const manifest = readManifest(baseDir);
+    const legacy = !manifest && hasForgeSignature(baseDir);
+    if (!manifest && !legacy) continue; // not a plain-forge install
+    found++;
+
+    // No manifest → we have no record of which files are ours, so deleting
+    // would risk touching the user's own content. Refuse and point at the
+    // directories to clean by hand.
+    if (!manifest) {
+      hadError = true;
+      console.error(`cannot uninstall ${agent} (${scope}) — ${baseDir}`);
+      console.error(
+        `  the install manifest (${MANIFEST_REL}) is missing, so automatic deletion is not supported.`,
+      );
+      console.error(`  please remove plain-forge's files manually from:`);
+      for (const dir of CONTENT_DIRS) {
+        const p = path.join(baseDir, dir);
+        if (fs.existsSync(p)) console.error(`    ${p}`);
+      }
+      console.error("");
+      continue;
+    }
+
+    let deleted = 0;
+    let failed = 0;
+    for (const rel of manifest.files) {
+      if (deleteForgeFile(baseDir, rel)) deleted++;
+      else failed++;
+    }
+    // Finally remove the manifest itself, then prune the now-empty .plain-forge
+    // directory and the agent directory if nothing else remains in it.
+    fs.rmSync(manifestPathFor(baseDir), { force: true });
+    removeEmptyDirsUpward(
+      path.join(baseDir, path.dirname(MANIFEST_REL)),
+      baseDir,
+    );
+    removeEmptyDirsUpward(baseDir, root);
+
+    console.log(`uninstalled ${agent} (${scope}) from ${baseDir}`);
+    console.log(
+      `  removed ${deleted} file(s)${failed ? `, ${failed} could not be removed` : ""} + manifest`,
+    );
+    console.log();
+    removed++;
+  }
+
+  if (found === 0) {
+    console.log(`no plain-forge installation found in ${root} (scope: ${scope}).`);
+    return;
+  }
+  if (removed > 0) {
+    console.log(`uninstalled ${removed} installation(s).`);
+  }
+  if (hadError) process.exit(1);
+}
+
 function printNextSteps(agent) {
   const bold = (s) => `\x1b[1;97m${s}\x1b[0m`;
   const dim = (s) => `\x1b[2m${s}\x1b[0m`;
@@ -547,6 +646,9 @@ async function main() {
       break;
     case "update":
       await cmdUpdate(args);
+      break;
+    case "uninstall":
+      await cmdUninstall(args);
       break;
     default:
       console.error(`unknown command "${cmd}"`);
