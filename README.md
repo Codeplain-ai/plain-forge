@@ -154,35 +154,23 @@ Hit a bug in the rendered app, a failing test, or behavior that doesn't match wh
 
 ## Repository Structure
 
-plain-forge keeps a single canonical source of truth under `forge/` and uses tiny per-runtime adapters to regenerate the directory layout each AI tool expects. The generated outputs are committed so existing install commands keep working — no build step is needed for end users.
+plain-forge keeps a single canonical source of truth under `forge/`. The `plain-forge install` CLI copies that content straight into whichever agent directory you choose — there is no build step and no generated, committed output to keep in sync.
 
 ```
-forge/                       # canonical, runtime-neutral content
+forge/                       # canonical content, copied verbatim on install
   skills/                    # all skills used during spec writing
-  rules/                     # workspace rules for spec validation
-
-runtimes/                    # per-runtime adapters
-  claude/
-    build.ts                 # generates .claude/ + .claude-plugin/ from forge/
-    templates/               # Claude-specific files: settings.json, hook script, plugin manifests
-  codex/
-    build.ts                 # generates .codex-plugin/ and .agents/plugins/ (manifest points at forge/skills/)
-    templates/               # Codex-specific files: plugin.json, marketplace catalog
-  opencode/
-    build.ts                 # generates .opencode/ from forge/
-    templates/               # OpenCode-specific files: package.json, .gitignore
+  rules/                     # spec-writing rules (installed as workspace instructions)
 
 bin/
-  forge-build.ts             # orchestrator: runs every runtimes/*/build.ts
-  lib.ts                     # shared symlink/copy helpers
+  cli.mjs                    # the `plain-forge` CLI — `install` and `update` commands
 
-# Generated outputs (committed, do not edit by hand):
-.claude/                     # Claude Code plugin layout
-.claude-plugin/              # Claude Code plugin manifests
-.codex-plugin/               # Codex plugin manifest (its "skills" field points at forge/skills/)
-.agents/plugins/             # Codex marketplace catalog
-.opencode/                   # OpenCode plugin layout
+test/
+  cli.test.mjs               # tests for the install / update CLI
+
+package.json                 # ships only `bin/cli.mjs` and `forge/` to npm
 ```
+
+On `install`, the CLI reads `forge/skills` and `forge/rules` and writes them into the chosen agent directory (`.claude/`, `.codex/`, `.forgecode/`, or `.agents/`), recording every file it wrote in `<agent-dir>/.plain-forge/manifest.json` so `update` can later refresh and prune precisely.
 
 ## Available Skills
 
