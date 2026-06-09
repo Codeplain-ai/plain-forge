@@ -14,3 +14,4 @@ conformance_tests
 .env.test.local
 .env.production.local
 codeplain.log
+*.tgz

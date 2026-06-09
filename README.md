@@ -42,9 +42,9 @@ Each skill operates on the same one-question-at-a-time, write-immediately, refin
 
 plain-forge ships as a set of skills, rules, and docs that plug into your AI coding tool of choice. Install it once, then invoke `forge-plain` (or `add-feature` to add a feature to an existing ***plain project) from any project.
 
-### Install with `npx plain-forge install` (recommended)
+### Install with `npx plain-forge install`
 
-The primary install path. Works for every supported runtime and is the only installer that ships **all** plain-forge content (skills, rules, **and** docs) — the other methods below are limited or agent-specific.
+The one and only way to install plain-forge. It works for every supported runtime and ships **all** plain-forge content (skills, rules, **and** docs).
 
 ```bash
 npx plain-forge install
@@ -94,40 +94,6 @@ npx plain-forge@latest update
 Each deprecated file is confirmed individually before it's deleted — you'll see its path and a `[y/N]` prompt. Denied files stay on disk and remain tracked, so the next `update` re-offers them. Pass `--yes` (or `-y`) to remove all deprecated files without prompting (useful in CI); when there's no interactive terminal and `--yes` is not given, nothing is deleted.
 
 Installs that predate the manifest (anyone who installed before this feature existed) have no manifest to read. `update` still finds them by their skill footprint: if the `forge-plain`, `add-feature`, `debug-specs`, and `load-plain-reference` skills are all present in an agent directory, it's treated as a plain-forge install. Such installs are refreshed without pruning (overwrite-only), and gain a manifest going forward so later updates can prune.
-
-### Alternative install paths (skills only — no rules or docs)
-
-These work but only install the skill files. Rules and docs do **not** travel with them, so use them only if you have a reason not to use `npx plain-forge install`.
-
-#### `npx skills` CLI
-
-```bash
-npx skills add Codeplain-ai/plain-forge --skill '*' --agent claude-code
-```
-
-Replace `--agent claude-code` with `codex` or `opencode` to target a different runtime, or repeat the flag for several at once.
-
-#### Claude Code native plugin flow
-
-Requires the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Inside a Claude Code session, run the following **three commands** one after the other:
-
-```text
-/plugin marketplace add Codeplain-ai/plain-forge
-/plugin install plain-forge@plain-forge
-/reload-plugins
-```
-
-Without the reload the skills won't appear in the current session.
-
-#### Codex native plugin flow
-
-Requires the [OpenAI Codex CLI](https://developers.openai.com/codex/cli/reference). From your shell:
-
-```bash
-codex plugin marketplace add Codeplain-ai/plain-forge
-```
-
-Then, inside Codex, open the plugin directory, pick the `plain-forge` marketplace, and install the plugin from there. (Codex's CLI does not currently expose a `codex plugin install` equivalent.)
 
 ## Usage
 
@@ -217,20 +183,6 @@ bin/
 .agents/plugins/             # Codex marketplace catalog
 .opencode/                   # OpenCode plugin layout
 ```
-
-### Contributing
-
-After editing anything under `forge/` or `runtimes/*/templates/`, regenerate the runtime outputs:
-
-```bash
-npm install        # required after every fresh clone (node_modules/ is gitignored)
-npm run build      # regenerate runtime outputs for Claude, Codex, OpenCode
-npm run clean      # remove generated outputs and rebuild from scratch
-```
-
-If `npm run build` errors with `sh: tsx: command not found`, it means `node_modules/` is missing — run `npm install` first.
-
-The build is idempotent — re-running it produces no `git diff`.
 
 ## Available Skills
 

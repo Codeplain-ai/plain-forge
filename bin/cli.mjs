@@ -557,8 +557,21 @@ async function main() {
 
 // Only run the CLI when executed directly — importing this module (e.g. from
 // the test suite) must not trigger main() or process.exit().
-const invokedDirectly =
-  process.argv[1] && path.resolve(process.argv[1]) === __filename;
+// `__filename` (from import.meta.url) is realpath-resolved by Node, but
+// process.argv[1] is the path as invoked — under npx / a global install it's a
+// symlink in node_modules/.bin or the npx cache. Resolve both through realpath
+// so the comparison survives symlinked bins; otherwise main() silently never
+// runs (spinner, then nothing).
+function isInvokedDirectly() {
+  const invoked = process.argv[1];
+  if (!invoked) return false;
+  try {
+    return fs.realpathSync(invoked) === __filename;
+  } catch {
+    return path.resolve(invoked) === __filename;
+  }
+}
+const invokedDirectly = isInvokedDirectly();
 if (invokedDirectly) {
   main().catch((err) => {
     if (err instanceof Error && err.message === "cancelled") {
