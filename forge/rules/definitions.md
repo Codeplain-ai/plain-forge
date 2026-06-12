@@ -63,6 +63,23 @@ Bad — circular:
 - Nest attributes and constraints as sub-bullets
 - Do not use programming language constructs (generics, annotations, framework types) in definitions
 
+## Concept granularity and technical components
+- Definitions are not restricted to high-level domain objects. When an implementation warrants abstract, technical, or infrastructural components to clarify responsibilities, it is desired and encouraged to define them.
+- Group related technical concepts using the `of` keyword or by stating their relationship explicitly.
+
+Example of defining technical components alongside their behavior:
+
+```plain
+- :CsvToJsonConverter: bidirectionally converts csv and json strings.
+- :CsvToJson: of :CsvToJsonConverter: converts a list of csv strings (e.g., "value1,value2,value3") to a list of json strings (e.g., "{\"key1\":\"value1\"}").
+- :JsonToCsv: of :CsvToJsonConverter: converts a list of json strings (e.g., "{\"key1\":\"value1\"}") to a list of csv strings (e.g., "value1,value2").
+
+- :StorageService: is an abstraction for a remote blob storage backend.
+- :CsvFileWriter: writes CSV rows to local files, automatically rotates to new files when size limits are reached, and flushes completed files to :StorageService:.
+- :CsvFileReader: reads CSV rows in a batched manner.
+- :CsvJoiner: joins csvs and uses :CsvFileWriter: to create the merged CSV.
+```
+
 ## Format
 
 ```plain

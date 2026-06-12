@@ -81,13 +81,9 @@ Before launching anything:
 
    Keep this synthesis short (5–10 bullets, project-specific). It is the single most important reference for the classifier in [Spec-deviation classification](#spec-deviation-classification). The healthcheck only checks that the scripts *exist* and are *referenced correctly*; this step is the only place that reads what they actually *do*.
 
-## Launch mode — TUI vs `--headless`
+## Launch always in `--headless` mode
 
-Pick a launch mode with the user before starting.
-
-### Mode A — `--headless`, agent-launched (default; preferred for supervised runs)
-
-The agent launches the renderer in the background and supervises via the log file + filesystem. The terminal tool **cannot** drive an interactive TUI, so TUI mode is incompatible with agent-launched rendering. Use `--headless`:
+The agent must always launch the renderer in the background and supervise it via the log file and filesystem. The terminal tool **cannot** drive an interactive TUI, so TUI mode is incompatible with agent-launched rendering. Always use `--headless`:
 
 ```bash
 nohup codeplain <module>.plain --headless <other-flags> > /dev/null 2>&1 &
@@ -95,12 +91,6 @@ echo $!  # capture the PID
 ```
 
 Record the PID. Confirm `codeplain.log` starts growing within a few seconds; if it doesn't, the launch failed — check the user's shell / API key and re-try.
-
-### Mode B — user runs the TUI in another terminal; agent attaches
-
-The user has, or wants, the TUI running in a separate terminal of their own. The agent does not launch anything — it only monitors. Confirm the PID with the user (`pgrep -fl codeplain` is the easy way) and confirm the log path. Everything else in the workflow is identical.
-
-Never try to "screenshot" or "read" the TUI directly — you can't see it. Treat the TUI as opaque; rely on log + filesystem signals.
 
 ## Log monitoring contract
 
@@ -189,11 +179,11 @@ Use these as cheap, idempotent ways to interrogate the log. Each is safe to run 
 
 ## Reading test-script output
 
-The renderer drives three external shell scripts during a run — `unittests-script`, `prepare-environment-script`, and `conformance-tests-script` (whichever are declared in the project's `config.yaml`). Each script wraps a real test framework (vitest, jest, pytest, tsc, etc.) and writes verbose output. **This skill never reads the script source code.** It reads the output those scripts produce while the renderer is iterating. Three places to look, in priority order:
+The renderer drives three external shell scripts during a run — `unittests-script`, `prepare-environment-script`, and `conformance-tests-script` (whichever are declared in the project's `config.yaml`). Each script wraps a real test framework (vitest, jest, pytest, tsc, etc.) and writes verbose output. It reads the output those scripts produce while the renderer is iterating. Three places to look, in priority order:
 
 ### 1. Inline in `codeplain.log` (the primary source)
 
-With verbose logging on (the default — `--verbose` is `enabled` by default per the help), codeplain captures each script's stdout/stderr and writes it into `codeplain.log` between its own wrapper lines:
+With verbose logging on (the default — `--verbose` is `disabled`), codeplain captures each script's stdout/stderr and writes it into `codeplain.log` between its own wrapper lines:
 
 ```
 INFO:codeplain:Running unit tests script .../unit_testing_typescript.sh. (attempt: 1)
@@ -233,10 +223,6 @@ This is the renderer telling you, in its own words, what it tried and what is st
 
 Refresh these files on each pass while a retry loop is active — the renderer rewrites them between attempts.
 
-### 3. The TUI (last resort, agent can't see it)
-
-If the user is running in Mode B (TUI visible to them, not to you), the script output is also painted on the TUI live. The agent cannot read it directly. When you need it and it isn't in `codeplain.log`, **ask the user to paste the latest test-output panel of the TUI**, or to relaunch in `--headless` so the log captures everything.
-
 ## Spec-deviation classification
 
 This is the most important active judgment the skill makes. Once a functionality enters a retry loop (unit-test or conformance), the renderer iterates — changing source code, and sometimes changing its own conformance tests — trying to satisfy the test-script output. **Not every iteration is honest.** Each iteration must be classified before deciding whether to let the renderer continue, stop and fix the spec, or stop and fix the test script.
@@ -247,7 +233,7 @@ The inputs to the classifier are:
 2. The **test-script output** for the most recent attempt, from `codeplain.log` per the section above.
 3. The renderer's own **`.memory/conformance_test_memory/<id>.json`** for this functionality (when present).
 4. The newest **conformance test file** the renderer just edited under `conformance_tests/<module>/<fname>/`.
-5. The newest **implementation file(s)** the renderer just edited under `plain_modules/<module>/src/`.
+5. The newest **implementation file(s)** the renderer just edited under `plain_modules/<module>/`.
 
 With these in hand, place the current iteration into one of four buckets:
 
@@ -267,11 +253,11 @@ Action: let the renderer keep going, up to the threshold (5 conformance attempts
 Signals — any one of these is enough:
 
 - The **same test** fails every attempt with the **same assertion**, and the assertion checks something the functional spec **does not explicitly say** (e.g. exact exit code, exact error wording, specific status field).
-- `current_issue_summary` in memory describes a question the spec does not answer (e.g. "unclear whether `--help` should exit 0 or 2"). The `agent_cli_commander_exit_handling_issue_v2.json` example in this repo — "exit codes were 1 instead of the expected 0 or 2" — is exactly this shape when the spec didn't pin the exit code.
+- `current_issue_summary` in memory describes a question the spec does not answer (e.g. "unclear whether `--help` should exit 0 or 2").
 - The renderer's `fix_attempt_summary` keeps oscillating between two opposite interpretations of the same requirement (regex variant A this attempt, variant B next attempt, A again the attempt after).
 - The conformance test file is being rewritten between attempts in a way that **changes which behavior is being asserted**, not just how it is asserted.
 
-Action: stop the renderer (SIGINT). Hand off to `debug-specs` or directly to an inline spec edit / `add-implementation-requirement`. The spec must be tightened so there is only one valid behavior to converge on. Then resume with `--render-from <N>` for the offending functionality.
+Action: stop the renderer (SIGINT). Hand off to `debug-specs`. The spec must be tightened so there is only one valid behavior to converge on. Then resume with `--render-from <N>` for the offending functionality.
 
 ### Bucket 3 — Renderer is drifting away from the spec (stop immediately)
 
@@ -282,10 +268,12 @@ The dangerous case. Signals:
 - The renderer's `key_learnings` reads like rationalization rather than diagnosis (e.g. "adjusted assertion to match observed behavior", "removed strict check that was causing failures").
 - Failure count is going **up** between attempts.
 
-Action: stop the renderer **immediately**, don't wait for the threshold. Two parallel fixes are needed:
+Action: stop the renderer **immediately**, don't wait for the threshold. The fix must be applied to the `.plain` file (the spec was probably not specific enough and the renderer chose the path of least resistance):
+   - If it happened during the **conformance testing phase**, the `***test reqs***` need to be tightened.
+   - If it happened during the rendering of a **functional requirement**, the functional specs, definitions, or `***impl reqs***` need to change.
+   - If it happened during **acceptance testing**, the acceptance test definitions need to be tightened.
 
-1. **Spec side** — the spec was probably specific enough; the renderer chose the path of least resistance. Either tighten the acceptance test so the loophole is closed (`add-functional-spec` / inline edit), or add an implementation req that names the requirement explicitly (`add-implementation-requirement`).
-2. **Generated-code side** — do nothing; the broken code under `plain_modules/` will be overwritten on resume. **Never** hand-edit it.
+Do nothing on the generated-code side; the broken code under `plain_modules/` will be overwritten on resume. **Never** hand-edit it.
 
 Then resume with `--render-from <N>` (or `--force-render` if the drift contaminated earlier functionalities). Re-running `plain-healthcheck` first is mandatory.
 
@@ -298,7 +286,10 @@ Signals:
 - The script is failing **before** running any framework command at all (`die: prepared environment missing`, missing argument, etc.).
 - The failure mode is identical across functionalities, not specific to the spec being rendered.
 
-Action: this is **not** a spec problem. Stop the renderer and hand off to the matching `implement-*-testing-script` skill, or have the user repair the script directly. The spec stays as-is.
+Action: This is **not** a spec problem and the spec should stay as is. Stop the renderer and investigate why the script fails:
+- If it's a bug in the script (e.g., pathing issue, syntax error, missing environment variable load), attempt to fix the script directly, or hand off to the matching `implement-*-testing-script` skill.
+- If it's a missing host dependency (e.g., Python or Node is not installed, or a required global package is missing), inform the user and ask them to install it.
+- **Before resuming the renderer**, test the script by running it manually exactly as the renderer would. If the same infrastructure/script issue persists, the fix didn't work. If the script now runs (even if it reports legitimate test failures), the fix was successful.
 
 ### Classifier discipline
 
@@ -371,7 +362,7 @@ Do **not** treat hitting the threshold as the diagnosis. From `ATTEMPT_COUNTER >
 - **Bucket 1** — keep going until the threshold; report the per-attempt failure count.
 - **Bucket 2** — stop now (regardless of how close to the threshold you are); hand off to `debug-specs` / `add-implementation-requirement` / inline spec edit. The spec is under-specified.
 - **Bucket 3** — stop **immediately**, do not wait for the threshold; the renderer is drifting. Tighten the spec or acceptance test before resuming.
-- **Bucket 4** — the test script is the problem; route to Pathology F instead.
+- **Bucket 4** — the test script is the problem; route to Pathology E instead.
 
 ### Pathology B — `Functional spec too complex!`
 
@@ -385,19 +376,11 @@ The renderer can't resolve a reference. Stop is automatic. Hand off to `add-conc
 
 Renderer surfaces a conflict, or you can see two specs in the same module that contradict each other in the generated code. Hand off to `resolve-spec-conflict`.
 
-### Pathology E — Renderer stalled with no log activity
-
-No new bytes appended to `codeplain.log` for **>2 minutes** *and* the process is still alive. Detect it via `stat -f %m codeplain.log` (mtime) and `wc -c` (size unchanged across passes). Usually the API is slow; occasionally the renderer is wedged. Action:
-
-1. Confirm the process is still alive (`ps -p <pid>`).
-2. Confirm the API is reachable (`curl -sSI https://api.codeplain.ai` or whatever `--api` points at).
-3. Wait one more cadence cycle. If the log is still frozen, ask the user whether to stop.
-
-### Pathology F — Test scripts themselves are broken
+### Pathology E — Test scripts themselves are broken
 
 Symptom: log shows the unit-test or conformance-test **script** itself failing (non-zero exit, syntax error, missing dependency) on every attempt, rather than the renderer's code failing the tests. The fix is **not** a spec change — it is a `test_scripts/` change. Stop and hand off to the matching `implement-*-testing-script` skill, or have the user repair the script directly.
 
-### Pathology G — Unit-test retry loop
+### Pathology F — Unit-test retry loop
 
 Less common than the conformance loop, but the same shape: `Running unit tests script ... (attempt: <N>)` with `<N>` climbing for the same functionality. Threshold: **3 attempts**. From `ATTEMPT_COUNTER >= 2` onwards, run the same [Spec-deviation classification](#spec-deviation-classification) classifier and act on the bucket it returns. The most common root causes for unit-test loops are an implementation req that doesn't match the unit-test scaffolding (Bucket 2), or test reqs / framework usage that the renderer is satisfying by weakening assertions (Bucket 3). Hand-off is typically `add-implementation-requirement` or `debug-specs`.
 

@@ -62,5 +62,4 @@ If the markdown-link target ends with `/`, contains `://`, resolves to a directo
 
 ## File location and path resolution
 - Paths are resolved relative to the `.plain` file's directory
-- Only files in the same folder (and subfolders) can be linked
 - The conventional location is `resources/` under the `.plain` file's directory

@@ -18,6 +18,7 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 - `:ConformanceTests:` live outside the generated codebase (typically in a separate project under `conformance_tests/<module>/`), so requirements that shape them belong in test reqs by definition
 - The conformance-test generator reads **only** `***test reqs***` — anything about `:ConformanceTests:` placed elsewhere (e.g. `***implementation reqs***`) is silently ignored
 - Author each `:ConformanceTests:` requirement via `add-test-requirement` and phrase it in terms of `:ConformanceTests:` so the partition stays visible at a glance
+- Conformance testing run scripts should be linked here as a linked resource
 
 ## What belongs here
 - Test framework: which framework to use (e.g., pytest, Unittest, xUnit)
@@ -50,4 +51,6 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 - :ConformanceTests: will be run using "pytest" command.
 - :ConformanceTests: must be implemented and executed - do not skip tests.
 - :ConformanceTests: should mock all external HTTP calls.
+- :ConformanceTests: are preapred via the preapre script [test_scripts/prepare_environment_python.sh](test_scripts/prepare_environment_python.sh).
+- :ConformanceTests: are executed via the run script [test_scripts/run_conformance_tests_python.sh](test_scripts/run_conformance_tests_python.sh).
 ```

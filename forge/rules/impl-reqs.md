@@ -39,6 +39,7 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 - Unit-test guidance (`:UnitTests:` framework, structure, mocking) goes **here**, not in `***test reqs***`
 - `***test reqs***` is exclusively for `:ConformanceTests:` — framework, execution command, mocking policy, environment setup
 - Putting unit-test guidance in `***test reqs***` is one of the most common authoring mistakes; the rendered code will silently miss those requirements because the unit-test generator only reads `***implementation reqs***`
+- Unit testing run scripts should be linked here as a linked resource
 
 ## Encapsulation warning
 - `requires` modules only receive functional specs from their dependencies — not implementation reqs
@@ -60,4 +61,5 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 - :Implementation: should be in Python 3.12.
 - :Implementation: should use pip for dependency management.
 - When writing CSV files, :Implementation: should use streaming writes to avoid holding large datasets in memory.
+- :UnitTests: are executed via the run script [test_scripts/run_unittests_python.sh](test_scripts/run_unittests_python.sh).
 ```
