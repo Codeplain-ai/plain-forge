@@ -69,10 +69,9 @@ Too complex:
 
 Acceptable (separate the modes):
 - The system should process standard :Order: by validating and storing it.
-- The system should process express :Order: by queuing it for immediate dispatch
-  without validation.
-- The system should process bulk :Order: by splitting it into sub-orders of 100
-  items each and processing them individually.
+- The system should process express :Order: by queuing it for immediate dispatch without validation.
+- The system should process bulk :Order: by splitting it into sub-orders of 100 items each.
+  - Each sub-order is processed individually.
 ```
 
 ### 4. Cross-Cutting Concerns
@@ -88,8 +87,7 @@ Too complex:
 Acceptable (separate concerns):
 - The system should fetch :Resource: items from the external API.
 - The system should paginate when fetching :Resource: items from the external API.
-- The system should retry fetching :Resource: on transient errors using
-  exponential backoff.
+- The system should retry fetching :Resource: on transient errors using exponential backoff.
 ```
 
 ### 5. UI Complexity

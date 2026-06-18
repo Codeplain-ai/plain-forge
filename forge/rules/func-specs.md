@@ -74,6 +74,5 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
   - All :Participant: members of the :Conversation: can see the new :Message:.
 
   ***acceptance tests***
-  - Sending a :Message: to a :Conversation: with three participants should
-    make the message visible to all three.
+  - Sending a :Message: to a :Conversation: with three participants should make the message visible to all three.
 ```

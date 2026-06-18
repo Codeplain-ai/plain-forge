@@ -26,17 +26,16 @@ Use standard markdown link syntax inside any spec section:
 
 ```plain
 ***definitions***
-- :AuthData: is the authentication data structure. Its format is defined
-  in the [auth schema](resources/auth_schema.json).
+- :AuthData: is the authentication data structure.
+  - Its format is defined in the [auth schema](resources/auth_schema.json).
 
 ***implementation reqs***
-- When transforming :BackupData:, use the JOLT transform defined in
-  [backup_transform.jolt](resources/backup_transform.jolt).
+- When transforming :BackupData:, use the JOLT transform.
+  - The transform is defined in [backup_transform.jolt](resources/backup_transform.jolt).
 
 ***functional specs***
 
-- The system should expose an API conforming to the
-  [API specification](resources/api_spec.yaml).
+- The system should expose an API conforming to the [API specification](resources/api_spec.yaml).
 ```
 
 ## Path Rules

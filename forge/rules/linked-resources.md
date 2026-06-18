@@ -14,8 +14,8 @@ A linked resource **must not** be any of the following:
 1. **A folder / directory.** `[integrations](src/integrations/)`, `[host project](../host_project/)` are invalid — the renderer cannot ingest a directory. Pick the single most representative file inside (a `README.md`, an exemplar source file, a manifest) and link **that**.
 2. **A URL / external location.** `[Stripe docs](https://stripe.com/docs/api)`, any `http://` / `https://` / `ftp://` / `git://` / `s3://` / `gs://` target. Linked resources are local-file only. If a URL's content is essential, fetch it once, save the response to a text file under `resources/`, and link the saved file.
 3. **A binary file.** PNG, JPG, GIF, PDF, DOCX, XLSX, ZIP, MP3, MP4, compiled binaries (`.exe`, `.so`, `.class`, `.wasm`), and anything else that isn't human-readable text in its raw form. Binary content cannot be meaningfully consumed by the renderer — transcribe it into a text-based form first (a UI screenshot becomes a Markdown description, a PDF spec becomes a Markdown extract or the underlying JSON Schema / OpenAPI, an architecture diagram becomes a Mermaid block).
+4. **Another `.plain` file.** `[Auth Module](auth.plain)` is invalid. To reference another module, use the `require` or `import` frontmatter directives. Do not link it as a markdown resource; the `plain-dry-run` will flag this as a syntax error.
 
-If the markdown-link target ends with `/`, contains `://`, resolves to a directory, or has a binary extension, **stop** — it cannot be a linked resource. Convert it first.
 
 ## URLs and folder paths must not appear *anywhere* in `.plain` content
 - The constraint is not only about markdown links — URLs and folder paths must not appear **anywhere** in `.plain` content (concept body prose, functional-spec text, implementation reqs, test reqs)
@@ -31,15 +31,15 @@ If the markdown-link target ends with `/`, contains `://`, resolves to a directo
 ```plain
 ***definitions***
 
-- :TaskCreateRequest: is the JSON payload for creating a task, defined by
-  [resources/task_create_request.schema.json](resources/task_create_request.schema.json).
-- :TasksAPI: is the public HTTP surface for tasks, defined by
-  [resources/tasks_openapi.yaml](resources/tasks_openapi.yaml).
+- :TaskCreateRequest: is the JSON payload for creating a task.
+  - It is defined by [resources/task_create_request.schema.json](resources/task_create_request.schema.json).
+- :TasksAPI: is the public HTTP surface for tasks.
+  - It is defined by [resources/tasks_openapi.yaml](resources/tasks_openapi.yaml).
 
 ***functional specs***
 
-- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the
-  `POST /tasks` endpoint of :TasksAPI:. The endpoint responds per :TasksAPI:.
+- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the `POST /tasks` endpoint of :TasksAPI:.
+  - The endpoint responds per :TasksAPI:.
 ```
 
 ## Each linked resource is referenced from exactly one place
@@ -50,8 +50,8 @@ If the markdown-link target ends with `/`, contains `://`, resolves to a directo
 ```plain
 ***definitions***
 
-- :TaskModalSpec: is the user-interface contract for the task modal,
-  fully described in [task_modal_specification.yaml](task_modal_specification.yaml).
+- :TaskModalSpec: is the user-interface contract for the task modal.
+  - It is fully described in [task_modal_specification.yaml](task_modal_specification.yaml).
 
 ***functional specs***
 

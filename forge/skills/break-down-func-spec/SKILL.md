@@ -111,10 +111,10 @@ If the spec describes different modes or branches, give each its own spec.
 **After:**
 ```plain
 - The system should generate a standard :MealPlan: using round-robin :Recipe: assignment.
-- The system should generate a restrictive :MealPlan: by filtering out excluded
-  :Ingredient: items before applying round-robin assignment.
-- The system should allow :User: to manually assign :Recipe: items to individual
-  :Slot: items for a custom :MealPlan:.
+- The system should generate a restrictive :MealPlan:.
+  - Excluded :Ingredient: items are filtered out first.
+  - Round-robin :Recipe: assignment is then applied.
+- The system should allow :User: to manually assign :Recipe: items to :Slot: items for a custom :MealPlan:.
 ```
 
 ### Strategy 5: Build UI Incrementally

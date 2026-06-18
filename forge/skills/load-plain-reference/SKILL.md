@@ -184,8 +184,8 @@ The frontmatter is enclosed between `---` markers and supports:
 Specifications can reference external files using markdown link syntax. The linked resource is passed along with the spec to the renderer. File paths are resolved relative to the `.plain` file location. Only files in the same folder (and subfolders) are supported.
 
 ```plain
-- :User: should be able to add :Task:. The details of the user interface
-  are provided in the file [task_modal_specification.yaml](task_modal_specification.yaml).
+- :User: should be able to add :Task:.
+  - The user-interface details are in [task_modal_specification.yaml](task_modal_specification.yaml).
 ```
 
 #### Hard constraint: a linked resource is always a single, text-based file on disk
@@ -220,15 +220,15 @@ The accompanying spec line should describe the *role* of the artifact ("the requ
 ```plain
 ***definitions***
 
-- :TaskCreateRequest: is the JSON payload for creating a task, defined by
-  [resources/task_create_request.schema.json](resources/task_create_request.schema.json).
-- :TasksAPI: is the public HTTP surface for tasks, defined by
-  [resources/tasks_openapi.yaml](resources/tasks_openapi.yaml).
+- :TaskCreateRequest: is the JSON payload for creating a task.
+  - It is defined by [resources/task_create_request.schema.json](resources/task_create_request.schema.json).
+- :TasksAPI: is the public HTTP surface for tasks.
+  - It is defined by [resources/tasks_openapi.yaml](resources/tasks_openapi.yaml).
 
 ***functional specs***
 
-- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the
-  `POST /tasks` endpoint of :TasksAPI:. The endpoint responds per :TasksAPI:.
+- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the `POST /tasks` endpoint of :TasksAPI:.
+  - The endpoint responds per :TasksAPI:.
 ```
 
 **Each linked resource must be referenced from exactly one place** in the project — a single functional spec, implementation requirement, or `***definitions***` entry. Linking the same file from two functional specs (or from a functional spec *and* a requirement, etc.) creates two independent sources of truth: any later edit to one site silently diverges from the other, and the renderer has no way to know which one is canonical.
@@ -243,8 +243,8 @@ For example, instead of linking `task_modal_specification.yaml` from two differe
 ```plain
 ***definitions***
 
-- :TaskModalSpec: is the user-interface contract for the task modal,
-  fully described in [task_modal_specification.yaml](task_modal_specification.yaml).
+- :TaskModalSpec: is the user-interface contract for the task modal.
+  - It is fully described in [task_modal_specification.yaml](task_modal_specification.yaml).
 
 ***functional specs***
 
