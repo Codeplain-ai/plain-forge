@@ -13,6 +13,8 @@ description: >-
 
 # Welcome to *codeplain
 
+Always use the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet.
+
 ## Your Role
 
 You are the **front door** for someone new to `*codeplain` and the `***plain` spec language. Your only two jobs are:
@@ -28,15 +30,15 @@ Keep the whole interaction **short and conversational**. This is a warm welcome 
 
 Before explaining anything, gauge how much the user already knows so the explanation lands at the right depth. Ask **one** `AskUserQuestion`:
 
-> "Have you worked with spec-driven or code-generation tools before?"
+> "Have you written `***plain` specs before?"
 
 Offer these options (plus the automatic free-form catch-all):
 
-- **New to this** — never used spec-driven development or codegen tools.
-- **I've used codegen before** — familiar with the idea; wants the differentiator, not the basics.
-- **Just get me building** — skip the explainer entirely.
+- **Yes, I know `***plain`** — ready to start building; skip the tour entirely.
+- **No, but I know spec-driven dev** — familiar with keeping specs as the source of truth (OpenAPI, Protobuf, interface definitions, etc.); wants the differentiator, not the basics. Note: using AI coding assistants like Cursor or Copilot is *not* spec-driven dev — if that's their background, this is the wrong option.
+- **No, I'm new to spec-driven dev** — may use agentic coding tools (Claude Code, Copilot, Cursor), but has not worked with a spec-as-source-of-truth workflow before.
 
-If the user picks **"Just get me building,"** skip Step 2 and go straight to Step 3.
+If the user picks **"Yes, I know `***plain`,"** skip Step 2 and go straight to Step 3.
 
 ## Step 2 — Explain (depth set by Step 1)
 
@@ -81,7 +83,6 @@ Ask **one** `AskUserQuestion` — "What would you like to do next?" — and hand
 | Choice | Hand off to | When |
 |--------|-------------|------|
 | **Build something new, guided** | `forge-plain` | New project from scratch — full one-question-at-a-time interview ending in a real render. |
-| **Quick scaffold, I'll write specs** | `init-plain-project` | Wants a project skeleton fast, then writes functional specs against it. |
 | **Add to an existing `***plain` project** | `add-feature` | The `.plain` project already exists and they want to extend it. |
 | **Just learning / not yet** | *(none)* | Point them at the docs (`https://plainlang.org/`), the example projects, and the community on Discord (`https://discord.gg/cgbynb9hFq`), then stop. |
 
