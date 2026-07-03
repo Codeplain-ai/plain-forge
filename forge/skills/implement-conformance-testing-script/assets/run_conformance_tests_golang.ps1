@@ -23,7 +23,15 @@ $ConformanceTestsFolder = $args[1]
 
 $current_dir = Get-Location
 
-$GO_BUILD_SUBFOLDER = "go_$BuildFolder"
+# Resolve conformance tests folder to an absolute path so it can be used
+# from the build subfolder (where we'll Push-Location to next).
+if (-not [System.IO.Path]::IsPathRooted($ConformanceTestsFolder)) {
+    $ConformanceTestsFolder = Join-Path $current_dir $ConformanceTestsFolder
+}
+
+# Working folder lives in the system temp directory. $BuildFolder may be an
+# absolute path, so only its leaf name is used to build the working folder name.
+$GO_BUILD_SUBFOLDER = Join-Path ([System.IO.Path]::GetTempPath()) "go_$(Split-Path $BuildFolder -Leaf)"
 
 if ($env:VERBOSE -eq "1") {
     Write-Host "Preparing Go build subfolder: $GO_BUILD_SUBFOLDER"
@@ -60,9 +68,9 @@ try {
     go get
 
     # Move to conformance tests folder
-    Set-Location "$current_dir/$ConformanceTestsFolder"
+    Set-Location $ConformanceTestsFolder
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-        Write-Host "Error: Conformance tests folder '$current_dir/$ConformanceTestsFolder' does not exist."
+        Write-Host "Error: Conformance tests folder '$ConformanceTestsFolder' does not exist."
         exit $UNRECOVERABLE_ERROR_EXIT_CODE
     }
 
@@ -75,7 +83,7 @@ try {
     }
 
     # Move back to build directory
-    Set-Location "$current_dir/$GO_BUILD_SUBFOLDER"
+    Set-Location $GO_BUILD_SUBFOLDER
 
     # Execute Go lang conformance tests
     Write-Host "Running Golang conformance tests...`n"
@@ -83,7 +91,7 @@ try {
     # Temporarily allow stderr output without throwing (Go may write to stderr)
     # ForEach-Object converts ErrorRecord objects (from stderr) to plain strings to avoid verbose error formatting
     $ErrorActionPreference = 'Continue'
-    $output = go run "$current_dir/$ConformanceTestsFolder/conformance_tests.go" 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ } } | Out-String
+    $output = go run (Join-Path $ConformanceTestsFolder "conformance_tests.go") 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ } } | Out-String
     $exit_code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
 
@@ -97,4 +105,7 @@ try {
     exit $exit_code
 } finally {
     Pop-Location
+    if (Test-Path $GO_BUILD_SUBFOLDER) {
+        Remove-Item -Path $GO_BUILD_SUBFOLDER -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

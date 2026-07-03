@@ -21,7 +21,18 @@ fi
 
 current_dir=$(pwd)
 
-CONFORMANCE_TESTS_FOLDER=".tmp/java_conformance"
+# Resolve the conformance tests folder to an absolute path ($2 may be relative
+# on older renderers; newer renderers pass it as an absolute path).
+case "$2" in
+  /*) CONFORMANCE_TESTS_SOURCE="$2" ;;
+  *)  CONFORMANCE_TESTS_SOURCE="$current_dir/$2" ;;
+esac
+
+# Scratch folder lives in the system temp directory so no build debris is left
+# inside the project. It is removed again when the script exits.
+CONFORMANCE_TESTS_FOLDER="/tmp/java_conformance"
+
+trap 'rm -rf "$CONFORMANCE_TESTS_FOLDER"' EXIT
 
 cd "$current_dir" 2>/dev/null
 
@@ -43,8 +54,8 @@ else
   mkdir -p $CONFORMANCE_TESTS_FOLDER
 fi
 
-printf "Copying all files and folders from $2 to $CONFORMANCE_TESTS_FOLDER...\n"
-cp -R $2/* $CONFORMANCE_TESTS_FOLDER
+printf "Copying all files and folders from $CONFORMANCE_TESTS_SOURCE to $CONFORMANCE_TESTS_FOLDER...\n"
+cp -R "$CONFORMANCE_TESTS_SOURCE"/* $CONFORMANCE_TESTS_FOLDER
 
 # Move to the subfolder
 printf "Moving to $CONFORMANCE_TESTS_FOLDER...\n"

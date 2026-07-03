@@ -16,16 +16,20 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-JAVA_BUILD_SUBFOLDER=.tmp/$1
+# Working folder lives in the system temp directory. $1 may be an absolute
+# path, so only its basename is used to build the working folder name.
+# No cleanup trap here on purpose: this script deliberately leaves the working
+# folder populated so the conformance runner can attach to it on every invocation.
+JAVA_BUILD_SUBFOLDER="/tmp/java_$(basename "$1")"
 
 if [ "${VERBOSE:-}" -eq 1 ] 2>/dev/null; then
   printf "Copying generated code to main project folder: $JAVA_BUILD_SUBFOLDER\n"
 fi
 
-rm -rf $JAVA_BUILD_SUBFOLDER
-mkdir -p $JAVA_BUILD_SUBFOLDER
+rm -rf "$JAVA_BUILD_SUBFOLDER"
+mkdir -p "$JAVA_BUILD_SUBFOLDER"
 
-cp -R $1/* $JAVA_BUILD_SUBFOLDER
+cp -R "$1"/* "$JAVA_BUILD_SUBFOLDER"
 printf "Copied from $1 to $JAVA_BUILD_SUBFOLDER...\n"
 
 # Move to the subfolder

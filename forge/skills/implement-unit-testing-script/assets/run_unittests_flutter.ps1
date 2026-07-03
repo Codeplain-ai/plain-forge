@@ -16,7 +16,9 @@ if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
 }
 
 $SOURCE_FOLDER = $args[0]
-$BUILD_SUBFOLDER = ".tmp/flutter_build_unittests"
+# Working folder lives in the system temp directory. $SOURCE_FOLDER may be an
+# absolute path, so only its leaf name is used to build the working folder name.
+$BUILD_SUBFOLDER = Join-Path ([System.IO.Path]::GetTempPath()) "flutter_$(Split-Path $SOURCE_FOLDER -Leaf)"
 
 Write-Host "Current directory: $(Get-Location)"
 Write-Host "Source folder: $SOURCE_FOLDER"
@@ -79,4 +81,7 @@ try {
     Remove-Item -Path "flutter_test_stdout.txt" -ErrorAction SilentlyContinue
     Remove-Item -Path "flutter_test_stderr.txt" -ErrorAction SilentlyContinue
     Pop-Location
+    if (Test-Path $BUILD_SUBFOLDER) {
+        Remove-Item -Path $BUILD_SUBFOLDER -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

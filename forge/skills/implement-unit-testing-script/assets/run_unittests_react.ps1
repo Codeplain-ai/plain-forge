@@ -16,8 +16,9 @@ if (-not $args[0]) {
 
 $BuildFolder = $args[0]
 
-# Define the path to the subfolder
-$NODE_SUBFOLDER = "node_$BuildFolder"
+# Define the path to the subfolder. It lives in the system temp directory;
+# $BuildFolder may be an absolute path, so only its leaf name is used.
+$NODE_SUBFOLDER = Join-Path ([System.IO.Path]::GetTempPath()) "node_$(Split-Path $BuildFolder -Leaf)"
 
 if ($env:VERBOSE -eq "1") {
     Write-Host "Preparing Node subfolder: $NODE_SUBFOLDER"
@@ -80,4 +81,7 @@ try {
     exit $TEST_EXIT_CODE
 } finally {
     Pop-Location
+    if (Test-Path $NODE_SUBFOLDER) {
+        Remove-Item -Path $NODE_SUBFOLDER -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

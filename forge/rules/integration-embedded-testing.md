@@ -9,13 +9,13 @@ When an embedded integration ships its three `test_scripts/` (prepare-environmen
 
 ## Staging model (read this first)
 
-The three scripts do **not** all stage into the same place. Embedded integrations need a runnable host project, so the prepare and unit-test scripts operate **inside the host codebase itself**; only the conformance script uses a `.tmp/` scratch folder because the conformance suite lives in a separate project.
+The three scripts do **not** all stage into the same place. Embedded integrations need a runnable host project, so the prepare and unit-test scripts operate **inside the host codebase itself**; only the conformance script uses a scratch folder in the system temp directory (`/tmp/<lang>_conformance/`) because the conformance suite lives in a separate project.
 
 | Script | Where it operates | What it does to the host source tree |
 |--------|-------------------|---------------------------------------|
 | `prepare_environment_<lang>` | Inside the host codebase | Copies `$1` into the module's package path under the host's source tree, then compiles / installs the host project |
 | `run_unittests_<lang>` | Inside the host codebase | Same copy as above (self-contained), then runs the module's unit tests + lint inside the host |
-| `run_conformance_tests_<lang>` | `.tmp/<lang>_conformance/` | Copies `$2` (the conformance-tests folder) into the scratch directory and runs the conformance suite there, which depends on the host build that `prepare_environment` already installed |
+| `run_conformance_tests_<lang>` | `/tmp/<lang>_conformance/` (system temp) | Copies `$2` (the conformance-tests folder) into the scratch directory and runs the conformance suite there, which depends on the host build that `prepare_environment` already installed |
 
 This deliberately writes into the host's `src/main/...` and `src/test/...` (or the language equivalent). Two consequences flow from that:
 
@@ -126,11 +126,13 @@ All three scripts are invoked by the `codeplain` renderer with positional argume
    - `2` — missing or inaccessible input folder
    - `69` — unrecoverable environment failure (missing toolchain, cannot enter working folder, install failed)
    - Any other non-zero code — propagated verbatim from the underlying build / test tool
+
+   The renderer passes `$1` (and `$2` for the conformance runner) as **absolute paths** (older renderer versions passed relative ones). Never build a derived path by concatenating a raw argument (`.tmp/$1`, `<lang>_$1`, `$current_dir/$2`) — with an absolute argument that produces a doubled path (`/project//abs/path/...`). Use the argument as-is where a path is needed, take its `basename` when naming a scratch folder, and resolve `$2` to absolute (if it isn't already) before any `cd`
 3. **Echo the toolchain home at the top** — the first thing a developer checks when CI breaks. For Java: `JAVA_HOME`. For Python: the active interpreter (`python --version` / `which python`). For Node: `node --version`. For Go: `go env GOROOT`. Pick the variable whose value most often explains "why does it work locally but not on the CI runner?"
 4. **Respect `VERBOSE=1`.** Gate chatty diagnostic prints behind `if [ "${VERBOSE:-}" = "1" ]` (and the PowerShell equivalent). Errors and key step markers print unconditionally
 5. **Resolve paths relative to the script, not `$PWD`.** Use `"$(cd "$(dirname "$0")/<relative-path-to-anchor>" && pwd)"`. Hard-coded `../../` chains break the moment the renderer's `cwd` changes
 6. **Create destination directories before copying.** `mkdir -p` before any `cp -R` / `rsync` / `robocopy` — most copy commands do not create intermediate directories and fail silently in some shells
-7. **Scope destructive operations narrowly.** Any `rm -rf` (or `Remove-Item -Recurse -Force`) targets only the module's own package path inside the working folder — never the host's `src/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root. Only `prepare_environment` owns the build-output directory's lifecycle for its `.tmp/` working folder
+7. **Scope destructive operations narrowly.** Any `rm -rf` (or `Remove-Item -Recurse -Force`) targets only the module's own package path inside the working folder — never the host's `src/`, `target/`, `node_modules/`, `build/`, or `dist/` at the project root. Only `prepare_environment` owns the build-output directory's lifecycle for its system-temp working folder
 8. **Print where you are before you `cd`.** `echo "Moving to: $DIR"` saves an hour of debugging when paths are wrong. PowerShell: `Write-Host "Moving to: $DIR"`
 
 ## 1. `prepare_environment_<lang>` — copy into the host, then compile
@@ -184,7 +186,7 @@ Hard rules:
 - **Never use a "clean and test" shortcut** (`mvn clean test`, `npm run rebuild`, …) — the cleanup belongs in `prepare_environment` and would erase whatever it installed
 - **Never run the full test suite** when scoping is possible. A per-module script that runs the entire host's tests wastes minutes on every render iteration
 
-## 3. `run_conformance_tests_<lang>` — copy into `.tmp/`, then run the external suite
+## 3. `run_conformance_tests_<lang>` — copy into the system temp directory, then run the external suite
 
 Receives two positional arguments: the renderer's build output folder (`$1`) and the conformance-tests folder (`$2`).
 
@@ -192,8 +194,8 @@ Purpose: run the conformance suite in `$2` against the build that `prepare_envir
 
 Required steps:
 
-1. Validate `$1` and `$2`. **Only `$2` is actually used by the script body today** — but keep `$1` in the signature; the renderer passes both positionally
-2. Stage `$2/*` into a scratch directory under `.tmp/<lang>_conformance/`. Wipe it first if it exists. Use a deletion form that handles hidden files and odd shells safely:
+1. Validate `$1` and `$2`. **Only `$2` is actually used by the script body today** — but keep `$1` in the signature; the renderer passes both positionally. Resolve `$2` to an absolute path if it isn't one already (newer renderers pass it absolute; older ones passed it relative to the invocation directory)
+2. Stage `$2/*` into a scratch directory in the system temp directory (`/tmp/<lang>_conformance/` in Bash, the `GetTempPath()` equivalent in PowerShell). Wipe it first if it exists, and remove it again on exit (`trap 'rm -rf "$DIR"' EXIT` / `finally`). Use a deletion form that handles hidden files and odd shells safely:
    - Bash: `find "$DIR" -mindepth 1 -exec rm -rf {} +` (safer than `rm -rf "$DIR"/*`)
    - PowerShell: `Remove-Item -Recurse -Force "$DIR\*"` after confirming the path exists
 3. `cd` into the scratch directory
@@ -270,7 +272,7 @@ A working three-script set for a Java / Maven embedded integration lives under [
 
 - [`prepare_environment_java.sh`](examples/integration-embedded-testing/prepare_environment_java.sh) — copies `$1` into the host's source tree, cleans `target/`, runs `mvn clean install -DskipTests`
 - [`run_unittests_java.sh`](examples/integration-embedded-testing/run_unittests_java.sh) — re-stages into the host and runs `mvn test -Dtest='<module-pkg>.**.*Test' checkstyle:check`
-- [`run_conformance_tests_java.sh`](examples/integration-embedded-testing/run_conformance_tests_java.sh) — copies `$2` into `.tmp/java_conformance/`, builds the conformance project, runs the suite, and parses the Surefire summary line per the strict pass criteria above
+- [`run_conformance_tests_java.sh`](examples/integration-embedded-testing/run_conformance_tests_java.sh) — copies `$2` into `/tmp/java_conformance/` (system temp, removed again on exit), builds the conformance project, runs the suite, and parses the Surefire summary line per the strict pass criteria above
 
 Use them as a template when adding a new embedded integration in Java / Maven — copy, search-and-replace only the package segment and the `-Dtest` filter, then wire into `config.yaml`. For other languages (Python, Node.js, Go, Rust, …), the `implement-*-testing-script` skills generate the equivalent three-script set following the same contract.
 
