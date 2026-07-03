@@ -19,18 +19,31 @@ fi
 current_dir=$(pwd)
 printf "Current directory: $current_dir\n"
 
-tree $2
+# Resolve the conformance tests folder to an absolute path so it can be used
+# after changing into the working folder ($2 may be relative to the invocation
+# directory on older renderers; newer renderers pass it as an absolute path).
+case "$2" in
+  /*) CONFORMANCE_TESTS_SOURCE="$2" ;;
+  *)  CONFORMANCE_TESTS_SOURCE="$current_dir/$2" ;;
+esac
 
-JAVA_BUILD_SUBFOLDER=,tmp/$1
+tree "$CONFORMANCE_TESTS_SOURCE"
+
+# Working folders live in the system temp directory. $1 and $2 may be absolute
+# paths, so only their basenames are used to build the working folder names.
+JAVA_BUILD_SUBFOLDER="/tmp/java_$(basename "$1")"
+CONFORMANCE_TESTS_FOLDER="/tmp/java_conformance_$(basename "$2")"
+
+trap 'rm -rf "$JAVA_BUILD_SUBFOLDER" "$CONFORMANCE_TESTS_FOLDER"' EXIT
 
 if [ "${VERBOSE:-}" -eq 1 ] 2>/dev/null; then
   printf "Preparing Java build subfolder: $JAVA_BUILD_SUBFOLDER\n"
 fi
 
-rm -rf $JAVA_BUILD_SUBFOLDER
-mkdir -p $JAVA_BUILD_SUBFOLDER
+rm -rf "$JAVA_BUILD_SUBFOLDER"
+mkdir -p "$JAVA_BUILD_SUBFOLDER"
 
-cp -R $1/* $JAVA_BUILD_SUBFOLDER
+cp -R "$1"/* "$JAVA_BUILD_SUBFOLDER"
 printf "Copied from $1 to $JAVA_BUILD_SUBFOLDER...\n"
 
 # Move to the subfolder
@@ -54,17 +67,15 @@ if [ $exit_code -ne 0 ]; then
     exit $exit_code
 fi
 
-CONFORMANCE_TESTS_FOLDER=.tmp/java_conformance
-
 cd "$current_dir" 2>/dev/null
 printf "Moved to $current_dir...\n"
 printf "Preparing Java conformance tests subfolder: $CONFORMANCE_TESTS_FOLDER\n"
 
-rm -rf $CONFORMANCE_TESTS_FOLDER
-mkdir -p $CONFORMANCE_TESTS_FOLDER
+rm -rf "$CONFORMANCE_TESTS_FOLDER"
+mkdir -p "$CONFORMANCE_TESTS_FOLDER"
 
-cp -R $2/* $CONFORMANCE_TESTS_FOLDER
-printf "Copied from $2 to $CONFORMANCE_TESTS_FOLDER...\n"
+cp -R "$CONFORMANCE_TESTS_SOURCE"/* "$CONFORMANCE_TESTS_FOLDER"
+printf "Copied from $CONFORMANCE_TESTS_SOURCE to $CONFORMANCE_TESTS_FOLDER...\n"
 
 # Move to the subfolder
 cd "$CONFORMANCE_TESTS_FOLDER" 2>/dev/null

@@ -52,7 +52,7 @@ For each `config.yaml` in the inventory, check **all** of the following. Collect
 2. **At minimum `unittests-script` is present.** Every project gets a unit-test runner.
 3. **For every script field that is present** (`unittests-script`, `conformance-tests-script`, `prepare-environment-script`):
    - The path is a string ending in `.sh` (macOS/Linux) or `.ps1` (Windows). The extension must match the rest of the project — do not mix `.sh` and `.ps1` in a single config.
-   - The referenced file actually exists on disk under `test_scripts/`.
+   - The referenced file actually exists on disk, resolved the way the renderer resolves it: absolute / `~` paths as-is, relative paths against the **config file's directory** (typically landing under `test_scripts/`). There is no other fallback — the renderer fails fast with a `FileNotFoundError` on a script path that doesn't resolve, so a path that only "works" from some other directory is a failure here.
    - On Unix, the script has the executable bit set (`-x`). If not, that is a fixable failure.
 4. **No mixed stacks per config.** Every script referenced from a single `config.yaml` must target the same language/stack. For example, `backend/config.yaml` should not reference `run_unittests_js.sh`. If a config crosses stacks, that is a failure — the project should have been split into multiple configs per the rule in `PLAIN_REFERENCE.md`.
 5. **No dangling fields.** Any `*-script` field whose target file does not exist is a failure.

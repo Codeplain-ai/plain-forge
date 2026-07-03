@@ -27,16 +27,20 @@ fi
 
 current_dir=$(pwd)
 
-PYTHON_BUILD_SUBFOLDER=".tmp/$1"
+# Working folder lives in the system temp directory. $1 may be an absolute
+# path, so only its basename is used to build the working folder name.
+# No cleanup trap here on purpose: this script deliberately leaves the working
+# folder populated so the conformance runner can attach to it on every invocation.
+PYTHON_BUILD_SUBFOLDER="/tmp/python_$(basename "$1")"
 
 if [ "${VERBOSE:-}" -eq 1 ] 2>/dev/null; then
   printf "Preparing Python build subfolder: $PYTHON_BUILD_SUBFOLDER\n"
 fi
 
-rm -rf $PYTHON_BUILD_SUBFOLDER
-mkdir -p $PYTHON_BUILD_SUBFOLDER
+rm -rf "$PYTHON_BUILD_SUBFOLDER"
+mkdir -p "$PYTHON_BUILD_SUBFOLDER"
 
-cp -R $1/* $PYTHON_BUILD_SUBFOLDER
+cp -R "$1"/* "$PYTHON_BUILD_SUBFOLDER"
 
 # Move to the subfolder
 cd "$PYTHON_BUILD_SUBFOLDER" 2>/dev/null

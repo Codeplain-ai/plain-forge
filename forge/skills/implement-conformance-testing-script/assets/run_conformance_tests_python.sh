@@ -26,18 +26,28 @@ else
     exit $UNRECOVERABLE_ERROR_EXIT_CODE
 fi
 
-current_dir=$(pwd)
+# Resolve the conformance tests folder to an absolute path so it can be used
+# after changing into the working folder ($2 may be relative to the invocation
+# directory on older renderers; newer renderers pass it as an absolute path).
+case "$2" in
+  /*) CONFORMANCE_TESTS_FOLDER="$2" ;;
+  *)  CONFORMANCE_TESTS_FOLDER="$(pwd)/$2" ;;
+esac
 
-PYTHON_BUILD_SUBFOLDER=".tmp/$1"
+# Working folder lives in the system temp directory. $1 may be an absolute
+# path, so only its basename is used to build the working folder name.
+PYTHON_BUILD_SUBFOLDER="/tmp/python_$(basename "$1")"
+
+trap 'rm -rf "$PYTHON_BUILD_SUBFOLDER"' EXIT
 
 if [ "${VERBOSE:-}" -eq 1 ] 2>/dev/null; then
   printf "Preparing Python build subfolder: $PYTHON_BUILD_SUBFOLDER\n"
 fi
 
-rm -rf $PYTHON_BUILD_SUBFOLDER
-mkdir -p $PYTHON_BUILD_SUBFOLDER
+rm -rf "$PYTHON_BUILD_SUBFOLDER"
+mkdir -p "$PYTHON_BUILD_SUBFOLDER"
 
-cp -R $1/* $PYTHON_BUILD_SUBFOLDER
+cp -R "$1"/* "$PYTHON_BUILD_SUBFOLDER"
 
 # Move to the subfolder
 cd "$PYTHON_BUILD_SUBFOLDER" 2>/dev/null
@@ -84,7 +94,7 @@ printf "Requirements setup completed in %.2f seconds\n\n" "$duration"
 # Execute all Python conformance tests in the build folder
 printf "Running Python conformance tests...\n\n"
 
-output=$($PYTHON_CMD -m unittest discover -b -s "$current_dir/$2" 2>&1)
+output=$($PYTHON_CMD -m unittest discover -b -s "$CONFORMANCE_TESTS_FOLDER" 2>&1)
 exit_code=$?
 
 # Echo the original output

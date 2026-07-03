@@ -360,7 +360,7 @@ The **primary** purpose of these scripts is **automated execution by the rendere
 - **Conformance tests are per-functional-spec.** Each functional spec in a module has its own folder under `conformance_tests/<module>/<functionality>/`. After the renderer finishes generating code for a new functional spec and the unit tests and refactoring passes, it runs the conformance tests of **all previous functional spec** to detect regressions — see [Conformance Test Workflow](#conformance-test-workflow). For a single module (with 0 `requires` modules) with N functional specs, the conformance script gets invoked **on the order of N times per render**, each invocation pointing at a different spec's test folder.
 - **Each per-spec invocation is independent.** The conformance script does not know that it's the second invocation in a long sequence; from its point of view, each invocation is a cold start against a single spec's tests.
 - **Per-spec independence is also what makes dependency installation expensive.** A naive conformance runner would re-install all of the project's runtime dependencies (Python venv + `pip install`, Maven dependency tree, `npm ci`, `cargo build`, ...) on every one of those N invocations. That's `N × install-cost` of wasted work for every render.
-- **That is exactly why `prepare_environment_<lang>` exists.** Its **only** job is to amortize the install cost: install once at the start of a render, populate `.tmp/<lang>_<arg>/` with the warmed dependency cache and build artifacts, then let the conformance runner **attach** to that working folder on each of the N per-spec invocations instead of re-installing. The conformance runner's [activate-only variant](../implement-conformance-testing-script/SKILL.md#variant-decision-install-inline-vs-activate-only) does precisely that. When no prepare script exists, the conformance runner falls back to the install-inline variant and pays the install cost N times — acceptable for tiny projects, costly for anything realistic.
+- **That is exactly why `prepare_environment_<lang>` exists.** Its **only** job is to amortize the install cost: install once at the start of a render, populate the working folder in the system temp directory (`/tmp/<lang>_<basename-of-build-folder>/` on macOS/Linux, the `GetTempPath()` equivalent on Windows) with the warmed dependency cache and build artifacts, then let the conformance runner **attach** to that working folder on each of the N per-spec invocations instead of re-installing. The conformance runner's [activate-only variant](../implement-conformance-testing-script/SKILL.md#variant-decision-install-inline-vs-activate-only) does precisely that — and it **never deletes** that working folder; prepare owns its lifecycle. When no prepare script exists, the conformance runner falls back to the install-inline variant and pays the install cost N times — acceptable for tiny projects, costly for anything realistic.
 - **The unit-test runner has a different execution model, because unit tests live in a different place.** Unit tests are part of the generated codebase itself — they sit directly inside `plain_modules/<module>/` next to the implementation they exercise — whereas conformance tests live *outside* the codebase, in their own per-spec folders under `conformance_tests/<module>/<spec>/`. As a result, the unit-test runner doesn't have a per-spec axis to iterate over: it just runs against the whole `plain_modules/<module>/` build in one go, gets invoked far fewer times per render, and has no amortization gain to chase. That's why the unit-test runner is always self-contained and there is no `prepare_environment`-equivalent for it.
 
 Keep this framing in mind when you author or adapt any of these scripts. The decisions about working-folder paths, isolation locations, exit codes, and the activate-only-vs-install-inline split are not arbitrary house style — they are what makes the renderer's per-spec loop tractable.
@@ -369,7 +369,7 @@ Keep this framing in mind when you author or adapt any of these scripts. The dec
 
 - **`run_unittests_<lang>.sh` / `.ps1`** — runs the auto-generated unit tests in `plain_modules/<module>/`. Authored by the [`implement-unit-testing-script`](../implement-unit-testing-script/SKILL.md) skill. Receives one positional argument: the source build folder name. Invoked roughly once per render. **Fully self-contained:** it installs its own dependencies inline (via `pip install -r requirements.txt`, `npm ci`, `mvn`, `cargo fetch`, etc.) and never relies on any other script having run first.
 - **`run_conformance_tests_<lang>.sh` / `.ps1`** — runs the conformance tests in `conformance_tests/<module>/<spec>/` against the generated implementation. Authored by the [`implement-conformance-testing-script`](../implement-conformance-testing-script/SKILL.md) skill. Receives two positional arguments: the source build folder and the conformance tests folder. **Invoked once per previous functional spec on every render** — i.e. roughly N times for a module with N functional specs.
-- **`prepare_environment_<lang>.sh` / `.ps1`** — *optional* one-time setup that runs **before** the conformance script and **only the conformance script**. Invoked **once per render** to install the build's dependencies and pre-warm build artifacts into `.tmp/<lang>_<arg>/` so the N subsequent conformance invocations can attach to the warmed environment instead of re-installing. Authored by the [`implement-prepare-environment-script`](../implement-prepare-environment-script/SKILL.md) skill. Receives one positional argument: the source build folder name. **It does not feed the unit-test script** — see [`prepare_environment` is conformance-only](#prepare_environment-is-conformance-only-common-mistake) below.
+- **`prepare_environment_<lang>.sh` / `.ps1`** — *optional* one-time setup that runs **before** the conformance script and **only the conformance script**. Invoked **once per render** to install the build's dependencies and pre-warm build artifacts into the system-temp working folder (`/tmp/<lang>_<basename>/`) so the N subsequent conformance invocations can attach to the warmed environment instead of re-installing. Authored by the [`implement-prepare-environment-script`](../implement-prepare-environment-script/SKILL.md) skill. Receives one positional argument: the source build folder name. **It does not feed the unit-test script** — see [`prepare_environment` is conformance-only](#prepare_environment-is-conformance-only-common-mistake) below.
 
 ### `prepare_environment` is conformance-only (common mistake)
 
@@ -379,7 +379,7 @@ It is a **common and costly mistake** to assume that `prepare_environment_<lang>
 
 Why:
 
-- **Unit tests run against `plain_modules/<module>/`, conformance tests run against `.tmp/<lang>_<arg>/`.** The two scripts stage into different places. `prepare_environment` populates `.tmp/<lang>_<arg>/` for conformance; the unit-test script does its own staging into its **own** `.tmp/<lang>_<arg>/` working folder and installs its own dependencies there.
+- **Unit tests run against `plain_modules/<module>/`, conformance tests run against the system-temp working folder.** The two scripts stage into different places. `prepare_environment` populates `/tmp/<lang>_<basename>/` for conformance; the unit-test script does its own staging into its **own** system-temp working folder, installs its own dependencies there, and removes that folder when it exits.
 - **The unit-test runner must work in isolation.** Users and CI systems run unit tests as a quick smoke check without ever invoking conformance. If `run_unittests_<lang>` depended on `prepare_environment` having run, those one-off unit-test invocations would silently fail (or be "fixed" by a misguided edit to make it depend on `prepare`).
 - **The skill contract enforces it.** [`implement-unit-testing-script`](../implement-unit-testing-script/SKILL.md) emits a fully self-contained script every time: toolchain check → stage → install dependencies inline → run tests. It never emits an activate-only variant. The two-variant pattern is exclusive to the conformance runner.
 
@@ -389,11 +389,13 @@ If you find yourself authoring (or asked to author) a `prepare_environment` scri
 
 Anything not listed here is documented in the individual skill file:
 
-- **Input folders are read-only — hard rule.** The build folder (and, for conformance, the conformance tests folder too) is **input only**. Every install, build artifact, cache, log, JUnit XML, coverage report, compiled test class, and temp file must land inside `.tmp/<lang>_<arg>`, never inside the input folder. The build folder is shared with the renderer and with the user's version control; writing into it corrupts both. If you find yourself about to issue a command whose `cwd` is an input folder, or whose target path starts with the input folder, **stop** — the write has to go into `.tmp/<lang>_<arg>`.
+- **Input folders are read-only — hard rule.** The build folder (and, for conformance, the conformance tests folder too) is **input only**. Every install, build artifact, cache, log, JUnit XML, coverage report, compiled test class, and temp file must land inside the working folder in the system temp directory, never inside the input folder. The build folder is shared with the renderer and with the user's version control; writing into it corrupts both. If you find yourself about to issue a command whose `cwd` is an input folder, or whose target path starts with the input folder, **stop** — the write has to go into the working folder.
+- **Arguments arrive as absolute paths.** Current renderers resolve the build folder and conformance-tests folder to absolute paths before invoking the scripts (older renderers passed relative ones). Scripts therefore build their working-folder name from the **basename** of the argument (`/tmp/<lang>_$(basename "$1")` in Bash, `Join-Path ([System.IO.Path]::GetTempPath()) "<lang>_$(Split-Path $arg -Leaf)"` in PowerShell) and resolve the conformance-tests argument to absolute before any `cd`. Concatenating a raw argument (`.tmp/$1`, `<lang>_$1`, `$current_dir/$2`) produces doubled paths and errors like `ImportError: Start directory is not importable`.
+- **Cleanup ownership.** The unit-test runner and the install-inline conformance runner remove their working folder on exit (`trap 'rm -rf …' EXIT` / `finally`). `prepare_environment` and the activate-only conformance runner **never delete** the working folder — prepare wipes-and-recreates it once per render and the activate-only runner attaches to it N times; deleting it in between destroys the amortization.
 - **Shell flavor matches the host.** `.sh` on macOS / Linux, `.ps1` on Windows. A project intended for both OSes ships both files in matching pairs (`prepare` + `conformance` for each language must agree on working-folder name and isolation paths).
 - **Exit codes are part of the contract.** `69` for unrecoverable errors (missing toolchain, bad args, can't enter the working folder, install failed); `1` for the "no tests discovered" guard in the conformance runner (and bad usage in the unit-test runner); any other non-zero code is propagated from the underlying test command. Other skills — notably [`plain-healthcheck`](../plain-healthcheck/SKILL.md) and [`check-plain-env`](../check-plain-env/SKILL.md) — branch on these codes.
 - **Wired in via `config.yaml`.** Each script that is actually generated must be referenced from the relevant `config.yaml` via the `unittests-script:`, `conformance-tests-script:`, and `prepare-environment-script:` keys respectively. See the [`init-config-file`](../init-config-file/SKILL.md) skill for the canonical assembly. **If `prepare-environment-script` is declared, `conformance-tests-script` must be declared too** — a prepare script only makes sense in service of conformance, and `plain-healthcheck` will hard-fail a project that violates this.
-- **Conformance scripts come in two variants — unit-test scripts do not.** When a `prepare_environment_<lang>` script exists, the conformance script is the **activate-only** variant (it attaches to the env prepare populated in `.tmp/`). When no prepare exists, the conformance script is the **install-inline** variant (it stages and installs in one shot). The `implement-conformance-testing-script` skill picks the right variant automatically based on whether a prepare script is already on disk. **The unit-test script has no activate-only variant** — it is always self-contained, regardless of whether a `prepare_environment_<lang>` script exists.
+- **Conformance scripts come in two variants — unit-test scripts do not.** When a `prepare_environment_<lang>` script exists, the conformance script is the **activate-only** variant (it attaches to the env prepare populated in the system-temp working folder). When no prepare exists, the conformance script is the **install-inline** variant (it stages and installs in one shot). The `implement-conformance-testing-script` skill picks the right variant automatically based on whether a prepare script is already on disk. **The unit-test script has no activate-only variant** — it is always self-contained, regardless of whether a `prepare_environment_<lang>` script exists.
 - **Dependency isolation is project-local.** Each language's package cache / virtual env / build repo lives inside the working folder (`./.venv` for Python, `./node_modules` for Node, `./.m2` for Java, `./.gocache` for Go, `./.cargo` for Rust, `./.pub-cache` for Flutter, ...) — never in the user's home directory. The conformance script reads from the same project-local location prepare wrote to; the unit-test script uses its **own** working folder and its **own** copy of the isolated dependencies.
 - **No language-package checks live in these scripts.** The scripts themselves install language packages via `pip install -r requirements.txt`, `npm ci`, `mvn -Dmaven.repo.local=...`, `go mod download`, `cargo fetch`, etc. They do **not** pre-verify individual packages; that's the package manager's job. The host-level checks for the toolchains and external dependencies belong in `check-plain-env`, not in these scripts.
 - **Scripts are verbose**. They print out every step they take, including toolchain checks, dependency installations, and test results. This makes it easier to debug and understand what's going on.
@@ -569,13 +571,37 @@ GOOD — split into two independent root modules
 
 ## `codeplain` CLI reference
 
+### Path parameter resolution
+
+Every path argument the renderer accepts (`--build-folder`, `--conformance-tests-folder`, `--unittests-script`, `--conformance-tests-script`, `--prepare-environment-script`, `--log-file-name`, `--logging-config-path`, `--template-dir`, `--base-folder`, `--build-dest`, `--conformance-tests-dest`) resolves **based on where the value was written**:
+
+- **CLI argument** → resolved against the **current working directory** of the `codeplain` invocation.
+- **`config.yaml` value** → resolved against the **directory containing that config file**.
+- **Default (not provided anywhere)** → resolved against the **directory containing the plain file**.
+- **Absolute paths** and paths starting with `~` are used as-is (`~` is expanded).
+
+Consequences worth knowing when authoring or debugging a project:
+
+- Script paths are **validated at parse time** — the renderer fails fast with a `FileNotFoundError` if a `*-script` value doesn't resolve to an existing file. There is no fallback lookup (older renderer versions fell back to the renderer's own directory; that behavior is gone).
+- The renderer passes the **resolved absolute paths** to the test scripts as their positional arguments — the scripts must not assume relative paths (see [Testing Scripts](#testing-scripts)).
+- Since defaults resolve against the plain file's directory, `plain_modules/`, `conformance_tests/`, and `codeplain.log` land next to the spec regardless of where `codeplain` is invoked from — but an explicitly passed relative path lands relative to where it was written (CLI → cwd, config → config dir).
+
+### CLI help
+
 ```txt
-Render ***plain specs to target code.
+Render plain code to target code. Path arguments resolve based on where they
+were written: values given on the command line are resolved against the
+current working directory, values read from config.yaml are resolved against
+the config file's directory, and defaults are resolved against the directory
+containing the plain file. Absolute paths (and paths starting with '~') are
+used as-is.
 
 positional arguments:
-  filename              Path to the plain file to render. The directory containing this file has highest precedence for template loading, so
-                        you can place custom templates here to override the defaults. See --template-dir for more details about template
-                        loading.
+  filename              Path to the plain file to render. The directory
+                        containing this file has highest precedence for
+                        template loading, so you can place custom templates
+                        here to override the defaults. See --template-dir for
+                        more details about template loading.
 
 options:
   -h, --help            show this help message and exit
@@ -585,61 +611,90 @@ options:
   --build-folder BUILD_FOLDER
                         Folder for build files
   --log-to-file, --no-log-to-file
-                        Enable logging to a file. Defaults to True. Set to False to disable.
+                        Enable logging to a file. Defaults to True. Set to
+                        False to disable.
   --log-file-name LOG_FILE_NAME
-                        Name of the log file. Defaults to 'codeplain.log'.Always resolved relative to the plain file directory.If file on
-                        this path already exists, the already existing log file will be overwritten by the current logs.
+                        Name of the log file. Defaults to 'codeplain.log'. If
+                        a file already exists at the resolved path, it will be
+                        overwritten by the current logs.
   --render-range RENDER_RANGE
-                        Specify a range of functionalities to render (e.g. `1` , `2`, `3`). Use comma to separate start and end IDs. If only
-                        one functionality ID is provided, only that functionality is rendered. Range is inclusive of both start and end IDs.
+                        Specify a range of functionalities to render (e.g. `1`
+                        , `2`, `3`). Use comma to separate start and end IDs.
+                        If only one functionality ID is provided, only that
+                        functionality is rendered. Range is inclusive of both
+                        start and end IDs.
   --render-from RENDER_FROM
-                        Continue generation starting from this specific functionality (e.g. `2`). The functionality with this ID will be
-                        included in the output. The functionality ID must match one of the functionalities in your plain file.
+                        Continue generation starting from this specific
+                        functionality (e.g. `2`). The functionality with this
+                        ID will be included in the output. The functionality
+                        ID must match one of the functionalities in your plain
+                        file.
   --force-render        Force re-render of all the required modules.
   --unittests-script UNITTESTS_SCRIPT
-                        Shell script to run unit tests on generated code. Receives the build folder path as its first argument (default:
-                        'plain_modules').
+                        Shell script to run unit tests on generated code.
+                        Receives the build folder path as its first argument
+                        (default: 'plain_modules').
   --conformance-tests-folder CONFORMANCE_TESTS_FOLDER
                         Folder for conformance test files
   --conformance-tests-script CONFORMANCE_TESTS_SCRIPT
-                        Path to conformance tests shell script. Every conformance test script should accept two arguments: 1) Path to a
-                        folder (e.g. `plain_modules/module_name`) containing generated source code, 2) Path to a subfolder of the conformance
-                        tests folder (e.g. `conformance_tests/subfoldername`) containing test files.
+                        Path to conformance tests shell script. Every
+                        conformance test script should accept two arguments:
+                        1) Path to a folder (e.g. `plain_modules/module_name`)
+                        containing generated source code, 2) Path to a
+                        subfolder of the conformance tests folder (e.g.
+                        `conformance_tests/subfoldername`) containing test
+                        files.
   --prepare-environment-script PREPARE_ENVIRONMENT_SCRIPT
-                        Path to a shell script that prepares the testing environment. The script should accept the source code folder path as
-                        its first argument.
+                        Path to a shell script that prepares the testing
+                        environment. The script should accept the source code
+                        folder path as its first argument.
   --test-script-timeout TEST_SCRIPT_TIMEOUT
-                        Timeout for test scripts in seconds. If not provided, the default timeout of 120 seconds is used.
-  --api [API]           Alternative base URL for the API. Default: `https://api.codeplain.ai`
-  --api-key API_KEY     API key used to access the API. If not provided, the `CODEPLAIN_API_KEY` environment variable is used.
-  --full-plain          Full preview ***plain specification before code generation.Use when you want to preview context of all ***plain
-                        primitives that are going to be included in order to render the given module.
-  --dry-run             Dry run preview of the code generation (without actually making any changes).
+                        Timeout for test scripts in seconds. If not provided,
+                        the default timeout of 120 seconds is used.
+  --api [API]           Alternative base URL for the API. Default:
+                        `https://api.codeplain.ai`
+  --api-key API_KEY     API key used to access the API. If not provided, the
+                        `CODEPLAIN_API_KEY` environment variable is used.
+  --full-plain          Full preview ***plain specification before code
+                        generation.Use when you want to preview context of all
+                        ***plain primitives that are going to be included in
+                        order to render the given module.
+  --dry-run             Dry run preview of the code generation (without
+                        actually making any changes).
   --replay-with REPLAY_WITH
   --template-dir TEMPLATE_DIR
-                        Path to a custom template directory. Templates are searched in the following order: 1) Directory containing the plain
-                        file, 2) Custom template directory (if provided through this argument), 3) Built-in standard_template_library
-                        directory
-  --copy-build          If set, copy the rendered contents of code in `--base-folder` folder to `--build-dest` folder after successful
-                        rendering.
+                        Path to a custom template directory. Templates are
+                        searched in the following order: 1) Directory
+                        containing the plain file, 2) Custom template
+                        directory (if provided through this argument), 3)
+                        Built-in standard_template_library directory
+  --copy-build          If set, copy the rendered contents of code in `--base-
+                        folder` folder to `--build-dest` folder after
+                        successful rendering.
   --build-dest BUILD_DEST
-                        Target folder to copy rendered contents of code to (used only if --copy-build is set).
+                        Target folder to copy rendered contents of code to
+                        (used only if --copy-build is set).
   --copy-conformance-tests
-                        If set, copy the conformance tests of code in `--conformance-tests-folder` folder to `--conformance-tests-dest`
-                        folder successful rendering. Requires --conformance-tests-script.
+                        If set, copy the conformance tests of code in
+                        `--conformance-tests-folder` folder to `--conformance-
+                        tests-dest` folder successful rendering. Requires
+                        --conformance-tests-script.
   --conformance-tests-dest CONFORMANCE_TESTS_DEST
-                        Target folder to copy conformance tests of code to (used only if --copy-conformance-tests is set).
+                        Target folder to copy conformance tests of code to
+                        (used only if --copy-conformance-tests is set).
   --render-machine-graph
                         If set, render the state machine graph.
   --logging-config-path LOGGING_CONFIG_PATH
                         Path to the logging configuration file.
-  --headless            Run in headless mode: no TUI, no terminal output except a single render-started message. All logs are written to the
-                        log file.
+  --headless            Run in headless mode: no TUI, no terminal output
+                        except a single render-started message. All logs are
+                        written to the log file.
 
 configuration:
   --config-name CONFIG_NAME
-                        Name of the config file to look for. Looked up in the plain file directory and the current working directory.
-                        Defaults to config.yaml.
+                        Name of the config file to look for. Looked up in the
+                        plain file directory and the current working
+                        directory. Defaults to config.yaml.
 
 ```
 

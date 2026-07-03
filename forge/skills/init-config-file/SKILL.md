@@ -29,7 +29,7 @@ If you only fixed a typo inside a `.plain` file and the testing surface didn't m
 1. Determines **how many** `config.yaml` files the project needs (one per part — see [Per-part split](#per-part-split)).
 2. For each config, gathers the decided values from the current project state (existing scripts under `test_scripts/`, the template directory, the build/dest folder choices).
 3. Emits a clean, alphabetically-grouped `config.yaml` containing **only** keys that are actually in use, using the canonical key names from the [Valid keys reference](#valid-keys-reference).
-4. Verifies that every `*-script` value points at a file that exists on disk under `test_scripts/` (or wherever the user placed it), using the same lookup rule the renderer uses: absolute path → path relative to the config file's directory → path relative to the renderer's directory.
+4. Verifies that every `*-script` value points at a file that exists on disk under `test_scripts/` (or wherever the user placed it), using the same resolution rule the renderer uses: an absolute path (or a `~` path) is used as-is; a relative path in `config.yaml` resolves against the **config file's directory**. There is no other fallback — the renderer fails fast with a `FileNotFoundError` when a script path doesn't resolve to an existing file.
 5. Hands off to `plain-healthcheck` for the full validation pass.
 
 ## What this skill does NOT do
@@ -51,7 +51,7 @@ These keys reflect choices made in Phase 3 of `forge-plain` and are the bread an
 
 | Key | Type | Default | When to include |
 |---|---|---|---|
-| `unittests-script` | path (string) | — | **Required.** Every project gets a unit-test runner. Path resolves relative to the config file's directory (preferred) or the renderer directory. |
+| `unittests-script` | path (string) | — | **Required.** Every project gets a unit-test runner. A relative path resolves against the config file's directory; the renderer fails fast if the file doesn't exist. |
 | `conformance-tests-script` | path (string) | — | Include when the user opted into conformance testing in Phase 3. |
 | `prepare-environment-script` | path (string) | — | Include only when both (a) the user opted into a prepare-environment script and (b) `conformance-tests-script` is also set. Setting prepare without conformance is a hard `plain-healthcheck` failure. |
 | `test-script-timeout` | int (seconds) | `120` | Include only when the user explicitly raised/lowered the default. |
@@ -72,7 +72,7 @@ These are useful but the defaults are almost always fine. Only include them when
 | `copy-conformance-tests` | bool | `false` | Requires `conformance-tests-script` to also be set. |
 | `conformance-tests-dest` | string | `dist_conformance_tests` | Target folder for the conformance-test copy. Must differ from `conformance-tests-folder`. |
 | `log-to-file` | bool | `true` | Disable only when the user explicitly does not want a log file. Controls whether logs are mirrored to disk — it does **not** set the log level (that's `logging-config-path`'s job). |
-| `log-file-name` | string | `codeplain.log` | If `log-to-file` is `false`, this key must be left out. Resolved relative to the `.plain` file directory. |
+| `log-file-name` | string | `codeplain.log` | If `log-to-file` is `false`, this key must be left out. A relative value set here resolves against the config file's directory; when the key is left out entirely, the default resolves against the `.plain` file's directory. |
 | `render-machine-graph` | bool | `false` | Include only when the user wants the state-machine graph rendered. |
 | `headless` | bool | `false` | Include only when the project is meant to run in CI / non-interactive mode by default. |
 | `force-render` | bool | `false` | Almost never belongs in `config.yaml`; prefer the CLI flag for one-off forced renders. |
@@ -117,7 +117,7 @@ In other words: `logging-config-path` is the **only** knob that changes the leve
 
 ### Default behavior
 
-- The CLI default value for `logging-config-path` is `logging_config.yaml`. If a file by that exact name exists in the current working directory, it will be loaded automatically — even without `logging-config-path` being set in `config.yaml`.
+- The CLI default value for `logging-config-path` is `logging_config.yaml`, resolved against the **`.plain` file's directory** (like every defaulted path parameter). If a file by that name exists next to the plain file, it will be loaded automatically — even without `logging-config-path` being set in `config.yaml`. A value set in `config.yaml` resolves against the config file's directory; a value passed on the CLI resolves against the invocation directory.
 - If the file does not exist, the renderer silently keeps the baseline levels from step 1 above (no warning).
 - If the file exists but fails to parse / apply, the renderer warns (`Failed to load logging configuration from …`) and falls back to the baseline.
 
@@ -201,7 +201,7 @@ For each part:
    - `conformance-tests-folder` ≠ `conformance-tests-dest`.
    - `copy-conformance-tests: true` requires `conformance-tests-script`.
    - `log-file-name` is set ⇒ `log-to-file` is not `false`.
-   - All `*-script` paths resolve on disk (absolute → relative to config dir → relative to renderer dir).
+   - All `*-script` paths resolve on disk (absolute / `~` paths as-is; relative paths against the config file's directory — no other fallback; the renderer fails fast on a missing script).
    - No script path crosses stacks (e.g. `backend/config.yaml` must not reference `run_unittests_js.sh`).
 
 ### Step 3 — Emit `config.yaml`

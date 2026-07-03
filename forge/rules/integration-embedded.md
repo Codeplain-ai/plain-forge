@@ -10,7 +10,7 @@ When an integration `.plain` module is **embedded** — meaning the generated co
 
 Embedded means: the host codebase already exists, has its own language / framework / dependency manager / packaging layout, and the integration must conform to all of that without negotiation.
 
-> **For test-script authoring**, also follow [`integration-embedded-testing.md`](integration-embedded-testing.md). It defines the per-script contract (`prepare_environment_<lang>`, `run_unittests_<lang>`, `run_conformance_tests_<lang>`) — staging into the host vs `.tmp/`, arg validation, exit codes, output parsing, the three `***implementation reqs***` entries the spec must declare so the scripts can be generated. This file (`integration-embedded.md`) only summarizes the test-script wiring; the testing rule is the source of truth.
+> **For test-script authoring**, also follow [`integration-embedded-testing.md`](integration-embedded-testing.md). It defines the per-script contract (`prepare_environment_<lang>`, `run_unittests_<lang>`, `run_conformance_tests_<lang>`) — staging into the host vs the system temp directory, arg validation, exit codes, output parsing, the three `***implementation reqs***` entries the spec must declare so the scripts can be generated. This file (`integration-embedded.md`) only summarizes the test-script wiring; the testing rule is the source of truth.
 
 ## The host codebase dictates the tech stack (hard rule)
 
@@ -119,7 +119,7 @@ The renderer reads the directives from the spec and the shapes from the linked s
 
 ## Test-script wiring — copy into the host, run tests there
 
-Embedded integrations are tested **inside the host codebase itself**. The prepare and unit-test scripts copy the renderer's output (`$1`, i.e. `plain_modules/<module>/`) into the host's source tree at the module's package path, then compile / test the host project in place. Only the conformance script uses a `.tmp/` scratch folder, because the conformance suite is a separate project that consumes the host build as a dependency.
+Embedded integrations are tested **inside the host codebase itself**. The prepare and unit-test scripts copy the renderer's output (`$1`, i.e. `plain_modules/<module>/`) into the host's source tree at the module's package path, then compile / test the host project in place. Only the conformance script uses a scratch folder in the system temp directory (`/tmp/<lang>_conformance/`), because the conformance suite is a separate project that consumes the host build as a dependency.
 
 This matters because the integration's generated code references host symbols by their full import path (e.g. `from host_project.integrations.base import IntegrationContract`). Those imports only resolve cleanly when the test process is rooted in the host's package layout — anything else creates path edge cases that bite later in conformance failures.
 
@@ -127,7 +127,7 @@ See [`integration-embedded-testing.md`](integration-embedded-testing.md) for the
 
 - **`prepare_environment_<lang>`** copies `$1` into the host's source tree at the module's package path, cleans the host's build-output directory, then runs the host's install / build (e.g. `mvn clean install -DskipTests`). The conformance suite later resolves the integration from the host's local dependency cache
 - **`run_unittests_<lang>`** repeats the same copy into the host (self-contained — must work without `prepare_environment` having run first), then runs the module's unit tests + lint scoped to the module's package
-- **`run_conformance_tests_<lang>`** copies `$2` (the conformance-tests folder) into `.tmp/<lang>_conformance/`, `cd`s in, builds the conformance project, and runs it against the build that `prepare_environment` already installed into the host
+- **`run_conformance_tests_<lang>`** copies `$2` (the conformance-tests folder) into `/tmp/<lang>_conformance/` (system temp), `cd`s in, builds the conformance project, and runs it against the build that `prepare_environment` already installed into the host
 
 ### Invariants the scripts must enforce
 
@@ -150,7 +150,7 @@ Before declaring an embedded integration done, in addition to the shared checkli
 - [ ] Host-package version pins are copied into `***implementation reqs***`
 - [ ] `prepare_environment` copies `$1` into the host's source tree at the module's package path, cleans the host's build-output directory, and runs the host's install / build so the conformance suite can resolve the integration from the local dependency cache
 - [ ] `run_unittests` runs the same copy-into-host sequence (self-contained — does not depend on `prepare_environment` having run) and invokes the host's test runner scoped to the module's package
-- [ ] `run_conformance_tests` copies `$2` into `.tmp/<lang>_conformance/`, `cd`s in, builds the conformance project, and runs it against the host build that `prepare_environment` already installed
+- [ ] `run_conformance_tests` copies `$2` into `/tmp/<lang>_conformance/` (system temp), `cd`s in, builds the conformance project, and runs it against the host build that `prepare_environment` already installed
 - [ ] Host codebase root is read from a named env var (default value documented in each script's usage) — never hardcoded; the env var name is captured in the integration's configuration concept
 - [ ] `***implementation reqs***` declares **everything about `:UnitTests:`** — integration source path, `:UnitTests:` source path, `:UnitTests:` package, framework + conventions, lint / static-analysis gate — per [`integration-embedded-testing.md`](integration-embedded-testing.md)
 - [ ] `***test reqs***` declares **everything about `:ConformanceTests:`** — source location, framework + execution command, package, mocking / network policy, pass criteria, build / install needs — per [`integration-embedded-testing.md`](integration-embedded-testing.md)

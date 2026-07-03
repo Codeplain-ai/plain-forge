@@ -65,9 +65,9 @@ Before launching anything:
 
    Do **not** prompt for flags the user did not signal interest in; the empty command line is the right default.
 
-5. **Locate and reset the log file.** It is `codeplain.log` in the same directory as the `.plain` file unless `--log-file-name` was overridden. **The file is overwritten** at the start of each run (per the `--log-file-name` help text). So:
+5. **Locate and reset the log file.** By default it is `codeplain.log` in the same directory as the `.plain` file. If `--log-file-name` was overridden, the override resolves based on **where it was written**: a relative value on the CLI resolves against the invocation directory; a relative value in `config.yaml` resolves against the config file's directory; absolute and `~` paths are used as-is. **The file is overwritten** at the start of each run (per the `--log-file-name` help text). So:
    - Before launch, note the **absolute path** of the log file and its current size (`wc -c <path>`) — this lets you detect the moment the new run truncates and starts writing.
-   - After launch, every log read must be against this same path. Re-derive it if the user passes `--log-file-name` or runs from a different working directory.
+   - After launch, every log read must be against this same path. Re-derive it (using the resolution rule above) if the user passes `--log-file-name`, sets `log-file-name` in `config.yaml`, or runs from a different working directory.
    - The log is **per-run**: every byte you read during this run was written by this run. You don't have to worry about stale lines from prior runs.
 
 6. **Read every test script referenced by the governing `config.yaml`.** This is non-negotiable. The scripts are the contract between the renderer and the project; you cannot judge what the renderer is "fixing" without knowing what `pass` and `fail` actually mean in this project. For each of `unittests-script`, `prepare-environment-script`, and `conformance-tests-script` (those that are declared), read the script end-to-end **before** launching, and write down for yourself:
@@ -75,7 +75,7 @@ Before launching anything:
    - **Which framework is invoked** (e.g. `vitest`, `jest`, `pytest`, `go test`, `cargo test`, `phpunit`, etc.) and any framework flags (`--noEmit`, `--reporter=verbose`, custom configs).
    - **What "pass" means**, exit-code-wise. Some scripts combine multiple checks (e.g. `unit_testing_typescript.sh` here runs `tsc --noEmit` *and* `vitest`, and its final exit code is the worst of the two — so a type error alone fails the unit-test gate).
    - **What "fail" means**, including any failures that the script deliberately downgrades to warnings (e.g. `prepare_environment_typescript.sh` here treats a failed `npm run build` as a non-fatal warning). Failures the script swallows are failures the renderer will **never see**, so a spec defect that depends on them will silently slip through.
-   - **Where the scripts materialize their working environment** (e.g. `.tmp/typescript_<build_folder>/`, `build/`, `target/`). This is where the renderer's iteration actually runs; if you need to look at what is breaking, this is the directory — not `plain_modules/<module>/` directly.
+   - **Where the scripts materialize their working environment** (current-convention scripts stage into the system temp directory, e.g. `/tmp/typescript_<build_folder_basename>/`; older scripts used project-local folders like `.tmp/typescript_<build_folder>/`, `build/`, `target/`). This is where the renderer's iteration actually runs; if you need to look at what is breaking, this is the directory — not `plain_modules/<module>/` directly.
    - **How conformance tests are discovered and staged** (glob, naming convention, alias setup, etc.). Some scripts stage tests into the source tree (this repo flattens `conformance_tests/<module>/<fname>/` into `src/<module>/`); some run them in place; some require a specific file extension. This tells you exactly which conformance test file is in play for a given functionality.
    - **Toolchain prerequisites** the script asserts (Node version, Python version, specific binaries). If any are missing on the user's machine, stop now and tell them — the renderer will burn credits on phantom failures otherwise.
 
@@ -379,6 +379,15 @@ Renderer surfaces a conflict, or you can see two specs in the same module that c
 ### Pathology E — Test scripts themselves are broken
 
 Symptom: log shows the unit-test or conformance-test **script** itself failing (non-zero exit, syntax error, missing dependency) on every attempt, rather than the renderer's code failing the tests. The fix is **not** a spec change — it is a `test_scripts/` change. Stop and hand off to the matching `implement-*-testing-script` skill, or have the user repair the script directly.
+
+**Special case — stale scripts after a renderer upgrade (doubled paths).** The renderer now passes the build folder and conformance-tests folder to the scripts as **absolute paths**; older test scripts built paths by concatenating those arguments (`.tmp/$1`, `python_$1`, `$current_dir/$2`). The tell is a test-log path that contains the project root **twice**, e.g.:
+
+```
+ImportError: Start directory is not importable
+/Users/x/project//Users/x/project/conformance_tests/module/spec
+```
+
+The render then gets stuck "fixing" tests that can never pass. The fix is never a spec edit: stop the render and regenerate the affected scripts via the matching `implement-*-testing-script` skill (current convention: system-temp working folder from `basename "$1"`, `$2` resolved to absolute before any `cd`).
 
 ### Pathology F — Unit-test retry loop
 

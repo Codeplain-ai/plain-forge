@@ -69,6 +69,17 @@ function Cleanup {
     if ($script:build_output -and (Test-Path $script:build_output)) {
         Remove-Item $script:build_output -Force -ErrorAction SilentlyContinue
     }
+
+    # Step out of any temp subfolder we may still be in before deleting it
+    Set-Location -Path ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue
+
+    # Remove temporary build subfolders if they exist
+    if ($script:NODE_SUBFOLDER -and (Test-Path $script:NODE_SUBFOLDER)) {
+        Remove-Item -Path $script:NODE_SUBFOLDER -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($script:NODE_CONFORMANCE_TESTS_SUBFOLDER -and (Test-Path $script:NODE_CONFORMANCE_TESTS_SUBFOLDER)) {
+        Remove-Item -Path $script:NODE_CONFORMANCE_TESTS_SUBFOLDER -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # Check for and kill any existing Node server from previous runs
@@ -98,20 +109,21 @@ if ($args[2] -eq "-v" -or $args[2] -eq "--verbose") {
 $current_dir = Get-Location
 
 try {
-    # Define the path to the subfolder
-    $NODE_SUBFOLDER = "node_$BuildFolder"
+    # Define the path to the subfolder. It lives in the system temp directory;
+    # $BuildFolder may be an absolute path, so only its leaf name is used.
+    $script:NODE_SUBFOLDER = Join-Path ([System.IO.Path]::GetTempPath()) "node_$(Split-Path $BuildFolder -Leaf)"
 
     # Running React application
-    Write-Host "### Step 1: Starting the React application in folder $NODE_SUBFOLDER..."
+    Write-Host "### Step 1: Starting the React application in folder $script:NODE_SUBFOLDER..."
 
     if ($env:VERBOSE -eq "1") {
-        Write-Host "Preparing Node subfolder: $NODE_SUBFOLDER"
+        Write-Host "Preparing Node subfolder: $script:NODE_SUBFOLDER"
     }
 
     # Check if the node subfolder exists
-    if (Test-Path $NODE_SUBFOLDER) {
+    if (Test-Path $script:NODE_SUBFOLDER) {
         # Delete all files and folders except "node_modules", "plain_modules", and "package-lock.json"
-        Get-ChildItem -Path $NODE_SUBFOLDER -Force |
+        Get-ChildItem -Path $script:NODE_SUBFOLDER -Force |
             Where-Object {
                 $_.Name -ne "node_modules" -and
                 $_.Name -ne "plain_modules" -and
@@ -126,18 +138,18 @@ try {
             Write-Host "Subfolder does not exist. Creating it..."
         }
 
-        New-Item -ItemType Directory -Path $NODE_SUBFOLDER -Force | Out-Null
+        New-Item -ItemType Directory -Path $script:NODE_SUBFOLDER -Force | Out-Null
     }
 
-    Copy-Item -Path "$BuildFolder/*" -Destination $NODE_SUBFOLDER -Recurse -Force
+    Copy-Item -Path "$BuildFolder/*" -Destination $script:NODE_SUBFOLDER -Recurse -Force
 
     # Move to the subfolder
-    if (-not (Test-Path $NODE_SUBFOLDER)) {
-        Write-Host "Error: Node build folder '$NODE_SUBFOLDER' does not exist."
+    if (-not (Test-Path $script:NODE_SUBFOLDER)) {
+        Write-Host "Error: Node build folder '$script:NODE_SUBFOLDER' does not exist."
         exit $UNRECOVERABLE_ERROR_EXIT_CODE
     }
 
-    Push-Location $NODE_SUBFOLDER
+    Push-Location $script:NODE_SUBFOLDER
 
     # Temporarily allow stderr output without throwing (npm may write warnings to stderr)
     # ForEach-Object converts ErrorRecord objects (from stderr) to plain strings to avoid verbose error formatting
@@ -245,17 +257,18 @@ try {
     # Move back to the original directory
     Set-Location $current_dir
 
-    # Define the path to the conformance tests subfolder
-    $NODE_CONFORMANCE_TESTS_SUBFOLDER = "node_$ConformanceTestsFolder"
+    # Define the path to the conformance tests subfolder. It lives in the system
+    # temp directory; $ConformanceTestsFolder may be absolute, so only its leaf name is used.
+    $script:NODE_CONFORMANCE_TESTS_SUBFOLDER = Join-Path ([System.IO.Path]::GetTempPath()) "node_$(Split-Path $ConformanceTestsFolder -Leaf)"
 
     if ($env:VERBOSE -eq "1") {
-        Write-Host "Preparing conformance tests Node subfolder: $NODE_CONFORMANCE_TESTS_SUBFOLDER"
+        Write-Host "Preparing conformance tests Node subfolder: $script:NODE_CONFORMANCE_TESTS_SUBFOLDER"
     }
 
     # Check if the conformance tests node subfolder exists
-    if (Test-Path $NODE_CONFORMANCE_TESTS_SUBFOLDER) {
+    if (Test-Path $script:NODE_CONFORMANCE_TESTS_SUBFOLDER) {
         # Delete all files and folders except "node_modules", "plain_modules", and "package-lock.json"
-        Get-ChildItem -Path $NODE_CONFORMANCE_TESTS_SUBFOLDER -Force |
+        Get-ChildItem -Path $script:NODE_CONFORMANCE_TESTS_SUBFOLDER -Force |
             Where-Object {
                 $_.Name -ne "node_modules" -and
                 $_.Name -ne "plain_modules" -and
@@ -270,18 +283,18 @@ try {
             Write-Host "Subfolder does not exist. Creating it..."
         }
 
-        New-Item -ItemType Directory -Path $NODE_CONFORMANCE_TESTS_SUBFOLDER -Force | Out-Null
+        New-Item -ItemType Directory -Path $script:NODE_CONFORMANCE_TESTS_SUBFOLDER -Force | Out-Null
     }
 
-    Copy-Item -Path "$ConformanceTestsFolder/*" -Destination $NODE_CONFORMANCE_TESTS_SUBFOLDER -Recurse -Force
+    Copy-Item -Path "$ConformanceTestsFolder/*" -Destination $script:NODE_CONFORMANCE_TESTS_SUBFOLDER -Recurse -Force
 
     # Move to the subfolder with Cypress tests
-    if (-not (Test-Path $NODE_CONFORMANCE_TESTS_SUBFOLDER)) {
-        Write-Host "Error: conformance tests Node folder '$NODE_CONFORMANCE_TESTS_SUBFOLDER' does not exist."
+    if (-not (Test-Path $script:NODE_CONFORMANCE_TESTS_SUBFOLDER)) {
+        Write-Host "Error: conformance tests Node folder '$script:NODE_CONFORMANCE_TESTS_SUBFOLDER' does not exist."
         exit $UNRECOVERABLE_ERROR_EXIT_CODE
     }
 
-    Push-Location $NODE_CONFORMANCE_TESTS_SUBFOLDER
+    Push-Location $script:NODE_CONFORMANCE_TESTS_SUBFOLDER
 
     # Temporarily allow stderr output without throwing (npm may write warnings to stderr)
     # ForEach-Object converts ErrorRecord objects (from stderr) to plain strings to avoid verbose error formatting

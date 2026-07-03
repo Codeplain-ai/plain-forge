@@ -16,8 +16,11 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-# Define the path to the java build subfolder
-WORKING_FOLDER=.tmp/$1
+# Working folder lives in the system temp directory. $1 may be an absolute
+# path, so only its basename is used to build the working folder name.
+WORKING_FOLDER="/tmp/java_$(basename "$1")"
+
+trap 'rm -rf "$WORKING_FOLDER"' EXIT
 
 # Check if the java subfolder exists
 if [ -d "$WORKING_FOLDER" ]; then
@@ -30,7 +33,7 @@ fi
 
 
 # copy all folders and files from the build folder to the subfolder
-cp -R $1/* $WORKING_FOLDER
+cp -R "$1"/* "$WORKING_FOLDER"
 printf "Copied from $1 to $WORKING_FOLDER...\n"
 # Move to the subfolder
 cd "$WORKING_FOLDER" 2>/dev/null

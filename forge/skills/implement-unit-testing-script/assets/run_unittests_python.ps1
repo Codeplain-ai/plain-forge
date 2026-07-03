@@ -23,7 +23,9 @@ if (Get-Command python3 -ErrorAction SilentlyContinue) {
     exit $UNRECOVERABLE_ERROR_EXIT_CODE
 }
 
-$PYTHON_BUILD_SUBFOLDER = "python_$BuildFolder"
+# Working folder lives in the system temp directory. $BuildFolder may be an
+# absolute path, so only its leaf name is used to build the working folder name.
+$PYTHON_BUILD_SUBFOLDER = Join-Path ([System.IO.Path]::GetTempPath()) "python_$(Split-Path $BuildFolder -Leaf)"
 
 if ($env:VERBOSE -eq "1") {
     Write-Host "Preparing Python build subfolder: $PYTHON_BUILD_SUBFOLDER"
@@ -73,4 +75,7 @@ try {
     exit $exit_code
 } finally {
     Pop-Location
+    if (Test-Path $PYTHON_BUILD_SUBFOLDER) {
+        Remove-Item -Path $PYTHON_BUILD_SUBFOLDER -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
