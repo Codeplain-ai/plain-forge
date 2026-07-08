@@ -9,10 +9,22 @@ const __filename = fileURLToPath(import.meta.url);
 const pkgRoot = path.resolve(path.dirname(__filename), "..");
 const forgeDir = path.join(pkgRoot, "forge");
 
+// Agent name → the project-scope content directory plain-forge writes into.
+// These are the directories each tool actually loads skills from (verified
+// against the 2026 docs), NOT necessarily a dir named after the tool:
+//   - Codex reads skills from .agents/skills (never .codex/skills); .codex is
+//     config-only. So codex shares the .agents layout with `universal`.
+//   - ForgeCode reads skills from .forge/skills (never .forgecode/skills); its
+//     global dir is ~/forge (no dot) — see resolveBaseDir.
+//   - OpenCode reads project skills from .opencode; global is ~/.config/opencode
+//     — see resolveBaseDir.
+// Some scopes/agents diverge from `path.join(root, dir)`; resolveBaseDir owns
+// those exceptions.
 const AGENTS = {
   claude: ".claude",
-  codex: ".codex",
-  forgecode: ".forgecode",
+  codex: ".agents",
+  forgecode: ".forge",
+  opencode: ".opencode",
   universal: ".agents",
 };
 const SCOPES = ["project", "global"];
@@ -83,7 +95,8 @@ Commands:
   uninstall   Remove a plain-forge install using its manifest
 
 Install options:
-  --agent <claude|codex|forgecode|universal>   Target agent layout
+  --agent <claude|codex|forgecode|opencode|universal>
+                                               Target agent layout
   --scope <project|global>                     Install into cwd or $HOME
   -h, --help                                   Show this help
 
@@ -92,7 +105,8 @@ Update options:
                                                confirming each one
 
 Uninstall options:
-  --agent <claude|codex|forgecode|universal|*> Which install to remove
+  --agent <claude|codex|forgecode|opencode|universal|*>
+                                               Which install to remove
                                                (default: * — every agent)
   --scope <project|global>                     Where to look (default: project)
 
@@ -292,6 +306,305 @@ function writeContent(baseDir) {
   return { counts, files };
 }
 
+// Absolute install directory for an agent in a given scope. Global scope roots
+// at $HOME, project scope at the cwd. OpenCode is the one exception: its global
+// config lives under XDG at ~/.config/opencode — it does NOT read ~/.opencode —
+// while its project layout is ./.opencode like every other agent.
+function resolveBaseDir(agent, scope) {
+  const root = scope === "global" ? os.homedir() : process.cwd();
+  if (agent === "opencode" && scope === "global") {
+    return path.join(root, ".config", "opencode");
+  }
+  if (agent === "forgecode" && scope === "global") {
+    // ForgeCode's global content dir is ~/forge, not ~/.forge.
+    return path.join(root, "forge");
+  }
+  return path.join(root, AGENTS[agent]);
+}
+
+// --- OpenCode instructions wiring -------------------------------------------
+// OpenCode does not auto-read a rules/ directory the way it does skills/; it
+// loads extra instruction files from the `instructions` glob array in
+// opencode.json. So for opencode we merge a glob pointing at our rules dir into
+// that file (creating it if needed, never disturbing the user's own keys) so
+// the ***plain rules actually apply. This is opencode-specific — every other
+// agent just gets the verbatim file copy.
+
+const OPENCODE_SCHEMA = "https://opencode.ai/config.json";
+
+// Location of opencode.json for a scope. Project config lives at the project
+// root (cwd), global config under ~/.config/opencode.
+function opencodeConfigPath(scope) {
+  if (scope === "global") {
+    return path.join(os.homedir(), ".config", "opencode", "opencode.json");
+  }
+  return path.join(process.cwd(), "opencode.json");
+}
+
+// The instructions glob to add. Project scope uses a cwd-relative glob (opencode
+// resolves relative instruction paths against the launch cwd). Global scope must
+// be absolute: opencode does not expand ~ and would resolve a relative path
+// against the project cwd, not the config dir. Only top-level rules/*.md are
+// wired in — the examples/ subtree holds reference scripts, not instructions.
+function opencodeRulesGlob(scope) {
+  if (scope === "global") {
+    return toPosix(
+      path.join(os.homedir(), ".config", "opencode", "rules", "*.md"),
+    );
+  }
+  return ".opencode/rules/*.md";
+}
+
+// Add our rules glob to opencode.json's `instructions`, creating or merging the
+// file. Returns a status: "created" | "merged" | "present" | "skipped".
+function mergeOpencodeInstructions(scope) {
+  const configPath = opencodeConfigPath(scope);
+  const glob = opencodeRulesGlob(scope);
+  const existed = fs.existsSync(configPath);
+
+  let config = {};
+  if (existed) {
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    } catch {
+      return { status: "skipped", reason: "malformed", configPath, glob };
+    }
+    if (config === null || typeof config !== "object" || Array.isArray(config)) {
+      return { status: "skipped", reason: "not-an-object", configPath, glob };
+    }
+  }
+
+  const list = Array.isArray(config.instructions) ? config.instructions : [];
+  if (list.includes(glob)) return { status: "present", configPath, glob };
+
+  // Only stamp $schema onto a file we are creating; never touch an existing one.
+  if (!existed && config.$schema === undefined) config.$schema = OPENCODE_SCHEMA;
+  config.instructions = list.concat(glob);
+
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+  return { status: existed ? "merged" : "created", configPath, glob };
+}
+
+// Reverse of the merge: drop our glob from opencode.json's `instructions`. If
+// that leaves a file containing only our scaffold ($schema + now-empty
+// instructions), delete it; otherwise write back the trimmed config, leaving
+// every user-authored key intact. Returns "removed" | "updated" | "absent" |
+// "skipped".
+function unmergeOpencodeInstructions(scope) {
+  const configPath = opencodeConfigPath(scope);
+  const glob = opencodeRulesGlob(scope);
+  if (!fs.existsSync(configPath)) return { status: "absent", configPath, glob };
+
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch {
+    return { status: "skipped", reason: "malformed", configPath, glob };
+  }
+  if (config === null || typeof config !== "object" || Array.isArray(config)) {
+    return { status: "skipped", reason: "not-an-object", configPath, glob };
+  }
+  if (!Array.isArray(config.instructions) || !config.instructions.includes(glob)) {
+    return { status: "absent", configPath, glob };
+  }
+
+  config.instructions = config.instructions.filter((g) => g !== glob);
+
+  const onlyScaffold =
+    config.instructions.length === 0 &&
+    Object.keys(config).every((k) => k === "$schema" || k === "instructions");
+  if (onlyScaffold) {
+    fs.rmSync(configPath, { force: true });
+    return { status: "removed", configPath, glob };
+  }
+
+  if (config.instructions.length === 0) delete config.instructions;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+  return { status: "updated", configPath, glob };
+}
+
+// Human-readable line for a merge result, printed under the install/update
+// summary. A skip is a warning the user should see (their config is untouched).
+function reportOpencodeMerge(result) {
+  switch (result.status) {
+    case "created":
+      console.log(`  opencode.json: created, wired rules via "${result.glob}"`);
+      break;
+    case "merged":
+      console.log(`  opencode.json: added rules glob "${result.glob}"`);
+      break;
+    case "present":
+      console.log(`  opencode.json: rules glob already present`);
+      break;
+    case "skipped":
+      console.log(
+        `  opencode.json: left untouched (${result.reason}) — add "${result.glob}" to its "instructions" manually`,
+      );
+      break;
+  }
+}
+
+// Human-readable line for an unmerge result during uninstall.
+function reportOpencodeUnmerge(result) {
+  switch (result.status) {
+    case "removed":
+      console.log(`  opencode.json: removed (was only plain-forge's rules wiring)`);
+      break;
+    case "updated":
+      console.log(`  opencode.json: removed rules glob, kept your other config`);
+      break;
+    case "skipped":
+      console.log(
+        `  opencode.json: left untouched (${result.reason}) — remove "${result.glob}" from "instructions" manually`,
+      );
+      break;
+  }
+}
+
+// --- Codex / ForgeCode instructions wiring ----------------------------------
+// Neither tool auto-reads a rules/ directory; both load custom instructions
+// only from AGENTS.md (Codex: repo AGENTS.md or ~/.codex/AGENTS.md; ForgeCode:
+// repo AGENTS.md or ~/forge/AGENTS.md). AGENTS.md has no include/glob mechanism,
+// so we append a managed pointer block that tells the agent to read our rules
+// dir when touching .plain files. The block is fenced by markers so it can be
+// refreshed or removed idempotently without disturbing the user's own content.
+
+const AGENTS_MD_BEGIN = "<!-- BEGIN plain-forge (managed) -->";
+const AGENTS_MD_END = "<!-- END plain-forge (managed) -->";
+
+// Agents whose rules are delivered through AGENTS.md rather than a natively
+// auto-loaded rules/ dir (claude) or a config glob (opencode).
+function usesAgentsMd(agent) {
+  return agent === "codex" || agent === "forgecode";
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Where the tool reads AGENTS.md from for a scope. Project scope is the repo
+// root (cwd) for both tools; global scope differs per tool.
+function agentsMdPath(agent, scope) {
+  if (scope === "project") return path.join(process.cwd(), "AGENTS.md");
+  if (agent === "forgecode") return path.join(os.homedir(), "forge", "AGENTS.md");
+  return path.join(os.homedir(), ".codex", "AGENTS.md"); // codex global
+}
+
+// Glob the pointer block references — the installed rules dir. Project scope is
+// written relative to the repo root; global scope must be absolute (these files
+// are consulted from arbitrary working directories).
+function agentsMdRulesGlob(agent, scope) {
+  const rulesDir = path.join(resolveBaseDir(agent, scope), "rules");
+  if (scope === "global") return toPosix(path.join(rulesDir, "*.md"));
+  return toPosix(path.join(path.relative(process.cwd(), rulesDir), "*.md"));
+}
+
+function agentsMdBlock(glob) {
+  return [
+    AGENTS_MD_BEGIN,
+    "## ***plain authoring rules (plain-forge)",
+    "",
+    "When creating or editing `.plain` specification files, first read and follow",
+    `every rule file matching \`${glob}\`. Each file covers one section or topic of`,
+    "the ***plain language; they are installed and maintained by plain-forge.",
+    AGENTS_MD_END,
+  ].join("\n");
+}
+
+// Add or refresh the managed pointer block in AGENTS.md, creating the file if
+// needed and preserving all user content. Returns a status:
+// "created" | "merged" | "refreshed" | "present".
+function mergeAgentsMd(agent, scope) {
+  const filePath = agentsMdPath(agent, scope);
+  const glob = agentsMdRulesGlob(agent, scope);
+  const block = agentsMdBlock(glob);
+  const existed = fs.existsSync(filePath);
+  let content = existed ? fs.readFileSync(filePath, "utf8") : "";
+
+  const hadBlock = content.includes(AGENTS_MD_BEGIN);
+  if (hadBlock) {
+    const re = new RegExp(
+      `${escapeRe(AGENTS_MD_BEGIN)}[\\s\\S]*?${escapeRe(AGENTS_MD_END)}`,
+    );
+    const replaced = content.replace(re, block);
+    if (replaced === content) return { status: "present", filePath, glob };
+    content = replaced;
+  } else {
+    if (content && !content.endsWith("\n")) content += "\n";
+    if (content) content += "\n";
+    content += block + "\n";
+  }
+
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content);
+  const status = !existed ? "created" : hadBlock ? "refreshed" : "merged";
+  return { status, filePath, glob };
+}
+
+// Remove the managed pointer block. Deletes the file if nothing but the block
+// (and whitespace) remains; otherwise writes back the user's content.
+// Returns "removed" | "updated" | "absent".
+function unmergeAgentsMd(agent, scope) {
+  const filePath = agentsMdPath(agent, scope);
+  if (!fs.existsSync(filePath)) return { status: "absent", filePath };
+  let content = fs.readFileSync(filePath, "utf8");
+  if (!content.includes(AGENTS_MD_BEGIN)) return { status: "absent", filePath };
+
+  const re = new RegExp(
+    `\\n*${escapeRe(AGENTS_MD_BEGIN)}[\\s\\S]*?${escapeRe(AGENTS_MD_END)}\\n*`,
+  );
+  content = content.replace(re, "\n");
+
+  if (content.trim() === "") {
+    fs.rmSync(filePath, { force: true });
+    return { status: "removed", filePath };
+  }
+  content = content.replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "");
+  if (!content.endsWith("\n")) content += "\n";
+  fs.writeFileSync(filePath, content);
+  return { status: "updated", filePath };
+}
+
+function reportAgentsMdMerge(result) {
+  const rel = result.filePath;
+  switch (result.status) {
+    case "created":
+      console.log(`  AGENTS.md: created at ${rel}, wired rules via "${result.glob}"`);
+      break;
+    case "merged":
+      console.log(`  AGENTS.md: added rules block to ${rel}`);
+      break;
+    case "refreshed":
+      console.log(`  AGENTS.md: refreshed rules block in ${rel}`);
+      break;
+    case "present":
+      console.log(`  AGENTS.md: rules block already up to date`);
+      break;
+  }
+}
+
+function reportAgentsMdUnmerge(result) {
+  switch (result.status) {
+    case "removed":
+      console.log(`  AGENTS.md: removed (was only plain-forge's rules block)`);
+      break;
+    case "updated":
+      console.log(`  AGENTS.md: removed rules block, kept your other content`);
+      break;
+  }
+}
+
+// Wire rules for an agent whose mechanism needs it, during install/update.
+function wireRules(agent, scope) {
+  if (agent === "opencode") reportOpencodeMerge(mergeOpencodeInstructions(scope));
+  else if (usesAgentsMd(agent)) reportAgentsMdMerge(mergeAgentsMd(agent, scope));
+}
+
+// Reverse of wireRules, during uninstall.
+function unwireRules(agent, scope) {
+  if (agent === "opencode") reportOpencodeUnmerge(unmergeOpencodeInstructions(scope));
+  else if (usesAgentsMd(agent)) reportAgentsMdUnmerge(unmergeAgentsMd(agent, scope));
+}
+
 function manifestPathFor(baseDir) {
   return path.join(baseDir, MANIFEST_REL);
 }
@@ -306,12 +619,16 @@ function readManifest(baseDir) {
   return null;
 }
 
-function writeManifest(baseDir, files) {
+function writeManifest(baseDir, files, agent) {
   const target = manifestPathFor(baseDir);
   fs.mkdirSync(path.dirname(target), { recursive: true });
+  // `agent` records which agent layout produced this install. It matters when
+  // two agents resolve to the same dir (codex and universal both use .agents):
+  // it lets detect/update/uninstall know whether AGENTS.md rule-wiring applies.
   const manifest = {
     name: "plain-forge",
     version: readPkgVersion(),
+    ...(agent ? { agent } : {}),
     files: files.map(toPosix).sort(),
   };
   fs.writeFileSync(target, JSON.stringify(manifest, null, 2) + "\n");
@@ -361,15 +678,22 @@ function deleteForgeFile(baseDir, rel) {
 // the flagship skill.
 function detectInstalls() {
   const installs = [];
+  const seen = new Set();
   for (const scope of SCOPES) {
-    const root = scope === "global" ? os.homedir() : process.cwd();
-    for (const [agent, dirName] of Object.entries(AGENTS)) {
-      const baseDir = path.join(root, dirName);
+    for (const agent of Object.keys(AGENTS)) {
+      const baseDir = resolveBaseDir(agent, scope);
+      // Some agents share a directory (codex and universal both use .agents).
+      // Only inspect each physical dir once so a single install isn't detected
+      // — and later updated/pruned — twice.
+      if (seen.has(baseDir)) continue;
+      seen.add(baseDir);
       if (!fs.existsSync(baseDir)) continue;
       const manifest = readManifest(baseDir);
       const isLegacy = !manifest && hasForgeSignature(baseDir);
       if (manifest || isLegacy) {
-        installs.push({ agent, scope, baseDir, manifest });
+        // Prefer the agent recorded at install time; fall back to the dir's
+        // first-mapped agent for legacy/manifest-less installs.
+        installs.push({ agent: manifest?.agent ?? agent, scope, baseDir, manifest });
       }
     }
   }
@@ -395,8 +719,7 @@ async function cmdInstall(args) {
     process.exit(2);
   }
 
-  const root = scope === "global" ? os.homedir() : process.cwd();
-  const baseDir = path.join(root, AGENTS[agent]);
+  const baseDir = resolveBaseDir(agent, scope);
 
   const alreadyInstalled =
     readManifest(baseDir) !== null || hasForgeSignature(baseDir);
@@ -407,12 +730,13 @@ async function cmdInstall(args) {
   }
 
   const { counts, files } = writeContent(baseDir);
-  writeManifest(baseDir, files);
+  writeManifest(baseDir, files, agent);
 
   console.log(`installed into ${baseDir}`);
   console.log(`  skills: ${counts.skills}`);
   console.log(`  rules:  ${counts.rules}`);
   console.log(`  docs:   ${counts.docs}`);
+  wireRules(agent, scope);
   console.log();
   printNextSteps(agent);
 }
@@ -453,6 +777,10 @@ async function cmdUpdate(args) {
     console.log(
       `  skills: ${counts.skills}  rules: ${counts.rules}  docs: ${counts.docs}`,
     );
+    // Re-assert rules wiring (opencode.json / AGENTS.md) — installs from before
+    // this feature lack it; the merge is idempotent for those that already have
+    // it, and refreshes the glob if the layout changed.
+    wireRules(inst.agent, inst.scope);
 
     // Pruning only applies to manifest-tracked installs. Each deprecated file
     // is confirmed individually before removal; denied files stay on disk and
@@ -484,7 +812,7 @@ async function cmdUpdate(args) {
 
     // Manifest reflects what's actually on disk: the fresh files plus any
     // deprecated files the user chose to keep.
-    writeManifest(inst.baseDir, files.concat(kept));
+    writeManifest(inst.baseDir, files.concat(kept), inst.agent);
     console.log();
     updated++;
   }
@@ -528,7 +856,7 @@ async function cmdUninstall(args) {
   let hadError = false;
 
   for (const agent of agents) {
-    const baseDir = path.join(root, AGENTS[agent]);
+    const baseDir = resolveBaseDir(agent, scope);
     if (!fs.existsSync(baseDir)) continue;
 
     const manifest = readManifest(baseDir);
@@ -560,19 +888,31 @@ async function cmdUninstall(args) {
       if (deleteForgeFile(baseDir, rel)) deleted++;
       else failed++;
     }
-    // Finally remove the manifest itself, then prune the now-empty .plain-forge
-    // directory and the agent directory if nothing else remains in it.
+    // Remove the manifest itself.
     fs.rmSync(manifestPathFor(baseDir), { force: true });
-    removeEmptyDirsUpward(
-      path.join(baseDir, path.dirname(MANIFEST_REL)),
-      baseDir,
-    );
-    removeEmptyDirsUpward(baseDir, root);
 
     console.log(`uninstalled ${agent} (${scope}) from ${baseDir}`);
     console.log(
       `  removed ${deleted} file(s)${failed ? `, ${failed} could not be removed` : ""} + manifest`,
     );
+
+    // Undo the rules wiring (opencode.json / AGENTS.md). Keyed off the agent
+    // recorded at install time, not the requested name — codex and universal
+    // share the .agents dir, and only the codex install wired AGENTS.md. Done
+    // before the dir cleanup so a now-orphaned config file living inside baseDir
+    // (e.g. forgecode-global ~/forge/AGENTS.md) can be removed and let baseDir
+    // itself be pruned.
+    unwireRules(manifest.agent ?? agent, scope);
+
+    // Prune the now-empty .plain-forge directory and the agent directory if
+    // nothing else remains in it.
+    removeEmptyDirsUpward(
+      path.join(baseDir, path.dirname(MANIFEST_REL)),
+      baseDir,
+    );
+    // Stop at the agent dir's parent so only the agent dir itself is pruned
+    // (e.g. for opencode-global we remove ~/.config/opencode, never ~/.config).
+    removeEmptyDirsUpward(baseDir, path.dirname(baseDir));
     console.log();
     removed++;
   }
@@ -626,6 +966,8 @@ function agentLabel(agent) {
       return "Codex";
     case "forgecode":
       return "ForgeCode";
+    case "opencode":
+      return "OpenCode";
     case "universal":
       return "AI coding agent";
     default:
@@ -698,6 +1040,16 @@ export {
   isUpToDate,
   copyTreeTracked,
   writeContent,
+  resolveBaseDir,
+  opencodeConfigPath,
+  opencodeRulesGlob,
+  mergeOpencodeInstructions,
+  unmergeOpencodeInstructions,
+  usesAgentsMd,
+  agentsMdPath,
+  agentsMdRulesGlob,
+  mergeAgentsMd,
+  unmergeAgentsMd,
   manifestPathFor,
   readManifest,
   writeManifest,

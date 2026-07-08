@@ -1,6 +1,7 @@
 ---
 description: Rules for linking external resources from .plain specs
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for linked resources in `.plain` files

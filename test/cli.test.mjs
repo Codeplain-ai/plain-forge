@@ -14,10 +14,20 @@ import {
   detectInstalls,
   FORGE_SIGNATURE_SKILLS,
   hasForgeSignature,
+  agentsMdPath,
+  agentsMdRulesGlob,
   isUpToDate,
+  mergeAgentsMd,
+  mergeOpencodeInstructions,
+  opencodeConfigPath,
+  opencodeRulesGlob,
   parseArgs,
   readManifest,
   removeEmptyDirsUpward,
+  resolveBaseDir,
+  unmergeAgentsMd,
+  unmergeOpencodeInstructions,
+  usesAgentsMd,
   toPosix,
   writeManifest,
 } from "../bin/cli.mjs";
@@ -208,6 +218,246 @@ describe("hasForgeSignature", () => {
   });
 });
 
+describe("resolveBaseDir", () => {
+  const realCwd = process.cwd();
+  after(() => process.chdir(realCwd));
+
+  test("claude/universal use the same dir name in both scopes", () => {
+    process.chdir(mkTmp());
+    const cwd = process.cwd();
+    assert.equal(resolveBaseDir("claude", "project"), path.join(cwd, ".claude"));
+    assert.equal(
+      resolveBaseDir("claude", "global"),
+      path.join(os.homedir(), ".claude"),
+    );
+    assert.equal(
+      resolveBaseDir("universal", "project"),
+      path.join(cwd, ".agents"),
+    );
+  });
+
+  test("codex maps to .agents in both scopes (what Codex actually reads)", () => {
+    process.chdir(mkTmp());
+    assert.equal(
+      resolveBaseDir("codex", "project"),
+      path.join(process.cwd(), ".agents"),
+    );
+    assert.equal(
+      resolveBaseDir("codex", "global"),
+      path.join(os.homedir(), ".agents"),
+    );
+    // codex and universal share a directory.
+    assert.equal(
+      resolveBaseDir("codex", "project"),
+      resolveBaseDir("universal", "project"),
+    );
+  });
+
+  test("forgecode is .forge (project) and ~/forge (global, no dot)", () => {
+    process.chdir(mkTmp());
+    assert.equal(
+      resolveBaseDir("forgecode", "project"),
+      path.join(process.cwd(), ".forge"),
+    );
+    assert.equal(
+      resolveBaseDir("forgecode", "global"),
+      path.join(os.homedir(), "forge"),
+    );
+  });
+
+  test("opencode project stays at ./.opencode", () => {
+    process.chdir(mkTmp());
+    assert.equal(
+      resolveBaseDir("opencode", "project"),
+      path.join(process.cwd(), ".opencode"),
+    );
+  });
+
+  test("opencode global lands under ~/.config/opencode, not ~/.opencode", () => {
+    assert.equal(
+      resolveBaseDir("opencode", "global"),
+      path.join(os.homedir(), ".config", "opencode"),
+    );
+  });
+});
+
+describe("opencode instructions merge/unmerge", () => {
+  const realCwd = process.cwd();
+  after(() => process.chdir(realCwd));
+
+  const readJson = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
+
+  test("project glob is cwd-relative; global glob is absolute (no ~)", () => {
+    process.chdir(mkTmp());
+    assert.equal(opencodeRulesGlob("project"), ".opencode/rules/*.md");
+    const globalGlob = opencodeRulesGlob("global");
+    assert.equal(globalGlob, path.join(os.homedir(), ".config", "opencode", "rules", "*.md").split(path.sep).join("/"));
+    assert.ok(!globalGlob.includes("~"), "global glob must not rely on ~ expansion");
+    assert.ok(path.isAbsolute(globalGlob), "global glob must be absolute");
+  });
+
+  test("creates opencode.json with $schema when none exists", () => {
+    process.chdir(mkTmp());
+    const res = mergeOpencodeInstructions("project");
+    assert.equal(res.status, "created");
+    const cfg = readJson(opencodeConfigPath("project"));
+    assert.equal(cfg.$schema, "https://opencode.ai/config.json");
+    assert.deepEqual(cfg.instructions, [".opencode/rules/*.md"]);
+  });
+
+  test("merges into an existing config without disturbing user keys", () => {
+    process.chdir(mkTmp());
+    const p = opencodeConfigPath("project");
+    fs.writeFileSync(
+      p,
+      JSON.stringify({ theme: "x", instructions: ["docs/a.md"] }),
+    );
+    const res = mergeOpencodeInstructions("project");
+    assert.equal(res.status, "merged");
+    const cfg = readJson(p);
+    assert.equal(cfg.theme, "x");
+    assert.equal(cfg.$schema, undefined, "must not stamp $schema onto a user file");
+    assert.deepEqual(cfg.instructions, ["docs/a.md", ".opencode/rules/*.md"]);
+  });
+
+  test("merge is idempotent — a second merge reports present, no duplicate", () => {
+    process.chdir(mkTmp());
+    mergeOpencodeInstructions("project");
+    const res = mergeOpencodeInstructions("project");
+    assert.equal(res.status, "present");
+    const cfg = readJson(opencodeConfigPath("project"));
+    assert.deepEqual(cfg.instructions, [".opencode/rules/*.md"]);
+  });
+
+  test("never clobbers a malformed config", () => {
+    process.chdir(mkTmp());
+    const p = opencodeConfigPath("project");
+    fs.writeFileSync(p, "{ not json ]");
+    const res = mergeOpencodeInstructions("project");
+    assert.equal(res.status, "skipped");
+    assert.equal(res.reason, "malformed");
+    assert.equal(fs.readFileSync(p, "utf8"), "{ not json ]");
+  });
+
+  test("unmerge deletes a file that was only our scaffold", () => {
+    process.chdir(mkTmp());
+    mergeOpencodeInstructions("project");
+    const res = unmergeOpencodeInstructions("project");
+    assert.equal(res.status, "removed");
+    assert.equal(fs.existsSync(opencodeConfigPath("project")), false);
+  });
+
+  test("unmerge trims our glob but keeps a user's config", () => {
+    process.chdir(mkTmp());
+    const p = opencodeConfigPath("project");
+    fs.writeFileSync(
+      p,
+      JSON.stringify({ theme: "x", instructions: ["docs/a.md"] }),
+    );
+    mergeOpencodeInstructions("project");
+    const res = unmergeOpencodeInstructions("project");
+    assert.equal(res.status, "updated");
+    const cfg = readJson(p);
+    assert.equal(cfg.theme, "x");
+    assert.deepEqual(cfg.instructions, ["docs/a.md"]);
+  });
+
+  test("unmerge on an absent or unrelated config is a no-op", () => {
+    process.chdir(mkTmp());
+    assert.equal(unmergeOpencodeInstructions("project").status, "absent");
+    fs.writeFileSync(
+      opencodeConfigPath("project"),
+      JSON.stringify({ theme: "x" }),
+    );
+    assert.equal(unmergeOpencodeInstructions("project").status, "absent");
+  });
+});
+
+describe("AGENTS.md merge/unmerge (codex/forgecode)", () => {
+  const realCwd = process.cwd();
+  after(() => process.chdir(realCwd));
+
+  test("only codex and forgecode use AGENTS.md wiring", () => {
+    assert.equal(usesAgentsMd("codex"), true);
+    assert.equal(usesAgentsMd("forgecode"), true);
+    assert.equal(usesAgentsMd("claude"), false);
+    assert.equal(usesAgentsMd("opencode"), false);
+    assert.equal(usesAgentsMd("universal"), false);
+  });
+
+  test("project AGENTS.md is repo-root; globs are relative and match the layout", () => {
+    process.chdir(mkTmp());
+    assert.equal(agentsMdPath("codex", "project"), path.join(process.cwd(), "AGENTS.md"));
+    assert.equal(agentsMdRulesGlob("codex", "project"), ".agents/rules/*.md");
+    assert.equal(agentsMdRulesGlob("forgecode", "project"), ".forge/rules/*.md");
+  });
+
+  test("global AGENTS.md lives in the tool's config dir; glob is absolute", () => {
+    assert.equal(
+      agentsMdPath("codex", "global"),
+      path.join(os.homedir(), ".codex", "AGENTS.md"),
+    );
+    assert.equal(
+      agentsMdPath("forgecode", "global"),
+      path.join(os.homedir(), "forge", "AGENTS.md"),
+    );
+    const glob = agentsMdRulesGlob("forgecode", "global");
+    assert.ok(path.isAbsolute(glob), "global glob must be absolute");
+    assert.equal(glob, path.join(os.homedir(), "forge", "rules", "*.md").split(path.sep).join("/"));
+  });
+
+  test("creates AGENTS.md with a fenced managed block when none exists", () => {
+    process.chdir(mkTmp());
+    const res = mergeAgentsMd("codex", "project");
+    assert.equal(res.status, "created");
+    const md = fs.readFileSync(agentsMdPath("codex", "project"), "utf8");
+    assert.match(md, /BEGIN plain-forge/);
+    assert.match(md, /END plain-forge/);
+    assert.match(md, /\.agents\/rules\/\*\.md/);
+  });
+
+  test("appends the block to an existing AGENTS.md, preserving user content", () => {
+    process.chdir(mkTmp());
+    const p = agentsMdPath("codex", "project");
+    fs.writeFileSync(p, "# My project\n\nBuild with `make`.\n");
+    const res = mergeAgentsMd("codex", "project");
+    assert.equal(res.status, "merged");
+    const md = fs.readFileSync(p, "utf8");
+    assert.match(md, /# My project/);
+    assert.match(md, /Build with `make`/);
+    assert.match(md, /BEGIN plain-forge/);
+  });
+
+  test("merge is idempotent — second merge reports present, single block", () => {
+    process.chdir(mkTmp());
+    mergeAgentsMd("codex", "project");
+    const res = mergeAgentsMd("codex", "project");
+    assert.equal(res.status, "present");
+    const md = fs.readFileSync(agentsMdPath("codex", "project"), "utf8");
+    assert.equal(md.match(/BEGIN plain-forge/g).length, 1, "no duplicate blocks");
+  });
+
+  test("unmerge deletes an AGENTS.md that was only our block", () => {
+    process.chdir(mkTmp());
+    mergeAgentsMd("codex", "project");
+    const res = unmergeAgentsMd("codex", "project");
+    assert.equal(res.status, "removed");
+    assert.equal(fs.existsSync(agentsMdPath("codex", "project")), false);
+  });
+
+  test("unmerge strips our block but keeps the user's AGENTS.md content", () => {
+    process.chdir(mkTmp());
+    const p = agentsMdPath("codex", "project");
+    fs.writeFileSync(p, "# My project\n\nBuild with `make`.\n");
+    mergeAgentsMd("codex", "project");
+    const res = unmergeAgentsMd("codex", "project");
+    assert.equal(res.status, "updated");
+    const md = fs.readFileSync(p, "utf8");
+    assert.match(md, /# My project/);
+    assert.doesNotMatch(md, /plain-forge/);
+  });
+});
+
 describe("detectInstalls", () => {
   const realCwd = process.cwd();
   const realHome = process.env.HOME;
@@ -229,20 +479,34 @@ describe("detectInstalls", () => {
 
     // project/.claude → manifest-tracked
     writeManifest(path.join(project, ".claude"), ["skills/x.md"]);
-    // home/.codex → legacy (all flagship skills, no manifest)
-    plantLegacySignature(path.join(home, ".codex"));
-    // home/.agents → not plain-forge: one flagship skill + an unrelated one,
+    // home/forge → ForgeCode global legacy (all flagship skills, no manifest)
+    plantLegacySignature(path.join(home, "forge"));
+    // project/.forge → not plain-forge: one flagship skill + an unrelated one,
     // but not the full signature → ignored
-    write(path.join(home, ".agents", "skills", "forge-plain", "SKILL.md"));
-    write(path.join(home, ".agents", "skills", "someone-else", "SKILL.md"));
+    write(path.join(project, ".forge", "skills", "forge-plain", "SKILL.md"));
+    write(path.join(project, ".forge", "skills", "someone-else", "SKILL.md"));
 
     const found = detectInstalls().map((i) => `${i.agent}:${i.scope}`).sort();
-    assert.deepEqual(found, ["claude:project", "codex:global"]);
+    assert.deepEqual(found, ["claude:project", "forgecode:global"]);
 
     const claude = detectInstalls().find((i) => i.agent === "claude");
     assert.ok(claude.manifest, "manifest install carries its manifest");
-    const codex = detectInstalls().find((i) => i.agent === "codex");
-    assert.equal(codex.manifest, null, "legacy install has no manifest");
+    const forge = detectInstalls().find((i) => i.agent === "forgecode");
+    assert.equal(forge.manifest, null, "legacy install has no manifest");
+  });
+
+  test("a .agents install is detected once, labeled by its manifest agent", () => {
+    const project = mkTmp();
+    process.chdir(project);
+    process.env.HOME = mkTmp();
+
+    // codex and universal both resolve to .agents; the manifest records which.
+    writeManifest(path.join(project, ".agents"), ["skills/x.md"], "codex");
+
+    const found = detectInstalls();
+    assert.equal(found.length, 1, "the shared .agents dir must not be double-counted");
+    assert.equal(found[0].agent, "codex");
+    assert.equal(found[0].scope, "project");
   });
 
   test("returns nothing when neither scope has an install", () => {
@@ -296,13 +560,38 @@ describe("cli install (integration)", () => {
     assert.equal(again.status, 1);
     assert.match(again.stderr, /already installed/);
 
-    // A different agent into the same folder still works.
+    // A different agent into the same folder still works. Codex installs into
+    // .agents/ (the dir Codex actually reads) and wires an AGENTS.md pointer.
     const codex = runCli(["install", "--agent", "codex", "--scope", "project"], {
       cwd: project,
       home,
     });
     assert.equal(codex.status, 0, codex.stderr);
-    assert.ok(fs.existsSync(path.join(project, ".codex", "skills")));
+    assert.ok(fs.existsSync(path.join(project, ".agents", "skills")));
+    assert.ok(
+      !fs.existsSync(path.join(project, ".codex")),
+      "codex must not write to .codex (config-only, skills ignored there)",
+    );
+    const codexManifest = readManifest(path.join(project, ".agents"));
+    assert.equal(codexManifest.agent, "codex", "manifest records the agent");
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    assert.match(agentsMd, /\.agents\/rules\/\*\.md/, "AGENTS.md points at the rules");
+
+    // opencode is a supported agent and installs into .opencode/.
+    const opencode = runCli(
+      ["install", "--agent", "opencode", "--scope", "project"],
+      { cwd: project, home },
+    );
+    assert.equal(opencode.status, 0, opencode.stderr);
+    assert.ok(fs.existsSync(path.join(project, ".opencode", "skills")));
+    // opencode also gets its rules wired into opencode.json at the project root.
+    const ocCfg = JSON.parse(
+      fs.readFileSync(path.join(project, "opencode.json"), "utf8"),
+    );
+    assert.ok(
+      ocCfg.instructions.includes(".opencode/rules/*.md"),
+      "install should wire the rules glob into opencode.json",
+    );
   });
 });
 

@@ -1,6 +1,7 @@
 ---
 description: Rules for using exported_concepts in .plain files
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for `exported_concepts`

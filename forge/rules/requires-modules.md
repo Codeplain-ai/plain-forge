@@ -1,6 +1,7 @@
 ---
 description: Rules for creating and using requires modules in .plain files
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for requires modules

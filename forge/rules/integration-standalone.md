@@ -1,6 +1,7 @@
 ---
 description: Rules for authoring ***plain specs for REST API integrations deployed standalone
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for **standalone** integration specs

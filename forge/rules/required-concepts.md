@@ -1,6 +1,7 @@
 ---
 description: Rules for using required_concepts in .plain files
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for `required_concepts`

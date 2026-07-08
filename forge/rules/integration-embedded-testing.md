@@ -1,6 +1,7 @@
 ---
 description: Rules for authoring the three test scripts that an embedded ***plain integration ships
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for embedded-integration test scripts

@@ -1,6 +1,7 @@
 ---
 description: Rules for writing ***implementation reqs*** sections in .plain files
-globs: "**/*.plain"
+paths:
+  - "**/*.plain"
 ---
 
 # Rules for writing `***implementation reqs***`
