@@ -594,15 +594,47 @@ function reportAgentsMdUnmerge(result) {
 }
 
 // Wire rules for an agent whose mechanism needs it, during install/update.
+// The skills/rules/docs and manifest are already on disk by the time this runs,
+// so a failure here (e.g. an unwritable opencode.json/AGENTS.md) must not fail
+// the whole install — it degrades to a warning and the install still succeeds.
 function wireRules(agent, scope) {
-  if (agent === "opencode") reportOpencodeMerge(mergeOpencodeInstructions(scope));
-  else if (usesAgentsMd(agent)) reportAgentsMdMerge(mergeAgentsMd(agent, scope));
+  try {
+    if (agent === "opencode") {
+      reportOpencodeMerge(mergeOpencodeInstructions(scope));
+    } else if (usesAgentsMd(agent)) {
+      reportAgentsMdMerge(mergeAgentsMd(agent, scope));
+    }
+  } catch (err) {
+    warnRulesWiring("wire", agent, err);
+  }
 }
 
-// Reverse of wireRules, during uninstall.
+// Reverse of wireRules, during uninstall. Also non-fatal: the manifest files
+// are already gone, so a failure to tidy up the rules wiring is a warning, not
+// an uninstall failure.
 function unwireRules(agent, scope) {
-  if (agent === "opencode") reportOpencodeUnmerge(unmergeOpencodeInstructions(scope));
-  else if (usesAgentsMd(agent)) reportAgentsMdUnmerge(unmergeAgentsMd(agent, scope));
+  try {
+    if (agent === "opencode") {
+      reportOpencodeUnmerge(unmergeOpencodeInstructions(scope));
+    } else if (usesAgentsMd(agent)) {
+      reportAgentsMdUnmerge(unmergeAgentsMd(agent, scope));
+    }
+  } catch (err) {
+    warnRulesWiring("unwire", agent, err);
+  }
+}
+
+function warnRulesWiring(action, agent, err) {
+  const target = agent === "opencode" ? "opencode.json" : "AGENTS.md";
+  const verb = action === "wire" ? "wire up" : "clean up";
+  const msg = err instanceof Error ? err.message : String(err);
+  console.warn(
+    `  warning: could not ${verb} the ${agent} rules in ${target} (${msg}).`,
+  );
+  console.warn(
+    `  the skills and rule files were installed successfully; see the README`,
+  );
+  console.warn(`  section "How the rules get applied per agent" to finish by hand.`);
 }
 
 function manifestPathFor(baseDir) {

@@ -593,6 +593,26 @@ describe("cli install (integration)", () => {
       "install should wire the rules glob into opencode.json",
     );
   });
+
+  test("a failure wiring the rules warns but does not fail the install", () => {
+    const project = mkTmp();
+    const home = mkTmp();
+
+    // Make AGENTS.md an (unreadable) directory so the codex rules wiring throws.
+    fs.mkdirSync(path.join(project, "AGENTS.md"));
+
+    const res = runCli(["install", "--agent", "codex", "--scope", "project"], {
+      cwd: project,
+      home,
+    });
+
+    // Install still succeeds and the skills/rules/manifest are on disk.
+    assert.equal(res.status, 0, res.stderr);
+    assert.ok(fs.existsSync(path.join(project, ".agents", "skills")));
+    assert.ok(readManifest(path.join(project, ".agents")));
+    // ...but the user is warned that the rules wiring didn't complete.
+    assert.match(res.stderr, /warning: could not wire up the codex rules/);
+  });
 });
 
 describe("cli update (integration)", () => {
