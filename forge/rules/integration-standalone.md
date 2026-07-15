@@ -1,7 +1,5 @@
 ---
 description: Rules for authoring ***plain specs for REST API integrations deployed standalone
-paths:
-  - "**/*.plain"
 ---
 
 # Rules for **standalone** integration specs

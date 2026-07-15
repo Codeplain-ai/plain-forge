@@ -1,7 +1,5 @@
 ---
 description: Rules for authoring ***plain specs for REST API integrations embedded into an existing host codebase
-paths:
-  - "**/*.plain"
 ---
 
 # Rules for **embedded** integration specs

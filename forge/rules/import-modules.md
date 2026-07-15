@@ -1,7 +1,5 @@
 ---
 description: Rules for creating and using import modules in .plain files
-paths:
-  - "**/*.plain"
 ---
 
 # Rules for import modules

@@ -1,7 +1,5 @@
 ---
 description: Rules for using exported_concepts in .plain files
-paths:
-  - "**/*.plain"
 ---
 
 # Rules for `exported_concepts`

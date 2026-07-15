@@ -1,7 +1,5 @@
 ---
 description: Rules for writing ***test reqs*** sections in .plain files
-paths:
-  - "**/*.plain"
 ---
 
 # Rules for writing `***test reqs***`
