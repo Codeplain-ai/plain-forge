@@ -118,17 +118,7 @@ After one feature is done, the user may describe the next. Start again from Phas
 
 ## Validation checklist
 
-- [ ] Target `.plain` file(s) and their `import`/`requires` chain were read before authoring
-- [ ] Every iteration asked exactly one question and wrote to disk immediately after the answer
-- [ ] Every functional spec was authored via `add-functional-spec` (never hand-written)
-- [ ] New concepts defined before they are referenced
-- [ ] No circular concept references
-- [ ] Every conflict / break / augment surfaced by the analyzers was put to the user as the next question and resolved before continuing
-- [ ] Functional specs are language-agnostic
-- [ ] All external interfaces are explicit (endpoint paths, methods, CLI args, formats)
-- [ ] Acceptance tests are consistent with their parent functional specs
-- [ ] User approved the final diff
-- [ ] `plain-healthcheck` returned `PASS` after the final diff was approved
+Run the loop block in `references/checklist.md` on each iteration, and walk the whole list during Phase 3 before declaring the feature done. It is a self-audit of this workflow — never a substitute for it. A box only counts as met when the spec is on disk and explicitly approved; complete any unmet step before finishing.
 
 ## Question style
 

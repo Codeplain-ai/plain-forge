@@ -57,6 +57,8 @@ When entering a phase, read its reference file and walk its topics **in order** 
 
 Between phases, summarize what was built and get an explicit overall confirmation before continuing — the full feature list and module/concept layout after Phase 1; the tech stack and architecture after Phase 2; the testing strategy (config files, scripts, framework, test types, conformance/prepare-environment decisions) after Phase 3.
 
+Before advancing out of any phase, walk the **Self-check checklist** (`references/checklist.md`) and confirm every box for that phase is met. Do not advance on an unmet box.
+
 ## Adding features later
 
 Once the initial specs exist, the user will return with new features. Use the `add-feature` skill — the same interview → author → review loop scoped to a single feature on an existing `.plain` file. Keep framing the work as updating the specs, not the generated code.
@@ -75,6 +77,10 @@ Once the initial specs exist, the user will return with new features. Use the `a
 - **`check-plain-env` returns `FAIL`** (Phase 3) → walk each gap with the user; install, swap to an alternative, or explicitly acknowledge it before Phase 4. Re-invoke after any install.
 - **`plain-healthcheck` returns `FAIL`** (Phase 4) → do not present the render command; work through its numbered list with the right edit skill and re-run until it passes.
 - **Environment failure** (`codeplain` not on PATH, `CODEPLAIN_API_KEY` unset) → tell the user exactly what is missing and how to fix it; never pretend the check passed.
+
+## Self-check checklist
+
+Before advancing out of each phase, read `references/checklist.md` and confirm every box for that phase (plus the loop-iteration block) is met; run the whole list once more before handing off. It is a self-audit of this workflow — never a substitute for it. A box only counts as met when the spec is on disk and explicitly approved. If a box is unmet, complete that step before advancing.
 
 ## Reference
 
