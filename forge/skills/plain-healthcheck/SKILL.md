@@ -13,7 +13,7 @@ description: >-
 
 # Plain Healthcheck
 
-Always use the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet.
+Always use the skill `load-codeplain-reference` to retrieve the full `codeplain` CLI reference (every flag, path-resolution rules, `config.yaml` mapping, render banners, exit codes), and the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet. This skill runs `codeplain … --dry-run` and validates every `config.yaml`, so the CLI reference is required.
 
 ## When to run
 
