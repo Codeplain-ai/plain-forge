@@ -121,6 +121,10 @@ Tell the user what was created and what's next:
 - Suggested next steps: add concepts with `add-concept`, add functional specs with `add-functional-spec` or `add-functional-specs`, or jump straight into `add-feature`.
 - Mention that `codeplain <project>.plain --dry-run` has not been run — they can run `plain-healthcheck` when they want validation.
 
+## Validation checklist
+
+Before the recap, walk `references/checklist.md` and confirm every box is met. It is a self-audit of this workflow — never a substitute for it. A box only counts as met when the file is on disk as described; complete any unmet step before recapping.
+
 ## Question style
 
 Use simple grammatical structures: short direct sentences, one idea per sentence, plain words over jargon. Keep every constraint and edge case the user needs to answer accurately.
