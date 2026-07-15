@@ -13,6 +13,8 @@ description: >-
 
 # Init Config File
 
+Always use the skill `load-codeplain-reference` to retrieve the full `codeplain` CLI reference (every flag, the `config.yaml` mapping, and the secrets / per-invocation keys that must never be written to config) — but only if you haven't done so yet. This skill assembles `config.yaml` from the valid CLI-derived keys, so the CLI reference is required.
+
 This skill is the **single authoritative writer** of `config.yaml` for a ***plain project. Anything that ends up in `config.yaml` should go through this skill. The renderer (`codeplain`) reads each key listed below into the same argparse namespace it uses for CLI flags — so a value set in `config.yaml` is exactly equivalent to passing the corresponding `--flag` on the command line.
 
 ## When to run
