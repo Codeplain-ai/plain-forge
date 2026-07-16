@@ -44,14 +44,19 @@ description: Shared API definitions and reqs
 ---
 
 ***definitions***
+
 - :ApiClient: is the HTTP client used to communicate with external services.
+
 - :ApiResponse: is the response returned by :ApiClient:.
 
 ***implementation reqs***
+
 - :Implementation: should handle HTTP errors by raising appropriate exceptions.
+
 - :ApiClient: should support configurable timeouts.
 
 ***test reqs***
+
 - :ConformanceTests: should mock all external HTTP calls made by :ApiClient:.
 ```
 
@@ -71,7 +76,9 @@ import:
 > So this module must define them:
 
 ***definitions***
+
 - :AuthSchema: is the JSON schema describing the authentication data structure.
+
 - :AuthApiSpec: is the OpenAPI specification for the external service's auth endpoint.
 ```
 
