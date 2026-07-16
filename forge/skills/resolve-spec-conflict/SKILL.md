@@ -45,13 +45,21 @@ When the requirements truly conflict, choose a resolution strategy:
 
 **Strategy A: Add detail to disambiguate.** Often the specs aren't contradictory — they're just ambiguous enough that the renderer picks a conflicting interpretation. Adding explicit context to one or both specs eliminates the ambiguity.
 
-```
 Before (ambiguous):
+```plain
+***functional specs***
+
 - The system should return all :Resource: items.
+
 - The system should return only active :Resource: items.
+```
 
 After (disambiguated):
+```plain
+***functional specs***
+
 - The system should return all :Resource: items when no filter is specified.
+
 - When the "active" filter is specified, the system should return only active :Resource: items.
 ```
 
