@@ -44,12 +44,15 @@ A concept definition is a bullet in `***definitions***` that starts with the con
 
 ```plain
 ***definitions***
+
 - :ConceptName: is a description of what it represents.
 ```
 
 Attributes and constraints are nested sub-bullets:
 
 ```plain
+***definitions***
+
 - :Task: describes an activity that needs to be done by :User:. :Task: has:
   - Name - a short description (required)
   - Notes - additional details (optional)
@@ -66,6 +69,8 @@ Attributes and constraints are nested sub-bullets:
 BAD — bare continuation lines (invalid ***plain syntax, will not render):
 
 ```plain
+***definitions***
+
 - :Task: describes an activity that needs to be done by :User:.
   - Name is a short description that the user provides when creating
     the task and is shown in the task list.
@@ -74,6 +79,8 @@ BAD — bare continuation lines (invalid ***plain syntax, will not render):
 GOOD — every line starts with `- `:
 
 ```plain
+***definitions***
+
 - :Task: describes an activity that needs to be done by :User:.
   - Name is a short description provided when creating the task.
   - The name is shown in the task list.
