@@ -31,6 +31,7 @@ The functional spec to break down, plus the full `.plain` file it belongs to.
    - Cross-cutting concerns mixed with core functionality?
    - A full UI screen described in one spec?
    - Complex data transformations across multiple entities?
+   - Implies one substantial technical component (engine, parser, scheduler, algorithm, state machine, sync mechanism) that must be built in code?
 4. **Identify the split boundaries** — find the natural seams where the spec can be divided. Each resulting spec must be:
    - Independently meaningful (makes sense on its own with previous specs as context)
    - Self-contained (does not require a later spec to be useful)
@@ -50,14 +51,19 @@ If the spec bundles multiple independently testable actions, split each into its
 
 **Before:**
 ```plain
-- :User: should be able to create, edit, and delete :Recipe: items, with
-  validation on all fields.
+***functional specs***
+
+- :User: should be able to create, edit, and delete :Recipe: items, with validation on all fields.
 ```
 
 **After:**
 ```plain
+***functional specs***
+
 - :User: should be able to create a :Recipe:. Only valid :Recipe: items can be created.
+
 - :User: should be able to edit an existing :Recipe:. Validation rules apply to the edited fields.
+
 - :User: should be able to delete a :Recipe:.
 ```
 
@@ -67,15 +73,19 @@ If the spec introduces a new construct and immediately defines complex behavior 
 
 **Before:**
 ```plain
-- The system should provide a :MealPlan: screen that displays a weekly grid of
-  :Slot: items, allows drag-and-drop reordering, and shows nutritional totals
-  per day.
+***functional specs***
+
+- The system should provide a :MealPlan: screen that displays a weekly grid of :Slot: items, allows drag-and-drop reordering, and shows nutritional totals per day.
 ```
 
 **After:**
 ```plain
+***functional specs***
+
 - The system should provide a :MealPlan: screen that displays a weekly grid of :Slot: items.
+
 - :User: should be able to reorder :Slot: items within a day on the :MealPlan: screen using drag-and-drop.
+
 - The :MealPlan: screen should display nutritional totals for each day.
 ```
 
@@ -85,14 +95,19 @@ If the spec mixes primary functionality with error handling, retries, caching, p
 
 **Before:**
 ```plain
-- The system should fetch :Ingredient: data from the external API with
-  pagination, retry on transient errors, and cache results for 10 minutes.
+***functional specs***
+
+- The system should fetch :Ingredient: data from the external API with pagination, retry on transient errors, and cache results for 10 minutes.
 ```
 
 **After:**
 ```plain
+***functional specs***
+
 - The system should fetch :Ingredient: data from the external API.
+
 - The system should paginate when fetching :Ingredient: data from the external API.
+
 - The system should retry fetching :Ingredient: data on transient errors.
 ```
 
@@ -102,18 +117,21 @@ If the spec describes different modes or branches, give each its own spec.
 
 **Before:**
 ```plain
-- The system should process :MealPlan: generation differently based on :DietType:.
-  Standard plans use round-robin assignment. Restrictive plans filter out
-  excluded ingredients first, then apply round-robin. Custom plans allow manual
-  slot-by-slot selection.
+***functional specs***
+
+- The system should process :MealPlan: generation differently based on :DietType:. Standard plans use round-robin assignment. Restrictive plans filter out excluded ingredients first, then apply round-robin. Custom plans allow manual slot-by-slot selection.
 ```
 
 **After:**
 ```plain
+***functional specs***
+
 - The system should generate a standard :MealPlan: using round-robin :Recipe: assignment.
+
 - The system should generate a restrictive :MealPlan:.
   - Excluded :Ingredient: items are filtered out first.
   - Round-robin :Recipe: assignment is then applied.
+
 - The system should allow :User: to manually assign :Recipe: items to :Slot: items for a custom :MealPlan:.
 ```
 
@@ -123,17 +141,47 @@ If the spec describes a full screen, split into layout + individual interactive 
 
 **Before:**
 ```plain
-- Display the :Dashboard: screen showing a summary card with stats, a scrollable
-  list of recent :MealPlan: items, a floating action button to create a new plan,
-  and a bottom navigation bar.
+***functional specs***
+
+- Display the :Dashboard: screen showing a summary card with stats, a scrollable list of recent :MealPlan: items, a floating action button to create a new plan, and a bottom navigation bar.
 ```
 
 **After:**
 ```plain
+***functional specs***
+
 - Display the :Dashboard: screen with a summary card showing :MealFrameStats:.
+
 - The :Dashboard: screen should show a scrollable list of recent :MealPlan: items.
+
 - The :Dashboard: screen should include a button to create a new :MealPlan:.
 ```
+
+### Strategy 6: Extract a Reusable Technical Component
+
+Sometimes a spec is too complex not because it bundles many behaviors, but because it implies building one substantial technical component inline — an engine, parser, scheduler, layout algorithm, state machine, or sync mechanism. Splitting the behavior sideways does not help when the weight sits in that single component. Instead, pull the component out: define a concept for it, build it in its own dedicated spec placed **earlier** in the chain, then rewrite the original to use the component **by reference**. Because specs render incrementally top-to-bottom, the original now implies far less code — it wires up a component that already exists rather than implementing it from scratch.
+
+Define the component concept in `***definitions***` (via `add-concept`) before the first spec that references it.
+
+**Before:**
+```plain
+***functional specs***
+
+- The system should export a :Report: to PDF, laying out multi-page tables with repeating headers, page numbers, and charts rendered from :Report: data.
+```
+
+**After:**
+```plain
+***functional specs***
+
+- The system should provide a :PdfRenderer: that lays out multi-page tables from structured content.
+  - Table headers repeat at the top of each page.
+  - Each page shows its page number.
+
+- The system should export a :Report: to PDF using :PdfRenderer:, embedding charts rendered from :Report: data.
+```
+
+The extracted component spec and the rewritten original must together still cover 100% of the original functionality (step 6): the original must **reference** the component, never re-describe it. Keep the component's technology and architecture choices in `***implementation reqs***`, not in the functional spec. If the component is a self-contained subsystem or will be reused across modules, promote it to its own module with `create-requires-module` / `refactor-module` instead of a sibling spec.
 
 ## Preserving Chronological Order
 
@@ -151,6 +199,7 @@ If the original spec had acceptance tests, redistribute them to the most appropr
 - [ ] Replacement specs are in correct chronological order
 - [ ] Each replacement spec is independently meaningful
 - [ ] All `:Concepts:` referenced in replacement specs are defined
+- [ ] Any extracted technical component is defined as a concept, built by its own earlier spec, and only **referenced** (not re-described) by the original
 - [ ] Replacement specs are language-agnostic
 - [ ] All external interfaces remain explicit
 - [ ] Acceptance tests (if any) have been redistributed or rewritten
