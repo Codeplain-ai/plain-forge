@@ -51,6 +51,8 @@ The new spec must not contradict any existing functional spec. Conflicting specs
 Each functional spec must be unambiguous — the renderer should have only one reasonable interpretation. If a single line is not enough to fully disambiguate the behavior, use **nested sub-bullets** to add detail. Nested lines clarify the parent spec; they do not introduce separate functionality. Even with nested detail, the spec must still imply ≤ 200 LOC.
 
 ```plain
+***functional specs***
+
 - :User: should be able to send a :Message: to a :Conversation:.
   - A :Message: must have non-empty content.
   - The :Message: is appended to the end of the :Conversation:.
@@ -67,6 +69,8 @@ Each functional spec must be unambiguous — the renderer should have only one r
 BAD — bare continuation lines (invalid ***plain syntax, will not render):
 
 ```plain
+***functional specs***
+
 - :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(),
   which returns a list of :EventEnvelope: dicts conforming to the gateway's
   contract.
@@ -75,6 +79,8 @@ BAD — bare continuation lines (invalid ***plain syntax, will not render):
 GOOD — every line starts with `- `:
 
 ```plain
+***functional specs***
+
 - :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle().
   - The method returns a list of :EventEnvelope: dicts.
   - The dicts must conform to the gateway's :EventEnvelope: contract.
