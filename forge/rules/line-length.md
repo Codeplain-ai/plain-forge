@@ -21,12 +21,16 @@ These rules apply to **every** section — `***definitions***`, `***implementati
 BAD — line is too long:
 
 ```plain
+***functional specs***
+
 - :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(), which returns a list of :EventEnvelope: dicts conforming to the gateway's contract.
 ```
 
 WRONG SYNTAX (AVOID AT ALL COSTS) — bare indented continuation without a leading `- `:
 
 ```plain
+***functional specs***
+
 - :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(),
   which returns a list of :EventEnvelope: dicts conforming to the gateway's
   contract.
@@ -35,6 +39,8 @@ WRONG SYNTAX (AVOID AT ALL COSTS) — bare indented continuation without a leadi
 GOOD — split at a natural clause boundary into nested `- ` bullets:
 
 ```plain
+***functional specs***
+
 - :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle()
   - The method returns a list of :EventEnvelope: dicts.
   - The dicts must conform to the gateway's :EventEnvelope: contract.
@@ -43,3 +49,8 @@ GOOD — split at a natural clause boundary into nested `- ` bullets:
 ## What never goes inline
 - Long URLs, schema fragments, or example payloads — those belong in `resources/` per [`linked-resources.md`](linked-resources.md)
 - If you find yourself pasting a multi-line block into a spec line, stop and link the file instead
+
+## Presenting `.plain` examples
+- Show every example snippet under its owning section header — e.g. `***functional specs***`, `***definitions***` — so the reader can see which section the lines belong in
+- Separate top-level `- ` items with a single blank line; keep nested `- ` clarifications directly under their parent with **no** blank line between parent and child
+- These conventions apply to canonical / "good" / "after" / "acceptable" example blocks; BAD / WRONG / `Before:` / `Too complex:` blocks show the header too but may otherwise deviate (that is the point of showing them)
