@@ -23,7 +23,7 @@ A linked resource **must not** be any of the following:
 - Litmus test: "Would the renderer benefit from reading the bytes at this URL / folder?" If yes, save it to a file and link the file. If no (it's a runtime value the code carries forward), it can stay as plain text
 
 ## Structured protocol artifacts must be linked, never transcribed
-- JSON Schema, OpenAPI / Swagger, GraphQL SDL, Protobuf `.proto`, Avro / Thrift schemas, XML XSDs, AsyncAPI specs, JSON-RPC method definitions, wire-protocol descriptions, payload examples — anything with a formal machine-readable shape — belongs in a file under `resources/` (or a subfolder of the `.plain` file's directory)
+- JSON Schema, OpenAPI / Swagger, GraphQL SDL, Protobuf `.proto`, Avro / Thrift schemas, XML XSDs, AsyncAPI specs, JSON-RPC method definitions, wire-protocol descriptions, payload examples — anything with a formal machine-readable shape — belongs in a file under `resources/` (or another directory within the project)
 - The spec line should describe the *role* of the artifact ("the request body conforms to ...", "the public API surface is defined in ...") rather than its contents
 - Reasons: one source of truth (no drift between prose and schema); the renderer and the generated code can both consume the file directly; schema changes show up cleanly as diffs
 
@@ -60,5 +60,6 @@ A linked resource **must not** be any of the following:
 ```
 
 ## File location and path resolution
-- Paths are resolved relative to the `.plain` file's directory
-- The conventional location is `resources/` under the `.plain` file's directory
+- Paths are resolved relative to the directory where `codeplain` is run (the current working directory)
+- Relative paths may traverse into parent directories — `[resource](../../resources/resource.md)` is valid — as long as they resolve to a real text file on disk
+- The conventional location is a `resources/` directory; keep the resource inside the project so the path stays stable from wherever `codeplain` is run

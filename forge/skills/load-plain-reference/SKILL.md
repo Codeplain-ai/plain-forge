@@ -182,7 +182,7 @@ The frontmatter is enclosed between `---` markers and supports:
 
 ### Linked Resources
 
-Specifications can reference external files using markdown link syntax. The linked resource is passed along with the spec to the renderer. File paths are resolved relative to the `.plain` file location. Only files in the same folder (and subfolders) are supported.
+Specifications can reference external files using markdown link syntax. The linked resource is passed along with the spec to the renderer. File paths are resolved relative to the directory where `codeplain` is run (the current working directory), and may traverse into parent directories — `../../resources/resource.md` is valid — as long as they resolve to a real text file on disk.
 
 ```plain
 - A :User: can add a :Task:.
