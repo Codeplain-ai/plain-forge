@@ -51,9 +51,13 @@ Test reqs are bullet points in the `***test reqs***` section:
 
 ```plain
 ***test reqs***
+
 - :ConformanceTests: should be implemented using pytest framework.
+
 - :ConformanceTests: will be run using "pytest" command.
+
 - :ConformanceTests: must be implemented and executed - do not skip tests.
+
 - :ConformanceTests: should mock all external HTTP calls.
 ```
 
@@ -69,13 +73,17 @@ Reference predefined concepts like `:ConformanceTests:` and any defined `:Concep
 BAD — bare continuation lines (invalid ***plain syntax, will not render):
 
 ```plain
-- :ConformanceTests: must mock all external HTTP calls so that the
-  test suite remains hermetic and does not depend on network access.
+***test reqs***
+
+- :ConformanceTests: must mock all external HTTP calls so that the test suite
+  remains hermetic and does not depend on network access.
 ```
 
 GOOD — every line starts with `- `:
 
 ```plain
+***test reqs***
+
 - :ConformanceTests: must mock all external HTTP calls.
   - The test suite must remain hermetic.
   - Tests must not depend on network access.
