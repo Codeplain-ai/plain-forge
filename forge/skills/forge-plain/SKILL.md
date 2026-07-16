@@ -18,12 +18,29 @@ Always invoke the `load-plain-reference` skill first to load the `***plain` synt
 
 Act as a `***plain` spec writer. The only output is `.plain` specification files — never code. Code is generated from the specs by the renderer and lives in `plain_modules/` as a read-only artifact; never write or edit it. Frame every message to the user in terms of specs: "I'll add this as a functional spec," "Let me update the spec to fix that," "The spec needs more detail here." The user must always understand they are building `***plain` specs that render into code, not writing code themselves.
 
+## Agent orchestration
+
+`forge-plain` runs the interview **itself** — it owns the user conversation from start to finish, asks every `AskUserQuestion`, and authors every snippet inline via the edit skills. The interactive ask → author → review loop is never delegated: it is interleaved with live user questions, so a background subagent cannot run it (a spawned `fork` executes a self-contained task and returns — it is not reachable for a per-answer, one-instruction-at-a-time exchange).
+
+The one thing that **is** delegated is validation at each phase gate:
+
+- **Review agent** — spawned fresh at each phase gate via the `Agent` tool as a new `general-purpose` agent (a fresh agent, **not** a fork — it audits with an independent eye). Subagents are **one-shot** on every supported runtime (Claude Code, Codex, OpenCode): they cannot ask the orchestrator or the user anything mid-run and cannot converse back — they get their whole brief in the spawn prompt, run, and return one result. So the orchestrator puts everything the reviewer needs into that prompt: the phase's block from `references/checklist.md` (plus the loop-iteration block for Phases 1–3), the paths of the files touched this phase, an instruction to load `load-plain-reference`, and — because a fresh agent has none of the interview context — a **phase evidence record**: the ordered account of what happened this phase (each question asked, its answer, the snippet written or edited in response, the approval given, and every explicit decision such as conformance on/off or prepare-environment yes/no). The reviewer checks `[disk]` boxes against the files independently, `[record]` boxes against the evidence record, `[both]` boxes by cross-checking the two and flagging mismatches, and returns either `APPROVED` or a numbered list of unmet boxes. Capture the returned result directly — never `SendMessage` a running reviewer or expect it to reach back.
+
+### Per-phase loop
+
+1. Read the phase reference and run the interactive core loop (ask → author → review) below, authoring inline, through the phase's topics in order.
+2. When the interview is complete and the user has given the between-phase confirmation, spawn a review agent — passing that phase's checklist block, the touched-file paths, and the phase evidence record.
+3. **If the review agent returns unmet boxes, do not advance.** Fix each gap through the same interview → author → review loop, then spawn a *fresh* review agent again (with an updated evidence record). Repeat until a review agent returns `APPROVED`.
+4. Advance to the next phase.
+
+The phase gate is met **only** when a review agent approves; the orchestrator never self-certifies a phase.
+
 ## Core loop: one question → one answer → write to disk
 
 Every phase runs the same tight loop. Each iteration is a single question followed by an immediate write:
 
 1. **Ask** one focused question via `AskUserQuestion` — never bundle two. Offer concrete options plus a free-form catch-all whenever the answer space is predictable; reserve free-form-only for genuinely open prompts ("What is the app?"). Shape every question so any plausible answer maps directly to one writable snippet — a single concept, feature, attribute, or constraint — not an open-ended design question.
-2. **Author immediately** — the moment the user answers, write the snippet to disk (a `.plain` section, a script, or a `config.yaml` entry). Do not wait for "enough" context; do not batch with the next question's output. Eager writes are the point: a snippet that is wrong on the first try is expected — the next question corrects it, and the user can read exactly where things stand after every step.
+2. **Author immediately** — the moment the user answers, write the snippet to disk (a `.plain` section, a script, or a `config.yaml` entry) using the right edit skill. Do not wait for "enough" context; do not batch with the next question's output. Eager writes are the point: a snippet that is wrong on the first try is expected — the next question corrects it, and the user can read exactly where things stand after every step.
 3. **Review** the new snippet with the user (see *Review loop* below), apply the response back to disk, and only then move to the next topic.
 
 **One question per call, but drill as deep as the topic needs.** "One question" governs the `AskUserQuestion` call, not the topic. If an answer is vague or leaves real choices open, the *next* question drills into the same topic — same loop, another iteration — until it is concrete enough to write. Stopping early and writing on top of a vague answer is worse than one more focused follow-up.
@@ -57,7 +74,7 @@ When entering a phase, read its reference file and walk its topics **in order** 
 
 Between phases, summarize what was built and get an explicit overall confirmation before continuing — the full feature list and module/concept layout after Phase 1; the tech stack and architecture after Phase 2; the testing strategy (config files, scripts, framework, test types, conformance/prepare-environment decisions) after Phase 3.
 
-Before advancing out of any phase, walk the **Self-check checklist** (`references/checklist.md`) and confirm every box for that phase is met. Do not advance on an unmet box.
+Before advancing out of any phase, spawn a **review agent** to run that phase's block of the **Self-check checklist** (`references/checklist.md`) and loop (fix → re-review) until it returns `APPROVED` — see *Agent orchestration*. Do not advance on an unmet box, and never self-certify the gate.
 
 ## Adding features later
 
@@ -73,14 +90,15 @@ Once the initial specs exist, the user will return with new features. Use the `a
 ## Error handling
 
 - **A user answer contradicts prior specs** → edit the affected snippet in place immediately, then continue the loop; surface a non-trivial change in the next question.
-- **A phase gate is not met** (specs not on disk, or not explicitly approved) → do not advance; finish the open phase first.
+- **A phase gate is not met** (a review agent returned unmet boxes) → do not advance; fix each gap through the interview → author → review loop, then spawn a fresh review agent and repeat until `APPROVED`.
+- **A review agent can't be spawned or returns nothing usable** → spawn a fresh one; do not self-certify the gate. Never `SendMessage` a running reviewer — capture its returned result. If spawning genuinely fails in this environment, walk the phase's checklist block inline as a fallback and tell the user the review was self-run.
 - **`check-plain-env` returns `FAIL`** (Phase 3) → walk each gap with the user; install, swap to an alternative, or explicitly acknowledge it before Phase 4. Re-invoke after any install.
 - **`plain-healthcheck` returns `FAIL`** (Phase 4) → do not present the render command; work through its numbered list with the right edit skill and re-run until it passes.
 - **Environment failure** (`codeplain` not on PATH, `CODEPLAIN_API_KEY` unset) → tell the user exactly what is missing and how to fix it; never pretend the check passed.
 
 ## Self-check checklist
 
-Before advancing out of each phase, read `references/checklist.md` and confirm every box for that phase (plus the loop-iteration block) is met; run the whole list once more before handing off. It is a self-audit of this workflow — never a substitute for it. A box only counts as met when the spec is on disk and explicitly approved. If a box is unmet, complete that step before advancing.
+`references/checklist.md` is the **review agent's** one-shot script, not the orchestrator's. At each phase gate the orchestrator spawns a fresh review agent (see *Agent orchestration*) and puts everything it needs in the spawn prompt: that phase's block, the loop-iteration block (Phases 1–3), the touched-file paths, and a **phase evidence record** of what happened in the interview. The reviewer verifies each box by its tag — `[disk]` against the files, `[record]` against the evidence record, `[both]` cross-checked with mismatches flagged — and returns `APPROVED` or a numbered gap list. The orchestrator loops (fix → re-review with a fresh agent) until a review agent approves, and never advances on an unmet box or self-certifies the gate.
 
 ## Reference
 
