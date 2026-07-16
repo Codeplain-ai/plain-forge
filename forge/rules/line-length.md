@@ -23,7 +23,7 @@ BAD — line is too long:
 ```plain
 ***functional specs***
 
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(), which returns a list of :EventEnvelope: dicts conforming to the gateway's contract.
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle(), which returns a list of :EventEnvelope: dicts conforming to the gateway's contract.
 ```
 
 WRONG SYNTAX (AVOID AT ALL COSTS) — bare indented continuation without a leading `- `:
@@ -31,7 +31,7 @@ WRONG SYNTAX (AVOID AT ALL COSTS) — bare indented continuation without a leadi
 ```plain
 ***functional specs***
 
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(),
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle(),
   which returns a list of :EventEnvelope: dicts conforming to the gateway's
   contract.
 ```
@@ -41,7 +41,7 @@ GOOD — split at a natural clause boundary into nested `- ` bullets:
 ```plain
 ***functional specs***
 
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle()
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle()
   - The method returns a list of :EventEnvelope: dicts.
   - The dicts must conform to the gateway's :EventEnvelope: contract.
 ```

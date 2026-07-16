@@ -124,13 +124,13 @@ The renderer has **no knowledge of future functional specs**. When a functional 
 ```plain
 ***functional specs***
 
-- Implement the entry point for :App:.
+- :App: has an entry point.
 
-- Show :TaskList:.
+- The :TaskList: is displayed.
 
-- :User: should be able to add :Task:. Only valid :Task: items can be added.
+- A :User: can add a :Task:. Only valid :Task: items are added.
 
-- :User: should be able to delete :Task:.
+- A :User: can delete a :Task:.
 
 ```
 
@@ -139,7 +139,7 @@ Each functional spec must be unambiguous. If a single line is not enough to full
 ```plain
 ***functional specs***
 
-- :User: should be able to send a :Message: to a :Conversation:.
+- A :User: can send a :Message: to a :Conversation:.
   - A :Message: must have non-empty content.
   - The :Message: is appended to the end of the :Conversation:.
   - All :Participant: members of the :Conversation: can see the new :Message:.
@@ -152,10 +152,11 @@ Nested under individual functional specs to specify how to verify correct implem
 ```plain
 ***functional specs***
 
-- Display "hello, world"
+- :App: displays "hello, world".
 
     ***acceptance tests***
     - :App: should exit with status code 0 indicating successful execution.
+
     - :App: should complete execution in under 1 second.
 ```
 
@@ -184,7 +185,7 @@ The frontmatter is enclosed between `---` markers and supports:
 Specifications can reference external files using markdown link syntax. The linked resource is passed along with the spec to the renderer. File paths are resolved relative to the `.plain` file location. Only files in the same folder (and subfolders) are supported.
 
 ```plain
-- :User: should be able to add :Task:.
+- A :User: can add a :Task:.
   - The user-interface details are in [task_modal_specification.yaml](task_modal_specification.yaml).
 ```
 
@@ -227,7 +228,7 @@ The accompanying spec line should describe the *role* of the artifact ("the requ
 
 ***functional specs***
 
-- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the `POST /tasks` endpoint of :TasksAPI:.
+- A :User: can add a :Task: by POSTing :TaskCreateRequest: to the `POST /tasks` endpoint of :TasksAPI:.
   - The endpoint responds per :TasksAPI:.
 ```
 
@@ -248,9 +249,9 @@ For example, instead of linking `task_modal_specification.yaml` from two differe
 
 ***functional specs***
 
-- :User: should be able to add :Task: using :TaskModalSpec:.
+- A :User: can add a :Task: using :TaskModalSpec:.
 
-- :User: should be able to edit :Task: using :TaskModalSpec:.
+- A :User: can edit a :Task: using :TaskModalSpec:.
 ```
 
 This keeps the resource link in one place, makes the dependency explicit through the concept token, and means a change to the file only ever needs to be reconciled against one spec site. If you find yourself about to paste the same `[name](path)` link a second time, **stop** — create the concept first.
@@ -422,7 +423,7 @@ For implementation details — the exact step sequence, toolchain checks, langua
 - **Specs must define programmatic interfaces.** Any runtime or interface details must be defined in the functional specs, not in implementation reqs. This means functional specs name the concrete *components* a caller will reach for — utilities, services, methods, functions, fields — and pin down their inputs, outputs, and error behavior, so that callers can use the software without reading the generated code. For example, a spec can require:
 
     ```plain
-    - Implement :DataConverter: as a stateless utility component exposing two operations.
+    - :DataConverter: is a stateless utility component exposing two operations.
         - :FormatData: takes a raw data string and a format type, returns a formatted string. Infer and convert value types. Empty inputs must be converted to null. Null values must be preserved — keys with null values must appear in the result, not be omitted. Handle escaping logic. Raise an error if the format type is not supported.
         - :ParseData: takes a formatted string and returns a structured object. Output an empty structure for null or missing fields. Unrecognized extra keys should be silently ignored.
     ```
@@ -438,13 +439,13 @@ This rule applies to **every** spec update and to **all** sections — `***defin
 BAD — line is too long:
 
 ```plain
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(), which returns a list of :EventEnvelope: dicts conforming to the gateway's contract.
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle(), which returns a list of :EventEnvelope: dicts conforming to the gateway's contract.
 ```
 
 WRONG SYNTAX AND BAD (AVOID AT ALL COSTS) — bare indented continuation lines without a leading `- ` are invalid ***plain syntax:
 
 ```plain
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(),
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle(),
   which returns a list of :EventEnvelope: dicts conforming to the gateway's
   contract.
 ```
@@ -452,7 +453,7 @@ WRONG SYNTAX AND BAD (AVOID AT ALL COSTS) — bare indented continuation lines w
 GOOD — split at a natural clause boundary into nested `- ` bullets:
 
 ```plain
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle()
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle()
   - The method returns a list of :EventEnvelope: dicts.
   - The dicts must conform to the gateway's :EventEnvelope: contract.
 ```
@@ -504,7 +505,7 @@ BAD
 ```***plain
 ***functional specs***
 
-- Implement :Message:
+- A :User: can send a :Message:.
 
 ```
 
@@ -516,7 +517,7 @@ GOOD
 
 ***functional specs***
 
-- Implement :Message:
+- A :User: can send a :Message:.
 ```
 
 - Cyclic definitons 

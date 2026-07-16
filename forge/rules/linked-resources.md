@@ -37,7 +37,7 @@ A linked resource **must not** be any of the following:
 
 ***functional specs***
 
-- :User: should be able to add :Task: by POSTing :TaskCreateRequest: to the `POST /tasks` endpoint of :TasksAPI:.
+- A :User: can add a :Task: by POSTing :TaskCreateRequest: to the `POST /tasks` endpoint of :TasksAPI:.
   - The endpoint responds per :TasksAPI:.
 ```
 
@@ -54,9 +54,9 @@ A linked resource **must not** be any of the following:
 
 ***functional specs***
 
-- :User: should be able to add :Task: using :TaskModalSpec:.
+- A :User: can add a :Task: using :TaskModalSpec:.
 
-- :User: should be able to edit :Task: using :TaskModalSpec:.
+- A :User: can edit a :Task: using :TaskModalSpec:.
 ```
 
 ## File location and path resolution

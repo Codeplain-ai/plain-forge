@@ -76,7 +76,7 @@ Each functional spec must be unambiguous — the renderer should have only one r
 ```plain
 ***functional specs***
 
-- :User: should be able to send a :Message: to a :Conversation:.
+- A :User: can send a :Message: to a :Conversation:.
   - A :Message: must have non-empty content.
   - The :Message: is appended to the end of the :Conversation:.
   - All :Participant: members of the :Conversation: can see the new :Message:.
@@ -95,7 +95,7 @@ BAD — bare continuation lines (invalid ***plain syntax, will not render):
 ```plain
 ***functional specs***
 
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle(),
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle(),
   which returns a list of :EventEnvelope: dicts conforming to the gateway's
   contract.
 ```
@@ -105,7 +105,7 @@ GOOD — every line starts with `- `:
 ```plain
 ***functional specs***
 
-- :GatewayWebhook: should hand off :StripeRequest: to :StripeIntegration:.handle().
+- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle().
   - The method returns a list of :EventEnvelope: dicts.
   - The dicts must conform to the gateway's :EventEnvelope: contract.
 ```

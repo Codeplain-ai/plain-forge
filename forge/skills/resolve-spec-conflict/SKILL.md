@@ -49,18 +49,18 @@ Before (ambiguous):
 ```plain
 ***functional specs***
 
-- The system should return all :Resource: items.
+- All :Resource: items are returned.
 
-- The system should return only active :Resource: items.
+- Only active :Resource: items are returned.
 ```
 
 After (disambiguated):
 ```plain
 ***functional specs***
 
-- The system should return all :Resource: items when no filter is specified.
+- All :Resource: items are returned when no filter is specified.
 
-- When the "active" filter is specified, the system should return only active :Resource: items.
+- When the "active" filter is specified, only active :Resource: items are returned.
 ```
 
 **Strategy B: Revise the newer spec.** If the new spec introduced the conflict, rewrite it to be compatible with the established behavior from earlier specs.
