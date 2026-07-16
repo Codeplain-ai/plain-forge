@@ -35,7 +35,7 @@ Use standard markdown link syntax inside any spec section:
 
 ***functional specs***
 
-- The system should expose an API conforming to the [API specification](resources/api_spec.yaml).
+- An API conforming to the [API specification](resources/api_spec.yaml) is exposed.
 ```
 
 ## Path Rules

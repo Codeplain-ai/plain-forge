@@ -6,6 +6,37 @@ description: Rules for writing ***functional specs*** and ***acceptance tests***
 
 When writing or editing a `***functional specs***` section in a `.plain` file, always follow these rules:
 
+## Voice
+- Write each functional spec as a **statement of fact** — present tense, indicative mood — describing what the software *is* or *does* once built, not as a command telling a developer what to build
+- **Name a concrete subject**: an actor (`A :User: can …`), a named component or concept (`:PdfRenderer: lays out …`, `:Order: processing depends on …`), or the affected data in passive voice (`All :Resource: items are returned`)
+- **Avoid the vague subject "The system …"** — it says nothing about *which* part does the work. Prefer the concrete component/concept, or passive voice with the affected concept as the subject
+- **Never open a spec with an imperative** like "Implement …", "Add …", "Create …", "Show …", "Display …", "Build …" — those read as instructions, not specifications
+- Do **not** use "should" / "should be able to" in a functional spec — that is requirement-modal voice; state the fact directly
+
+BAD — imperative commands, or the vague "The system":
+
+```plain
+***functional specs***
+
+- Implement the entry point for :App:.
+
+- The system shows :TaskList:.
+
+- Add :Task:.
+```
+
+GOOD — statements of fact with concrete subjects:
+
+```plain
+***functional specs***
+
+- :App: has an entry point.
+
+- The :TaskList: is displayed.
+
+- A :User: can add a :Task:. Only valid :Task: items are added.
+```
+
 ## Complexity limit
 - Each functional spec must imply a **maximum of 200 changed lines of code**
 - If a spec is too large, use `break-down-func-spec` to split it into multiple smaller, independent specs
@@ -63,11 +94,11 @@ When writing or editing a `***functional specs***` section in a `.plain` file, a
 ```plain
 ***functional specs***
 
-- Implement the entry point for :App:.
+- :App: has an entry point.
 
-- :User: should be able to add :Task:. Only valid :Task: items can be added.
+- A :User: can add a :Task:. Only valid :Task: items are added.
 
-- :User: should be able to send a :Message: to a :Conversation:.
+- A :User: can send a :Message: to a :Conversation:.
   - A :Message: must have non-empty content.
   - The :Message: is appended to the end of the :Conversation:.
   - All :Participant: members of the :Conversation: can see the new :Message:.

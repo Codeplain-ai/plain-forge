@@ -32,10 +32,11 @@ Acceptance tests are nested under the functional spec they verify, using a `***a
 ```plain
 ***functional specs***
 
-- The system should process :Task: items in batches of 100.
+- :Task: items are processed in batches of 100.
 
   ***acceptance tests***
   - Processing 250 :Task: items should result in 3 batches.
+
   - Each batch should contain at most 100 items.
 ```
 
@@ -55,8 +56,7 @@ BAD — bare continuation lines (invalid ***plain syntax, will not render):
 
 ```plain
   ***acceptance tests***
-  - Processing 250 :Task: items should result in 3 batches with the
-    last batch containing the remaining 50 items.
+  - Processing 250 :Task: items should result in 3 batches with the last batch containing the remaining 50 items.
 ```
 
 GOOD — every line starts with `- `:
@@ -76,7 +76,7 @@ An acceptance test is essentially an **example that illustrates** the functional
 
 ```
 Functional spec:
-- The system should return :Resource: items sorted by creation date in descending order.
+- :Resource: items are returned sorted by creation date in descending order.
 
 Good (consistent):
 - The first :Resource: in the response should have the most recent creation date.

@@ -39,20 +39,20 @@ Too complex:
 ```plain
 ***functional specs***
 
-- :User: should be able to create, edit, delete, and archive :Task: items, with validation on all fields and confirmation dialogs for destructive actions.
+- A :User: can create, edit, delete, and archive :Task: items, with validation on all fields and confirmation dialogs for destructive actions.
 ```
 
 Acceptable (one behavior each):
 ```plain
 ***functional specs***
 
-- :User: should be able to create :Task:. Only valid :Task: items can be added.
+- A :User: can create :Task:. Only valid :Task: items can be added.
 
-- :User: should be able to edit :Task:.
+- A :User: can edit :Task:.
 
-- :User: should be able to delete :Task:.
+- A :User: can delete :Task:.
 
-- :User: should be able to archive :Task:.
+- A :User: can archive :Task:.
 
 ```
 
@@ -73,18 +73,18 @@ Too complex:
 ```plain
 ***functional specs***
 
-- The system should process :Order: differently based on :OrderType:. Standard orders are validated and stored. Express orders skip validation and are queued for immediate dispatch. Bulk orders are split into sub-orders of 100 items each, validated individually, and processed in parallel with progress tracking.
+- :Order: processing depends on :OrderType:. Standard orders are validated and stored. Express orders skip validation and are queued for immediate dispatch. Bulk orders are split into sub-orders of 100 items each, validated individually, and processed in parallel with progress tracking.
 ```
 
 Acceptable (separate the modes):
 ```plain
 ***functional specs***
 
-- The system should process standard :Order: by validating and storing it.
+- A standard :Order: is validated and stored.
 
-- The system should process express :Order: by queuing it for immediate dispatch without validation.
+- An express :Order: is queued for immediate dispatch without validation.
 
-- The system should process bulk :Order: by splitting it into sub-orders of 100 items each.
+- A bulk :Order: is split into sub-orders of 100 items each.
   - Each sub-order is processed individually.
 ```
 
@@ -96,17 +96,17 @@ Too complex:
 ```plain
 ***functional specs***
 
-- The system should fetch :Resource: items from the external API with pagination support, retry on transient errors with exponential backoff, cache results for 5 minutes, and log all API calls.
+- :Resource: items are fetched from the external API with pagination support, retry on transient errors with exponential backoff, caching for 5 minutes, and logging of all API calls.
 ```
 
 Acceptable (separate concerns):
 ```plain
 ***functional specs***
-- The system should fetch :Resource: items from the external API.
+- :Resource: items are fetched from the external API.
 
-- The system should paginate when fetching :Resource: items from the external API.
+- :Resource: items are fetched from the external API in pages.
 
-- The system should retry fetching :Resource: on transient errors using exponential backoff.
+- Fetching :Resource: items is retried on transient errors using exponential backoff.
 ```
 
 ### 5. UI Complexity
@@ -117,18 +117,18 @@ Too complex:
 ```plain
 ***functional specs***
 
-- Display a dashboard showing :User: profile, recent :Task: items in a sortable table, a notification bell with unread count, and a sidebar with navigation links that highlights the active page.
+- The dashboard shows :User: profile, recent :Task: items in a sortable table, a notification bell with unread count, and a sidebar with navigation links that highlights the active page.
 ```
 
 Acceptable (build incrementally):
 ```plain
 ***functional specs***
 
-- Display a dashboard page for :User:.
+- A dashboard page is shown for :User:.
 
-- Show recent :Task: items in a sortable table on the dashboard.
+- Recent :Task: items are shown in a sortable table on the dashboard.
 
-- Show a notification indicator with the unread count on the dashboard.
+- A notification indicator with the unread count is shown on the dashboard.
 ```
 
 ### 6. Data Transformation Complexity
@@ -146,18 +146,18 @@ Too complex (builds the component and uses it in one spec):
 ```plain
 ***functional specs***
 
-- The system should export a :Report: to PDF, laying out multi-page tables with repeating headers and page numbers, and charts rendered from :Report: data.
+- A :Report: is exported to PDF, laying out multi-page tables with repeating headers and page numbers, and charts rendered from :Report: data.
 ```
 
 Acceptable (component in its own spec, then referenced):
 ```plain
 ***functional specs***
 
-- The system should provide a :PdfRenderer: that lays out multi-page tables from structured content.
+- :PdfRenderer: lays out multi-page tables from structured content.
   - Table headers repeat at the top of each page.
   - Each page shows its page number.
 
-- The system should export a :Report: to PDF using :PdfRenderer:, embedding charts rendered from :Report: data.
+- A :Report: is exported to PDF using :PdfRenderer:, embedding charts rendered from :Report: data.
 ```
 
 When this indicator fires, the fix is `break-down-func-spec` Strategy 6 — extract the component into its own earlier spec and reference it.
