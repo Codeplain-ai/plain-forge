@@ -61,9 +61,13 @@ Implementation reqs are bullet points in the `***implementation reqs***` section
 
 ```plain
 ***implementation reqs***
+
 - :Implementation: should be in Python 3.12.
+
 - :Implementation: should use pip for dependency management.
+
 - When writing CSV files, :Implementation: should use streaming writes to avoid holding large datasets in memory.
+
 ```
 
 Reference defined `:Concepts:` where they add clarity. Implementation reqs in non-leaf sections apply to all subsections.
@@ -78,6 +82,8 @@ Reference defined `:Concepts:` where they add clarity. Implementation reqs in no
 BAD — bare continuation lines (invalid ***plain syntax, will not render):
 
 ```plain
+***implementation reqs***
+
 - :Implementation: tech stack will be finalized in Phase 2.
   - Until then, treat this section as a placeholder so the renderer accepts
     the file. Phase 2 will replace this with language, framework, HTTP
@@ -87,6 +93,8 @@ BAD — bare continuation lines (invalid ***plain syntax, will not render):
 GOOD — every line starts with `- `:
 
 ```plain
+***implementation reqs***
+
 - :Implementation: tech stack will be finalized in Phase 2.
   - Until then, treat this section as a placeholder so the renderer accepts the file.
   - Phase 2 will replace it with language, framework, HTTP client, packaging, and architecture decisions.
