@@ -50,6 +50,7 @@ description: Extended module that builds on base_module
 ---
 
 ***definitions***
+
 - :NewFeature: is a feature added by this module.
 
 ***functional specs***
