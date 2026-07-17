@@ -29,7 +29,11 @@ node --test test/cli.test.mjs                              # run a single test f
 
 A single self-contained ESM file with **zero runtime dependencies**; it exports its internals so the test suite can import them without running `main()` (guarded by `isInvokedDirectly()`, which realpath-compares `argv[1]` to `__filename` — needed because the global bin is a symlink). Key model:
 
-- `AGENTS` maps agent name → dot-dir: `claude→.claude`, `codex→.codex`, `forgecode→.forgecode`, `universal→.agents`. `SCOPES`: `project` (cwd) / `global` (`$HOME`). `CONTENT_DIRS = [skills, rules, docs]` (note: `forge/docs/` does not currently exist on disk and is silently skipped).
+- `AGENTS` maps agent name → content dir: `claude→.claude`,
+  `codex|copilot|universal→.agents`, `forgecode→.forge`, and `opencode→.opencode`.
+  `SCOPES`: `project` (cwd) / `global` (`$HOME`). Global ForgeCode and OpenCode paths have explicit
+  exceptions in `resolveBaseDir`. `CONTENT_DIRS = [skills, rules, docs]` (missing source dirs are
+  silently skipped).
 - **install** writes `forge/{skills,rules,docs}` into `<agentDir>/`, recording every written file in `<agentDir>/.plain-forge/manifest.json`. It **refuses** (exit 1) if a manifest or a "forge signature" already exists — install never overwrites in place; you use `update` for that.
 - **update** auto-detects every install across both scopes × all agents, re-copies the fresh tree, and **prunes** files that were in the old manifest but no longer ship (confirmed individually unless `--yes`). Only manifest-recorded files are ever prune candidates, so the user's own/third-party files are never touched.
 - **uninstall** deletes exactly `manifest.files` then the manifest; refuses (exit 1) on a manifest-less install rather than guessing which files are its own.
@@ -39,10 +43,19 @@ When changing install/update/uninstall behavior, update `test/cli.test.mjs` acco
 
 ## Editing `forge/` content (skills + rules)
 
-This is the heart of the product. Everything under `forge/` is **instructional text consumed by an AI agent at author-time**, not code that executes. Two consequences:
+This is the heart of the product. Everything under `forge/` is **instructional text consumed by an AI agent at author-time**, not code that executes. Four consequences:
 
+- **`forge/rules/` is the sole source of truth for writing `.plain`.** Every syntax rule,
+  section-ownership rule, constraint, and canonical `.plain` example belongs in the applicable rule
+  file. Do not duplicate authoring guidance in skills or skill references; duplication drifts and
+  creates contradictory instructions.
+- **`load-plain-reference` is a router, not a language guide.** Its `SKILL.md` stays concise and maps
+  the current task to only the applicable files under `forge/rules/`. It may route to focused
+  operational references for project layout or rendering/testing, but those references must not
+  restate `.plain` authoring rules. Integration rules load only for integration work. Claude skips
+  rereading rules already supplied natively; other agents read only rules not already in context.
 - **Example hygiene is load-bearing.** The rules teach `.plain` syntax, and a `.plain` example written the wrong way *leaks* — agents imitate it. The rule is: bare-continuation / line-wrapped `.plain` examples may appear **only** inside blocks explicitly labeled BAD / WRONG / `Before:` / `Too complex:`. Every "good"/"after"/"acceptable"/canonical/`## Format` example must use proper nested `- ` bullets, each line a `- ` list item, ≤120 chars. (`forge/rules/line-length.md` is the canonical rule.)
-- **Skills are narrow and chained.** Each `forge/skills/<name>/SKILL.md` has YAML frontmatter (`name` = dir name, `description` = a `>-` block ending in a "Use when…" trigger) and a prose body. Most spec-touching skills open by invoking `load-plain-reference` first ("only if you haven't done so yet"). Only the three test-script generators (`implement-{unit-testing,conformance-testing,prepare-environment}-script`) carry an `assets/` dir of reference `.sh`/`.ps1` scripts.
+- **Skills are narrow and chained.** Each `forge/skills/<name>/SKILL.md` has YAML frontmatter (`name` = dir name, `description` = a `>-` block ending in a "Use when…" trigger) and a prose body. Most spec-touching skills invoke `load-plain-reference` first so it can select the relevant rules. Large or operational detail belongs in a skill's `references/` directory and loads only when needed. Only the three test-script generators (`implement-{unit-testing,conformance-testing,prepare-environment}-script`) carry an `assets/` dir of reference `.sh`/`.ps1` scripts.
 
 ### The `.plain` model the content describes
 
@@ -60,7 +73,7 @@ Other constraints the rules enforce (see `forge/rules/`): functional specs are m
 
 ### The skill lifecycle (orchestration)
 
-`forge-plain` is the top-level orchestrator: a gated four-phase, **one-question-at-a-time, write-to-disk-immediately** interview — (1) definitions + functional specs, (2) implementation reqs / tech stack, (3) testing (unit→impl reqs, conformance→test reqs, generate `test_scripts/`, build `config.yaml`, probe host via `check-plain-env`), (4) validate via `plain-healthcheck` (`codeplain … --dry-run` gate) then hand off the render command. `add-feature` is the same loop scoped to one feature on an existing project; `init-plain-project` is a no-interview scaffold; `run-codeplain` supervises a live `codeplain --headless` render (tails `codeplain.log` as ground truth, classifies retry loops, hands off to edit skills). `forge/rules/*.md` carry `globs: "**/*.plain"` and are installed as workspace instructions.
+`forge-plain` is the top-level orchestrator: a gated four-phase, **one-question-at-a-time, write-to-disk-immediately** interview — (1) definitions + functional specs, (2) implementation reqs / tech stack, (3) testing (unit→impl reqs, conformance→test reqs, generate `test_scripts/`, build `config.yaml`, probe host via `check-plain-env`), (4) validate via `plain-healthcheck` (`codeplain … --dry-run` gate) then hand off the render command. `add-feature` is the same loop scoped to one feature on an existing project; `init-plain-project` is a no-interview scaffold; `run-codeplain` supervises a live `codeplain --headless` render (tails `codeplain.log` as ground truth, classifies retry loops, hands off to edit skills). The installer ships `forge/rules/*.md` beside the skills; native rule consumers load them directly, while other agents reach them through `load-plain-reference`.
 
 ## Memory / persistent context
 
