@@ -20,7 +20,7 @@ Pick whichever entry point matches how much upfront design you want:
 ### 2. Grow an existing project
 
 - **`add-feature`** — takes a feature request in plain English and runs the same one-question-at-a-time loop that `forge-plain` uses, scoped to a single feature against an existing `.plain` file.
-- **Per-section authoring skills** — `add-functional-spec`, `add-functional-specs`, `add-implementation-requirement`, `add-test-requirement`, `add-concept`, `add-acceptance-test`, `add-resource`, `add-template`. Each enforces the relevant ***plain syntax rules (concept uniqueness, complexity limits, line-length, linked-resource constraints, …) so hand-authoring doesn't drift from the language.
+- **Per-section authoring skills** — `add-functional-spec`, `add-functional-specs`, `add-implementation-requirement`, `add-test-requirement`, `add-concept`, `add-acceptance-test`, `add-resource`, `add-template`. Each enforces the relevant ***plain syntax rules (concept uniqueness, complexity limits, bullet syntax, linked-resource constraints, …) so hand-authoring doesn't drift from the language.
 - **Module-management skills** — `create-import-module`, `create-requires-module`, `refactor-module`, `consolidate-concepts` for restructuring as the project grows.
 
 ### 3. Validate and maintain

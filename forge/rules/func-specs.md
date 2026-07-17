@@ -77,10 +77,6 @@ GOOD — statements of fact with concrete subjects:
 - `requires` modules only receive functional specs — do not rely on implementation reqs to convey behavior
 - Behavior that downstream modules need must be expressed in functional specs, not elsewhere
 
-## Line length
-- See [`line-length.md`](line-length.md) — applies to every section, but bites hardest here because functional specs trend long
-- Hard limit: 120 characters. When a line gets too long, split at a natural clause boundary into nested `- ` bullets — **never** use bare indented continuation lines (invalid ***plain syntax)
-
 ## Acceptance tests
 - Nest `***acceptance tests***` under a functional spec when verification criteria are needed
 - Each acceptance test must be a **full workflow test** — a specific scenario that exercises the functional spec end-to-end, not a unit-level check of a single field or condition

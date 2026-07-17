@@ -59,32 +59,6 @@ Attributes and constraints are nested sub-bullets:
   - Due Date - completion deadline (optional)
 ```
 
-## Line syntax (hard rule)
-
-**Every line inside `***definitions***` must be its own list item starting with `- `.** ***plain has no concept of bare continuation lines — indented prose without a leading `- ` is **invalid syntax** and the renderer will reject it.
-
-- Hard limit: 120 characters per line. If a sentence is too long, **split it at a natural clause boundary into nested `- ` bullets** — never wrap onto an unprefixed line.
-- Nested attributes are also `- ` items, indented under the parent. The indentation alone is not enough; the leading `- ` is required.
-
-BAD — bare continuation lines (invalid ***plain syntax, will not render):
-
-```plain
-***definitions***
-
-- :Task: describes an activity that needs to be done by :User:.
-  - Name is a short description that the user provides when creating
-    the task and is shown in the task list.
-```
-
-GOOD — every line starts with `- `:
-
-```plain
-***definitions***
-
-- :Task: describes an activity that needs to be done by :User:.
-  - Name is a short description provided when creating the task.
-  - The name is shown in the task list.
-```
 
 ## Validation Checklist
 

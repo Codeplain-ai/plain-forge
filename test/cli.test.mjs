@@ -672,7 +672,7 @@ describe("cli install (integration)", () => {
         ),
       ),
     );
-    assert.ok(fs.existsSync(path.join(base, "rules", "line-length.md")));
+    assert.ok(fs.existsSync(path.join(base, "rules", "bullet-continuation.md")));
     assert.equal(readManifest(base).agent, "copilot");
     assert.equal(fs.existsSync(path.join(project, "AGENTS.md")), false);
   });
