@@ -2,13 +2,20 @@
 
 Use this to verify the workflow was followed — never as a substitute for it. Run the loop block on each iteration, and run the whole list once more during Phase 3 before declaring the feature done. A box only counts as met when the spec is on disk and explicitly approved, not merely discussed. If a box is unmet, go back and complete the step.
 
-## Phase 0 — Setup
+## Phase 0 — Feature intent
 
 - [ ] Invoked `load-plain-reference` first (unless already loaded this session).
+- [ ] Read `references/phase-0-intent.md` and asked its five core questions one at a time.
+- [ ] Asked no more than one focused clarification for an answer too vague to summarize.
+- [ ] Wrote no project or specification files during Phase 0.
+- [ ] Kept concepts, spec wording, implementation technology, and tests for later phases.
+- [ ] Summarized motivation, affected user, desired outcome, observable success criterion, and
+  boundary with explicit exclusions; got explicit confirmation.
 
 ## Phase 1 — Scope
 
-- [ ] Read the feature request and identified the likely target `.plain` file(s).
+- [ ] Carried the confirmed feature-intent brief into scope and identified the likely target
+  `.plain` file(s) without restarting intent discovery.
 - [ ] Read the target `.plain` file(s) and followed their `import`/`requires` chain before authoring.
 - [ ] Picked the target module with a question only when genuinely ambiguous — otherwise started authoring immediately (no framing/scope/multi-part design questions here).
 
