@@ -246,9 +246,13 @@ describe("resolveBaseDir", () => {
       resolveBaseDir("codex", "global"),
       path.join(os.homedir(), ".agents"),
     );
-    // codex and universal share a directory.
+    // codex, copilot, and universal share a directory.
     assert.equal(
       resolveBaseDir("codex", "project"),
+      resolveBaseDir("universal", "project"),
+    );
+    assert.equal(
+      resolveBaseDir("copilot", "project"),
       resolveBaseDir("universal", "project"),
     );
   });
@@ -373,12 +377,13 @@ describe("opencode instructions merge/unmerge", () => {
   });
 });
 
-describe("AGENTS.md merge/unmerge (codex/forgecode)", () => {
+describe("AGENTS.md merge/unmerge (forgecode)", () => {
   const realCwd = process.cwd();
   after(() => process.chdir(realCwd));
 
-  test("only codex and forgecode use AGENTS.md wiring", () => {
-    assert.equal(usesAgentsMd("codex"), true);
+  test("only forgecode uses AGENTS.md wiring", () => {
+    assert.equal(usesAgentsMd("codex"), false);
+    assert.equal(usesAgentsMd("copilot"), false);
     assert.equal(usesAgentsMd("forgecode"), true);
     assert.equal(usesAgentsMd("claude"), false);
     assert.equal(usesAgentsMd("opencode"), false);
@@ -387,16 +392,10 @@ describe("AGENTS.md merge/unmerge (codex/forgecode)", () => {
 
   test("project AGENTS.md is repo-root; globs are relative and match the layout", () => {
     process.chdir(mkTmp());
-    assert.equal(agentsMdPath("codex", "project"), path.join(process.cwd(), "AGENTS.md"));
-    assert.equal(agentsMdRulesGlob("codex", "project"), ".agents/rules/*.md");
     assert.equal(agentsMdRulesGlob("forgecode", "project"), ".forge/rules/*.md");
   });
 
   test("global AGENTS.md lives in the tool's config dir; glob is absolute", () => {
-    assert.equal(
-      agentsMdPath("codex", "global"),
-      path.join(os.homedir(), ".codex", "AGENTS.md"),
-    );
     assert.equal(
       agentsMdPath("forgecode", "global"),
       path.join(os.homedir(), "forge", "AGENTS.md"),
@@ -408,19 +407,19 @@ describe("AGENTS.md merge/unmerge (codex/forgecode)", () => {
 
   test("creates AGENTS.md with a fenced managed block when none exists", () => {
     process.chdir(mkTmp());
-    const res = mergeAgentsMd("codex", "project");
+    const res = mergeAgentsMd("forgecode", "project");
     assert.equal(res.status, "created");
-    const md = fs.readFileSync(agentsMdPath("codex", "project"), "utf8");
+    const md = fs.readFileSync(agentsMdPath("forgecode", "project"), "utf8");
     assert.match(md, /BEGIN plain-forge/);
     assert.match(md, /END plain-forge/);
-    assert.match(md, /\.agents\/rules\/\*\.md/);
+    assert.match(md, /\.forge\/rules\/\*\.md/);
   });
 
   test("appends the block to an existing AGENTS.md, preserving user content", () => {
     process.chdir(mkTmp());
-    const p = agentsMdPath("codex", "project");
+    const p = agentsMdPath("forgecode", "project");
     fs.writeFileSync(p, "# My project\n\nBuild with `make`.\n");
-    const res = mergeAgentsMd("codex", "project");
+    const res = mergeAgentsMd("forgecode", "project");
     assert.equal(res.status, "merged");
     const md = fs.readFileSync(p, "utf8");
     assert.match(md, /# My project/);
@@ -430,27 +429,27 @@ describe("AGENTS.md merge/unmerge (codex/forgecode)", () => {
 
   test("merge is idempotent — second merge reports present, single block", () => {
     process.chdir(mkTmp());
-    mergeAgentsMd("codex", "project");
-    const res = mergeAgentsMd("codex", "project");
+    mergeAgentsMd("forgecode", "project");
+    const res = mergeAgentsMd("forgecode", "project");
     assert.equal(res.status, "present");
-    const md = fs.readFileSync(agentsMdPath("codex", "project"), "utf8");
+    const md = fs.readFileSync(agentsMdPath("forgecode", "project"), "utf8");
     assert.equal(md.match(/BEGIN plain-forge/g).length, 1, "no duplicate blocks");
   });
 
   test("unmerge deletes an AGENTS.md that was only our block", () => {
     process.chdir(mkTmp());
-    mergeAgentsMd("codex", "project");
-    const res = unmergeAgentsMd("codex", "project");
+    mergeAgentsMd("forgecode", "project");
+    const res = unmergeAgentsMd("forgecode", "project");
     assert.equal(res.status, "removed");
-    assert.equal(fs.existsSync(agentsMdPath("codex", "project")), false);
+    assert.equal(fs.existsSync(agentsMdPath("forgecode", "project")), false);
   });
 
   test("unmerge strips our block but keeps the user's AGENTS.md content", () => {
     process.chdir(mkTmp());
-    const p = agentsMdPath("codex", "project");
+    const p = agentsMdPath("forgecode", "project");
     fs.writeFileSync(p, "# My project\n\nBuild with `make`.\n");
-    mergeAgentsMd("codex", "project");
-    const res = unmergeAgentsMd("codex", "project");
+    mergeAgentsMd("forgecode", "project");
+    const res = unmergeAgentsMd("forgecode", "project");
     assert.equal(res.status, "updated");
     const md = fs.readFileSync(p, "utf8");
     assert.match(md, /# My project/);
@@ -500,7 +499,7 @@ describe("detectInstalls", () => {
     process.chdir(project);
     process.env.HOME = mkTmp();
 
-    // codex and universal both resolve to .agents; the manifest records which.
+    // codex, copilot, and universal resolve to .agents; the manifest records which.
     writeManifest(path.join(project, ".agents"), ["skills/x.md"], "codex");
 
     const found = detectInstalls();
@@ -561,7 +560,7 @@ describe("cli install (integration)", () => {
     assert.match(again.stderr, /already installed/);
 
     // A different agent into the same folder still works. Codex installs into
-    // .agents/ (the dir Codex actually reads) and wires an AGENTS.md pointer.
+    // .agents/ (the dir Codex actually reads) without creating AGENTS.md.
     const codex = runCli(["install", "--agent", "codex", "--scope", "project"], {
       cwd: project,
       home,
@@ -574,8 +573,7 @@ describe("cli install (integration)", () => {
     );
     const codexManifest = readManifest(path.join(project, ".agents"));
     assert.equal(codexManifest.agent, "codex", "manifest records the agent");
-    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
-    assert.match(agentsMd, /\.agents\/rules\/\*\.md/, "AGENTS.md points at the rules");
+    assert.equal(fs.existsSync(path.join(project, "AGENTS.md")), false);
 
     // opencode is a supported agent and installs into .opencode/.
     const opencode = runCli(
@@ -594,24 +592,40 @@ describe("cli install (integration)", () => {
     );
   });
 
-  test("a failure wiring the rules warns but does not fail the install", () => {
+  test("a failure wiring forgecode rules warns but does not fail the install", () => {
     const project = mkTmp();
     const home = mkTmp();
 
-    // Make AGENTS.md an (unreadable) directory so the codex rules wiring throws.
+    // Make AGENTS.md a directory so the ForgeCode rules wiring throws.
     fs.mkdirSync(path.join(project, "AGENTS.md"));
 
-    const res = runCli(["install", "--agent", "codex", "--scope", "project"], {
+    const res = runCli(["install", "--agent", "forgecode", "--scope", "project"], {
       cwd: project,
       home,
     });
 
     // Install still succeeds and the skills/rules/manifest are on disk.
     assert.equal(res.status, 0, res.stderr);
-    assert.ok(fs.existsSync(path.join(project, ".agents", "skills")));
-    assert.ok(readManifest(path.join(project, ".agents")));
+    assert.ok(fs.existsSync(path.join(project, ".forge", "skills")));
+    assert.ok(readManifest(path.join(project, ".forge")));
     // ...but the user is warned that the rules wiring didn't complete.
-    assert.match(res.stderr, /warning: could not wire up the codex rules/);
+    assert.match(res.stderr, /warning: could not wire up the forgecode rules/);
+  });
+
+  test("copilot installs the universal .agents layout without AGENTS.md", () => {
+    const project = mkTmp();
+    const home = mkTmp();
+    const res = runCli(["install", "--agent", "copilot", "--scope", "project"], {
+      cwd: project,
+      home,
+    });
+
+    assert.equal(res.status, 0, res.stderr);
+    const base = path.join(project, ".agents");
+    assert.ok(fs.existsSync(path.join(base, "skills", "load-plain-reference")));
+    assert.ok(fs.existsSync(path.join(base, "rules", "line-length.md")));
+    assert.equal(readManifest(base).agent, "copilot");
+    assert.equal(fs.existsSync(path.join(project, "AGENTS.md")), false);
   });
 });
 

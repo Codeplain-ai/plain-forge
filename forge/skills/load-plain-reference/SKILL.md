@@ -11,6 +11,13 @@ description: >-
 
 # PLAIN_REFERENCE.md
 
+## Required first step: ensure the ***plain rules are loaded
+
+Before reading or applying this reference, check whether every Markdown file in
+`../../rules/` relative to this `SKILL.md` is already loaded in the current context.
+If not, read the rule files now. Follow them throughout the task; they are part of the
+installed plain-forge package and contain the current section-specific authoring constraints.
+
 ## Project Overview
 
 \*\*\*plain is a specification-driven language powered by AI that generates production-ready code from `.plain` spec files.
