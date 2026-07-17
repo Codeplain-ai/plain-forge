@@ -62,11 +62,15 @@ npx plain-forge install --agent claude --scope project
 |-----------|---------------|----------|
 | `claude` | `.claude/` · `~/.claude/` | You use Claude Code |
 | `codex` | `.agents/` · `~/.agents/` | You use the OpenAI Codex CLI |
+| `copilot` | `.agents/` · `~/.agents/` | You use GitHub Copilot |
 | `forgecode` | `.forge/` · `~/forge/` | You use ForgeCode |
 | `opencode` | `.opencode/` · `~/.config/opencode/` | You use OpenCode |
 | `universal` | `.agents/` · `~/.agents/` | You want a runtime-neutral layout that any agent reading from `.agents/` can pick up |
 
-> **Why `codex` and `forgecode` don't install into `.codex/` or `.forgecode/`.** Those tools load *skills* from specific directories that are **not** named after the tool. Per the current (2026) docs, Codex reads skills from `.agents/skills` (`~/.agents/skills` globally) — `.codex/` is config-only — and ForgeCode reads them from `.forge/skills` (`~/forge/skills` globally). plain-forge installs where the skills will actually load. As a result `codex` and `universal` share the `.agents/` layout; the install manifest records which agent you chose so `update`/`uninstall` behave correctly.
+> **Why several agents share `.agents/`.** Codex and GitHub Copilot both discover skills from
+> `.agents/skills` (`~/.agents/skills` globally), which is also the runtime-neutral `universal`
+> layout. ForgeCode instead reads `.forge/skills` (`~/forge/skills` globally). The manifest records
+> which agent label you chose so `update` and `uninstall` report it correctly.
 
 **Scope options:**
 
@@ -88,16 +92,19 @@ Each install writes three subfolders under the chosen directory:
 
 #### How the rules get applied per agent
 
-The `skills/` are discovered natively by every supported agent. The `rules/` (the `.plain`-authoring guidance) are applied differently because each agent loads instruction files its own way — so plain-forge does a bit of extra, agent-specific wiring:
+The `skills/` are discovered natively by every supported agent. The `load-plain-reference` skill
+starts by ensuring every installed rule file is loaded, reading only rules that are not already in
+context. Some agents additionally support native rules wiring:
 
 | Agent | How rules are applied |
 |-------|-----------------------|
 | **Claude Code** | Native — Claude Code auto-loads `.claude/rules/*.md` at launch. Each rule carries `paths: "**/*.plain"` frontmatter so Claude scopes it to `.plain` files. No extra wiring. |
 | **OpenCode** | OpenCode doesn't auto-load a `rules/` dir; it reads globs from the `instructions` array in `opencode.json`. plain-forge **merges** a rules glob there — `.opencode/rules/*.md` (project, written to `./opencode.json`) or the absolute `~/.config/opencode/rules/*.md` (global, written to `~/.config/opencode/opencode.json`; absolute because OpenCode doesn't expand `~`). |
-| **Codex / ForgeCode** | Neither auto-loads a `rules/` dir; both read custom instructions only from `AGENTS.md`. plain-forge appends a fenced, **managed pointer block** to `AGENTS.md` telling the agent to read the installed rule files. Project → repo-root `./AGENTS.md`; global → `~/.codex/AGENTS.md` (Codex) or `~/forge/AGENTS.md` (ForgeCode). |
-| **Universal** | Verbatim copy only — the rules land in `.agents/rules/`, and it's up to whichever agent reads `.agents/` to consume them. No config is generated. |
+| **ForgeCode** | plain-forge also appends a fenced managed pointer block to `AGENTS.md`: repo-root `./AGENTS.md` for project installs or `~/forge/AGENTS.md` globally. |
+| **Codex / GitHub Copilot / Universal** | No extra instruction file is generated. Their discovered `load-plain-reference` skill loads `.agents/rules/*.md` as its required first step. |
 
-In every case where plain-forge touches a config or `AGENTS.md` file, it **merges** into what's already there — adding only its own glob/block and leaving all your other content intact — and it never writes into a malformed config (it warns instead). `uninstall` reverses the wiring: it removes only plain-forge's glob/block, deleting the file only if it contained nothing else.
+When plain-forge touches `opencode.json` or ForgeCode's `AGENTS.md`, it merges into existing content
+and leaves unrelated configuration intact. `uninstall` removes only plain-forge's glob or block.
 
 `install` refuses to run if plain-forge is already present at the target directory — it prints a message pointing you at `update` and exits non-zero. Use `update` (below) to refresh an existing install.
 
@@ -129,7 +136,7 @@ npx plain-forge uninstall --agent claude --scope global
 
 | Flag | Default | Values |
 |------|---------|--------|
-| `--agent` | `*` (all agents) | `claude`, `codex`, `forgecode`, `opencode`, `universal`, or `*` |
+| `--agent` | `*` (all agents) | `claude`, `codex`, `copilot`, `forgecode`, `opencode`, `universal`, or `*` |
 | `--scope` | `project` | `project` (cwd) or `global` (home directory) |
 
 If an install has **no manifest** (e.g. one that predates manifests), `uninstall` cannot tell which files are plain-forge's, so it refuses to delete anything: it prints an error, lists the directories to clean up by hand, and exits non-zero. Refresh such an install with `update` first (which writes a manifest going forward), then `uninstall`.
@@ -209,7 +216,7 @@ test/
 package.json                 # ships only `bin/cli.mjs` and `forge/` to npm
 ```
 
-On `install`, the CLI reads `forge/skills` and `forge/rules` and writes them into the chosen agent directory (`.claude/`, `.agents/` for Codex/universal, `.forge/`, or `.opencode/` — see the per-agent table above for global-scope paths), recording every file it wrote in `<agent-dir>/.plain-forge/manifest.json` so `update` can later refresh and prune precisely. For agents that need it, it also wires the rules into `opencode.json` or `AGENTS.md` (see [How the rules get applied per agent](#how-the-rules-get-applied-per-agent)).
+On `install`, the CLI reads `forge/skills` and `forge/rules` and writes them into the chosen agent directory (`.claude/`, `.agents/` for Codex/Copilot/universal, `.forge/`, or `.opencode/` — see the per-agent table above for global-scope paths), recording every file it wrote in `<agent-dir>/.plain-forge/manifest.json` so `update` can later refresh and prune precisely. For agents that need it, it also wires the rules into `opencode.json` or ForgeCode's `AGENTS.md` (see [How the rules get applied per agent](#how-the-rules-get-applied-per-agent)).
 
 ## Available Skills
 

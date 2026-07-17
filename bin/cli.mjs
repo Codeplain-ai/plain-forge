@@ -13,7 +13,8 @@ const forgeDir = path.join(pkgRoot, "forge");
 // These are the directories each tool actually loads skills from (verified
 // against the 2026 docs), NOT necessarily a dir named after the tool:
 //   - Codex reads skills from .agents/skills (never .codex/skills); .codex is
-//     config-only. So codex shares the .agents layout with `universal`.
+//     config-only. So codex shares the .agents layout with `copilot` and
+//     `universal`.
 //   - ForgeCode reads skills from .forge/skills (never .forgecode/skills); its
 //     global dir is ~/forge (no dot) — see resolveBaseDir.
 //   - OpenCode reads project skills from .opencode; global is ~/.config/opencode
@@ -23,6 +24,7 @@ const forgeDir = path.join(pkgRoot, "forge");
 const AGENTS = {
   claude: ".claude",
   codex: ".agents",
+  copilot: ".agents",
   forgecode: ".forge",
   opencode: ".opencode",
   universal: ".agents",
@@ -95,7 +97,7 @@ Commands:
   uninstall   Remove a plain-forge install using its manifest
 
 Install options:
-  --agent <claude|codex|forgecode|opencode|universal>
+  --agent <claude|codex|copilot|forgecode|opencode|universal>
                                                Target agent layout
   --scope <project|global>                     Install into cwd or $HOME
   -h, --help                                   Show this help
@@ -105,7 +107,7 @@ Update options:
                                                confirming each one
 
 Uninstall options:
-  --agent <claude|codex|forgecode|opencode|universal|*>
+  --agent <claude|codex|copilot|forgecode|opencode|universal|*>
                                                Which install to remove
                                                (default: * — every agent)
   --scope <project|global>                     Where to look (default: project)
@@ -462,10 +464,10 @@ function reportOpencodeUnmerge(result) {
   }
 }
 
-// --- Codex / ForgeCode instructions wiring ----------------------------------
-// Neither tool auto-reads a rules/ directory; both load custom instructions
-// only from AGENTS.md (Codex: repo AGENTS.md or ~/.codex/AGENTS.md; ForgeCode:
-// repo AGENTS.md or ~/forge/AGENTS.md). AGENTS.md has no include/glob mechanism,
+// --- ForgeCode instructions wiring ------------------------------------------
+// ForgeCode does not auto-read a rules/ directory; it loads custom instructions
+// from AGENTS.md (repo AGENTS.md or ~/forge/AGENTS.md). AGENTS.md has no
+// include/glob mechanism,
 // so we append a managed pointer block that tells the agent to read our rules
 // dir when touching .plain files. The block is fenced by markers so it can be
 // refreshed or removed idempotently without disturbing the user's own content.
@@ -476,7 +478,7 @@ const AGENTS_MD_END = "<!-- END plain-forge (managed) -->";
 // Agents whose rules are delivered through AGENTS.md rather than a natively
 // auto-loaded rules/ dir (claude) or a config glob (opencode).
 function usesAgentsMd(agent) {
-  return agent === "codex" || agent === "forgecode";
+  return agent === "forgecode";
 }
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -485,8 +487,10 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // root (cwd) for both tools; global scope differs per tool.
 function agentsMdPath(agent, scope) {
   if (scope === "project") return path.join(process.cwd(), "AGENTS.md");
-  if (agent === "forgecode") return path.join(os.homedir(), "forge", "AGENTS.md");
-  return path.join(os.homedir(), ".codex", "AGENTS.md"); // codex global
+  // Retained only so update/uninstall can remove blocks created by older Codex
+  // installs. New Codex installs do not create this file.
+  if (agent === "codex") return path.join(os.homedir(), ".codex", "AGENTS.md");
+  return path.join(os.homedir(), "forge", "AGENTS.md");
 }
 
 // Glob the pointer block references — the installed rules dir. Project scope is
@@ -603,6 +607,10 @@ function wireRules(agent, scope) {
       reportOpencodeMerge(mergeOpencodeInstructions(scope));
     } else if (usesAgentsMd(agent)) {
       reportAgentsMdMerge(mergeAgentsMd(agent, scope));
+    } else if (agent === "codex") {
+      // Migrate installs from the former Codex AGENTS.md wiring. Rules are now
+      // loaded by load-plain-reference itself.
+      reportAgentsMdUnmerge(unmergeAgentsMd(agent, scope));
     }
   } catch (err) {
     warnRulesWiring("wire", agent, err);
@@ -616,7 +624,7 @@ function unwireRules(agent, scope) {
   try {
     if (agent === "opencode") {
       reportOpencodeUnmerge(unmergeOpencodeInstructions(scope));
-    } else if (usesAgentsMd(agent)) {
+    } else if (usesAgentsMd(agent) || agent === "codex") {
       reportAgentsMdUnmerge(unmergeAgentsMd(agent, scope));
     }
   } catch (err) {
@@ -655,8 +663,8 @@ function writeManifest(baseDir, files, agent) {
   const target = manifestPathFor(baseDir);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   // `agent` records which agent layout produced this install. It matters when
-  // two agents resolve to the same dir (codex and universal both use .agents):
-  // it lets detect/update/uninstall know whether AGENTS.md rule-wiring applies.
+  // Multiple agents resolve to the same .agents dir, so the manifest preserves
+  // the selected label for detection, updates, and uninstall output.
   const manifest = {
     name: "plain-forge",
     version: readPkgVersion(),
@@ -714,7 +722,7 @@ function detectInstalls() {
   for (const scope of SCOPES) {
     for (const agent of Object.keys(AGENTS)) {
       const baseDir = resolveBaseDir(agent, scope);
-      // Some agents share a directory (codex and universal both use .agents).
+      // Some agents share the .agents directory.
       // Only inspect each physical dir once so a single install isn't detected
       // — and later updated/pruned — twice.
       if (seen.has(baseDir)) continue;
@@ -929,8 +937,7 @@ async function cmdUninstall(args) {
     );
 
     // Undo the rules wiring (opencode.json / AGENTS.md). Keyed off the agent
-    // recorded at install time, not the requested name — codex and universal
-    // share the .agents dir, and only the codex install wired AGENTS.md. Done
+    // recorded at install time, not the requested name. Done
     // before the dir cleanup so a now-orphaned config file living inside baseDir
     // (e.g. forgecode-global ~/forge/AGENTS.md) can be removed and let baseDir
     // itself be pruned.
@@ -996,6 +1003,8 @@ function agentLabel(agent) {
       return "Claude Code";
     case "codex":
       return "Codex";
+    case "copilot":
+      return "GitHub Copilot";
     case "forgecode":
       return "ForgeCode";
     case "opencode":
