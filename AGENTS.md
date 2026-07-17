@@ -1,0 +1,67 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repo is
+
+`plain-forge` is an npm package with two distinct halves:
+
+1. **A tiny installer CLI** (`bin/cli.mjs`) — `npx plain-forge install|update|uninstall`.
+2. **The actual product** under `forge/` — a library of AI-agent *skills* and *rules* that teach an agent to author and maintain `***plain` specification files. The CLI copies `forge/` verbatim into an agent directory; there is **no build step** and no generated/committed output.
+
+So a change here is almost always one of: (a) editing the installer CLI, or (b) editing the instructional content under `forge/skills/` and `forge/rules/`. These need different mindsets — see "Editing `forge/` content" below.
+
+`plain-forge` only *authors* `.plain` specs. Rendering specs into code is done by a **separate** tool, the `codeplain` CLI (codeplain.ai), which this repo does not contain.
+
+## Commands
+
+```bash
+npm test                                                   # full suite: node --test "test/**/*.test.mjs"
+node --test --test-name-pattern="<regex>" "test/**/*.test.mjs"   # run a single test by name
+node --test test/cli.test.mjs                              # run a single test file
+```
+
+- Test runner is **Node's built-in `node:test`** (`node:assert/strict`) — not jest/vitest, no test framework dependency. Requires Node ≥18.
+- `test/cli.test.mjs` mixes unit tests (importing named exports from `bin/cli.mjs`) with black-box integration tests that `spawnSync` the real CLI into isolated temp `HOME`/cwd dirs.
+- **There is no working build or lint step.** `package.json` declares `build`/`clean` scripts (`tsx bin/forge-build.ts`) and `tsconfig.json` references `bin/**/*.ts` + `runtimes/**/*.ts`, but **those files do not exist** — `npm run build`/`npm run clean` error out. The TS toolchain (tsx/typescript) is vestigial; the CLI is plain `.mjs` run directly by Node. Don't try to build.
+
+## The installer CLI (`bin/cli.mjs`)
+
+A single self-contained ESM file with **zero runtime dependencies**; it exports its internals so the test suite can import them without running `main()` (guarded by `isInvokedDirectly()`, which realpath-compares `argv[1]` to `__filename` — needed because the global bin is a symlink). Key model:
+
+- `AGENTS` maps agent name → dot-dir: `claude→.claude`, `codex→.codex`, `forgecode→.forgecode`, `universal→.agents`. `SCOPES`: `project` (cwd) / `global` (`$HOME`). `CONTENT_DIRS = [skills, rules, docs]` (note: `forge/docs/` does not currently exist on disk and is silently skipped).
+- **install** writes `forge/{skills,rules,docs}` into `<agentDir>/`, recording every written file in `<agentDir>/.plain-forge/manifest.json`. It **refuses** (exit 1) if a manifest or a "forge signature" already exists — install never overwrites in place; you use `update` for that.
+- **update** auto-detects every install across both scopes × all agents, re-copies the fresh tree, and **prunes** files that were in the old manifest but no longer ship (confirmed individually unless `--yes`). Only manifest-recorded files are ever prune candidates, so the user's own/third-party files are never touched.
+- **uninstall** deletes exactly `manifest.files` then the manifest; refuses (exit 1) on a manifest-less install rather than guessing which files are its own.
+- Legacy (manifest-less) installs are recognized only when **all** of `FORGE_SIGNATURE_SKILLS` (`forge-plain`, `add-feature`, `debug-specs`, `load-plain-reference`) are present, then refreshed and given a manifest going forward.
+
+When changing install/update/uninstall behavior, update `test/cli.test.mjs` accordingly — it is the spec for this CLI.
+
+## Editing `forge/` content (skills + rules)
+
+This is the heart of the product. Everything under `forge/` is **instructional text consumed by an AI agent at author-time**, not code that executes. Two consequences:
+
+- **Example hygiene is load-bearing.** The rules teach `.plain` syntax, and a `.plain` example written the wrong way *leaks* — agents imitate it. The rule is: bare-continuation / line-wrapped `.plain` examples may appear **only** inside blocks explicitly labeled BAD / WRONG / `Before:` / `Too complex:`. Every "good"/"after"/"acceptable"/canonical/`## Format` example must use proper nested `- ` bullets, each line a `- ` list item, ≤120 chars. (`forge/rules/line-length.md` is the canonical rule.)
+- **Skills are narrow and chained.** Each `forge/skills/<name>/SKILL.md` has YAML frontmatter (`name` = dir name, `description` = a `>-` block ending in a "Use when…" trigger) and a prose body. Most spec-touching skills open by invoking `load-plain-reference` first ("only if you haven't done so yet"). Only the three test-script generators (`implement-{unit-testing,conformance-testing,prepare-environment}-script`) carry an `assets/` dir of reference `.sh`/`.ps1` scripts.
+
+### The `.plain` model the content describes
+
+A `.plain` file is a module: YAML frontmatter (`description`, `import:`, `requires:`, `exported_concepts:`, `required_concepts:`) plus up to five triple-asterisk sections. **Where a fact lives is strict and enforced** — the renderer reads each concept only from its owning section, so a misplaced fact is silently ignored:
+
+| Section | Owns |
+|---|---|
+| `***definitions***` | concepts as `:CamelCaseToken:`, define-before-use, globally unique, no cycles |
+| `***implementation reqs***` | HOW it's built (tech/architecture) **and everything about `:UnitTests:`** |
+| `***functional specs***` | WHAT it does — observable, language-agnostic; each spec ≤200 changed LOC; rendered incrementally top-to-bottom |
+| `***test reqs***` | **everything about `:ConformanceTests:`** (framework, run command, mocking/network policy) |
+| `***acceptance tests***` | nested under a functional spec (not top-level); full end-to-end workflows |
+
+Other constraints the rules enforce (see `forge/rules/`): functional specs are mandatorily routed through `add-functional-spec(s)` (never hand-authored), checked for the 200-LOC limit (`analyze-if-func-spec-too-complex` → `break-down-func-spec`) and for conflicts (`analyze-func-specs` → `resolve-spec-conflict`); external artifacts (JSON Schema, OpenAPI, payloads) are **linked** as single local text files under `resources/`, never transcribed and never folders/URLs/binaries; generated code under `plain_modules/`/`conformance_tests/` is read-only — fixes go back into the spec and re-render.
+
+### The skill lifecycle (orchestration)
+
+`forge-plain` is the top-level orchestrator: a gated four-phase, **one-question-at-a-time, write-to-disk-immediately** interview — (1) definitions + functional specs, (2) implementation reqs / tech stack, (3) testing (unit→impl reqs, conformance→test reqs, generate `test_scripts/`, build `config.yaml`, probe host via `check-plain-env`), (4) validate via `plain-healthcheck` (`codeplain … --dry-run` gate) then hand off the render command. `add-feature` is the same loop scoped to one feature on an existing project; `init-plain-project` is a no-interview scaffold; `run-codeplain` supervises a live `codeplain --headless` render (tails `codeplain.log` as ground truth, classifies retry loops, hands off to edit skills). `forge/rules/*.md` carry `globs: "**/*.plain"` and are installed as workspace instructions.
+
+## Memory / persistent context
+
+- Generated artifacts and project scratch (`plain_modules/`, `conformance_tests/`, `test_scripts/`, `*.yaml`, `codeplain.log`, env files) are gitignored.
