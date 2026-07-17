@@ -1,8 +1,8 @@
 ---
 name: add-feature
 description: >-
-  End-to-end feature addition on an existing ***plain project: takes a feature
-  request in plain English and, one question at a time, incrementally writes
+  End-to-end feature addition on an existing ***plain project: runs a short feature-intent
+  interview, then takes the confirmed request and, one question at a time, incrementally writes
   ***plain specs (concepts, implementation reqs, functional specs, test reqs,
   acceptance tests) to disk — asking, authoring, and reviewing per
   functionality — then closes with a plain-healthcheck gate. Use when the user
@@ -15,11 +15,11 @@ description: >-
 
 Always use the skill `load-plain-reference` to retrieve the ***plain syntax rules — but only if you haven't done so yet.
 
-`add-feature` is the continuous-loop counterpart of `forge-plain`. Where `forge-plain` bootstraps an entire project from scratch, `add-feature` adds a single feature to an **existing** set of `.plain` specs. It runs the same core loop, scoped to one feature.
+`add-feature` is the continuous-loop counterpart of `forge-plain`. Where `forge-plain` bootstraps an entire project from scratch, `add-feature` adds a single feature to an **existing** set of `.plain` specs. It begins with a short intent phase, then runs the authoring loop scoped to one feature.
 
 ## Core loop: one question → one answer → write to disk
 
-Each iteration is a single question followed by an immediate write:
+This loop starts after Phase 0. Each iteration is a single question followed by an immediate write:
 
 1. **Ask** one focused question via `AskUserQuestion` — never bundle two. Shape it so any plausible answer maps directly to one writable snippet: a single behavior, concept, attribute, edge case, or constraint — not an open-ended design question. Bad shape: "How should the feature behave?" Good shape: "When the user submits an empty title, should the request be rejected with HTTP 400, accepted with a default title, or something else?" Offer concrete options plus a free-form catch-all whenever the answer space is predictable.
 2. **Author immediately** — the moment the user answers, write the snippet to disk (see *2b* for which skill to route to). Do not wait for "enough" context; eager writes are the point. A snippet that is wrong on the first try is expected — the next question corrects it, and the user can read exactly where things stand after every step.
@@ -31,13 +31,24 @@ Each iteration is a single question followed by an immediate write:
 
 ## Input
 
-A feature request from the user — anything from a one-liner ("add dark mode") to a detailed description. The request may be vague; the loop in Phase 2 sharpens it as it goes.
+A feature request from the user — anything from a one-liner ("add dark mode") to a detailed
+description. Phase 0 turns it into a confirmed feature-intent brief; Phase 2 sharpens the behavior
+as it is authored.
+
+## Phase 0 — Feature intent
+
+Read `references/phase-0-intent.md`. Ask its five core questions one at a time, write nothing to
+disk, summarize the answers as a feature-intent brief, and get explicit confirmation. Ask no more
+than one focused clarification when an answer is too vague to summarize.
+
+Carry the confirmed brief into every later phase. Before advancing, check the Phase 0 block in
+`references/checklist.md` inline.
 
 ## Phase 1 — Scope
 
 Keep this short. The goal is to know enough to ask the **very first** writable question — not to design the whole feature on paper.
 
-1. **Read the request.** Identify what is being asked at a high level and which existing `.plain` file(s) the feature most likely belongs to.
+1. **Read the confirmed feature-intent brief.** Identify which existing `.plain` file(s) the feature most likely belongs to.
 2. **Read the target `.plain` file(s)**, following their `import` and `requires` chains, so the existing definitions, implementation reqs, functional specs, test reqs, and acceptance tests are in context. This is what lets Phase 2 recognize impact when it surfaces.
 3. **Pick the target module with one question — only if it is genuinely ambiguous** which file to modify. Otherwise skip it and start authoring immediately.
 
@@ -107,7 +118,8 @@ Most checks already happened in the loop; this is a slim consistency pass whose 
 
 ## Next feature
 
-After one feature is done, the user may describe the next. Start again from Phase 1 — a continuous loop: **scope → one-question loop → final review → scope → …**
+After one feature is done, the user may describe the next. Start again from Phase 0 — a continuous
+loop: **intent → scope → one-question loop → final review → intent → …**
 
 ## Error handling
 
