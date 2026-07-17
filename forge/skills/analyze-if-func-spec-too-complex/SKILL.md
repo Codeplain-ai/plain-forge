@@ -31,6 +31,17 @@ A drafted functional spec (not yet inserted into the file), plus the full contex
 
 Work through each indicator. A single "yes" does not automatically mean the spec is too complex, but multiple "yes" answers are a strong signal.
 
+### 0. First-Spec Bootstrap Cost
+
+Is this the first functional spec in a new root module with no implementation baseline supplied by
+`requires`? If so, include the implicit cost of creating the project structure, package metadata,
+framework configuration, entry point, initial source files, and unit-test infrastructure.
+
+The first spec must be substantially simpler than a later spec. It should expose one minimal,
+deterministic capability that can be invoked and tested. Setup without an observable result is not
+acceptable, but combining bootstrap work with persistence, integrations, multiple interfaces,
+branching workflows, or cross-cutting behavior is a strong `TOO COMPLEX` signal.
+
 ### 1. Number of Distinct Behaviors
 
 Does the spec describe more than one independently testable behavior?
@@ -171,6 +182,7 @@ Mentally estimate the implementation. Consider:
 - Data model changes (schema, migrations, types)
 - UI components (if applicable)
 - Test setup and assertions (unit tests are auto-generated alongside)
+- For the first spec in a new root module, all project and test scaffold implied by implementation requirements
 - Error handling paths
 - Import statements and boilerplate
 

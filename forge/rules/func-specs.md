@@ -43,6 +43,16 @@ GOOD — statements of fact with concrete subjects:
 - Use `analyze-if-func-spec-too-complex` to verify before inserting
 - Use `analyze-func-specs` to check a spec (or a batch of specs) against all relevant existing specs in a single batched call; use `resolve-spec-conflict` for each conflicting pair it reports
 
+## First-spec bootstrap cost
+- The first functional spec in a new root module carries implicit implementation cost even when its text describes little behavior
+- The renderer may need to create the project structure, package metadata, framework configuration, entry point, initial source files, and unit-test infrastructure before implementing the behavior
+- Count that bootstrap work toward the 200-changed-line limit; it is not free setup outside the spec
+- Make the first spec the module's simplest useful, independently observable capability
+- The first spec must still imply a testable outcome; setup alone is not a functional spec
+- Prefer one minimal entry point or public operation with a deterministic result that can be invoked and verified
+- Defer persistence, integrations, multiple interfaces, branching workflows, and cross-cutting behavior until later specs can build on the generated baseline
+- This extra bootstrap cost applies when no previous implementation baseline exists; a module that continues from a `requires` module may already inherit the necessary scaffold
+
 ## Chronological ordering
 - Specs are rendered incrementally, top to bottom
 - The renderer has **no knowledge of future specs** — only previously rendered specs are in context
@@ -66,6 +76,14 @@ GOOD — statements of fact with concrete subjects:
 - If a single line is not enough to fully disambiguate the behavior, use **nested sub-bullets** to add detail
 - Nested lines clarify the parent spec — they do not introduce separate functionality
 - Even with nested detail, the spec must still imply ≤ 200 lines of code
+
+## Testability
+- Every functional spec must describe behavior that can be verified through an observable interface
+- State the triggering input or action and the deterministic outcome a test can observe
+- Include relevant outputs, state changes, errors, or externally visible side effects
+- Do not rely on generated implementation details as the only way to verify the behavior
+- If a black-box conformance test cannot be derived from the spec, make the behavior more explicit
+- Testability does not require an acceptance test; acceptance tests are reserved for full workflows
 
 ## Deterministic interface
 - Specs must be detailed enough that a developer can use the built software without reading the generated code
