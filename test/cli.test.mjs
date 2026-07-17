@@ -25,6 +25,8 @@ import {
   readManifest,
   removeEmptyDirsUpward,
   resolveBaseDir,
+  terminalHasLightBackground,
+  terminalPalette,
   unmergeAgentsMd,
   unmergeOpencodeInstructions,
   usesAgentsMd,
@@ -87,6 +89,42 @@ describe("parseArgs", () => {
 describe("toPosix", () => {
   test("normalizes OS separators to forward slashes", () => {
     assert.equal(toPosix(path.join("skills", "a", "b.md")), "skills/a/b.md");
+  });
+});
+
+describe("terminal theme colors", () => {
+  test("detects common light and dark COLORFGBG values", () => {
+    assert.equal(terminalHasLightBackground({ COLORFGBG: "0;15" }), true);
+    assert.equal(terminalHasLightBackground({ COLORFGBG: "15;0" }), false);
+    assert.equal(terminalHasLightBackground({ COLORFGBG: "0;7" }), true);
+    assert.equal(terminalHasLightBackground({}), false);
+  });
+
+  test("uses darker colors on light backgrounds", () => {
+    assert.notDeepEqual(
+      terminalPalette({ COLORFGBG: "0;15" }),
+      terminalPalette({ COLORFGBG: "15;0" }),
+    );
+  });
+});
+
+describe("load-plain-reference content", () => {
+  const skillDir = path.join(repoRoot, "forge", "skills", "load-plain-reference");
+  const skill = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8");
+
+  test("keeps the entrypoint concise and routes to rules instead of duplicating them", () => {
+    assert.ok(skill.split("\n").length < 500);
+    assert.match(skill, /source of truth/);
+    assert.match(skill, /\.\.\/\.\.\/rules\/func-specs\.md/);
+    assert.doesNotMatch(skill, /Each functional spec must imply/);
+    assert.doesNotMatch(skill, /PLAIN_REFERENCE\.md/);
+  });
+
+  test("ships the operational references named by the skill", () => {
+    assert.ok(fs.existsSync(path.join(skillDir, "references", "project-model.md")));
+    assert.ok(
+      fs.existsSync(path.join(skillDir, "references", "rendering-and-testing.md")),
+    );
   });
 });
 
@@ -623,6 +661,17 @@ describe("cli install (integration)", () => {
     assert.equal(res.status, 0, res.stderr);
     const base = path.join(project, ".agents");
     assert.ok(fs.existsSync(path.join(base, "skills", "load-plain-reference")));
+    assert.ok(
+      fs.existsSync(
+        path.join(
+          base,
+          "skills",
+          "load-plain-reference",
+          "references",
+          "project-model.md",
+        ),
+      ),
+    );
     assert.ok(fs.existsSync(path.join(base, "rules", "line-length.md")));
     assert.equal(readManifest(base).agent, "copilot");
     assert.equal(fs.existsSync(path.join(project, "AGENTS.md")), false);

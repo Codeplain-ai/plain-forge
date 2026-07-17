@@ -4,7 +4,10 @@ description: Rules for authoring the three test scripts that an embedded ***plai
 
 # Rules for embedded-integration test scripts
 
-When an embedded integration ships its three `test_scripts/` (prepare-environment, unit, conformance) — whether you author them by hand or via the `implement-*-testing-script` skills — these rules apply on top of the shared testing-script rules in PLAIN_REFERENCE.md (exit-code conventions, the activate-only vs install-inline conformance distinction, `VERBOSE=1`, etc.).
+When an embedded integration ships its three `test_scripts/` (prepare-environment, unit,
+conformance), these rules apply on top of the contracts in the corresponding
+`implement-*-testing-script` skills. Use `load-plain-reference` for the rendering and testing
+workflow overview when needed.
 
 ## Staging model (read this first)
 

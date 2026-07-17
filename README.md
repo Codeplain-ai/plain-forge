@@ -93,15 +93,15 @@ Each install writes three subfolders under the chosen directory:
 #### How the rules get applied per agent
 
 The `skills/` are discovered natively by every supported agent. The `load-plain-reference` skill
-starts by ensuring every installed rule file is loaded, reading only rules that are not already in
-context. Some agents additionally support native rules wiring:
+loads only the rules relevant to the current task and skips rules already present in context. Some
+agents additionally support native rules wiring:
 
 | Agent | How rules are applied |
 |-------|-----------------------|
 | **Claude Code** | Native — Claude Code auto-loads `.claude/rules/*.md` at launch. Each rule carries `paths: "**/*.plain"` frontmatter so Claude scopes it to `.plain` files. No extra wiring. |
 | **OpenCode** | OpenCode doesn't auto-load a `rules/` dir; it reads globs from the `instructions` array in `opencode.json`. plain-forge **merges** a rules glob there — `.opencode/rules/*.md` (project, written to `./opencode.json`) or the absolute `~/.config/opencode/rules/*.md` (global, written to `~/.config/opencode/opencode.json`; absolute because OpenCode doesn't expand `~`). |
 | **ForgeCode** | plain-forge also appends a fenced managed pointer block to `AGENTS.md`: repo-root `./AGENTS.md` for project installs or `~/forge/AGENTS.md` globally. |
-| **Codex / GitHub Copilot / Universal** | No extra instruction file is generated. Their discovered `load-plain-reference` skill loads `.agents/rules/*.md` as its required first step. |
+| **Codex / GitHub Copilot / Universal** | No extra instruction file is generated. Their discovered `load-plain-reference` skill loads applicable files from `.agents/rules/` when needed. |
 
 When plain-forge touches `opencode.json` or ForgeCode's `AGENTS.md`, it merges into existing content
 and leaves unrelated configuration intact. `uninstall` removes only plain-forge's glob or block.

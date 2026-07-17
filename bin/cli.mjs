@@ -55,15 +55,31 @@ function hasForgeSignature(baseDir) {
   );
 }
 
-const BANNER = `\x1b[38;2;224;255;110m██████╗ ██╗      █████╗ ██╗███╗   ██╗      ███████╗ ██████╗ ██████╗  ██████╗ ███████╗
+const BANNER = `██████╗ ██╗      █████╗ ██╗███╗   ██╗      ███████╗ ██████╗ ██████╗  ██████╗ ███████╗
 ██╔══██╗██║     ██╔══██╗██║████╗  ██║      ██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝
 ██████╔╝██║     ███████║██║██╔██╗ ██║█████╗█████╗  ██║   ██║██████╔╝██║  ███╗█████╗
 ██╔═══╝ ██║     ██╔══██║██║██║╚██╗██║╚════╝██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝
 ██║     ███████╗██║  ██║██║██║ ╚████║      ██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗
-╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝      ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝\x1b[0m
+╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝      ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
 `;
 
 const TAGLINE = "turn ideas into ***plain specs.";
+
+function terminalHasLightBackground(env = process.env) {
+  const parts = String(env.COLORFGBG ?? "").split(";");
+  const background = Number(parts.at(-1));
+  if (!Number.isInteger(background)) return false;
+  return background === 7 || background >= 9;
+}
+
+function terminalPalette(env = process.env) {
+  return terminalHasLightBackground(env)
+    ? { brand: "76;92;0", plain: "0;105;55", link: "0;85;170" }
+    : { brand: "224;255;110", plain: "121;252;150", link: "95;175;255" };
+}
+
+const color = (rgb, text, extra = "") =>
+  `\x1b[${extra}38;2;${rgb}m${text}\x1b[0m`;
 
 function stripAnsi(s) {
   return s.replace(/\x1b\[[0-9;]*m/g, "");
@@ -77,13 +93,14 @@ function bannerWidth() {
 
 function printBanner() {
   if (!process.stdout.isTTY) return;
-  process.stdout.write("\n" + BANNER + "\n");
+  const palette = terminalPalette();
+  process.stdout.write("\n" + color(palette.brand, BANNER) + "\n");
 
   const width = bannerWidth();
   const pad = Math.max(0, Math.floor((width - TAGLINE.length) / 2));
   const tag = TAGLINE.replace(
     "***plain",
-    "\x1b[38;2;121;252;150m***plain\x1b[0m",
+    color(palette.plain, "***plain"),
   );
   process.stdout.write(" ".repeat(pad) + tag + "\n\n");
 }
@@ -967,11 +984,12 @@ async function cmdUninstall(args) {
 }
 
 function printNextSteps(agent) {
-  const bold = (s) => `\x1b[1;97m${s}\x1b[0m`;
+  const palette = terminalPalette();
+  const bold = (s) => `\x1b[1m${s}\x1b[0m`;
   const dim = (s) => `\x1b[2m${s}\x1b[0m`;
-  const plain = (s) => `\x1b[38;2;121;252;150m${s}\x1b[0m`;
-  const codeplain = (s) => `\x1b[38;2;224;255;110m${s}\x1b[0m`;
-  const link = (s) => `\x1b[4;38;2;95;175;255m${s}\x1b[0m`;
+  const plain = (s) => color(palette.plain, s);
+  const codeplain = (s) => color(palette.brand, s);
+  const link = (s) => color(palette.link, s, "4;");
 
   console.log(`\x1b[1mnext steps:\x1b[0m`);
   console.log(
@@ -1099,4 +1117,6 @@ export {
   deleteForgeFile,
   detectInstalls,
   promptConfirm,
+  terminalHasLightBackground,
+  terminalPalette,
 };

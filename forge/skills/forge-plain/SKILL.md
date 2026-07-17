@@ -102,7 +102,7 @@ Once the initial specs exist, the user will return with new features. Use the `a
 
 ## Reference
 
-- Full `***plain` language guide: `PLAIN_REFERENCE.md`.
+- Applicable language rules and operational references: `load-plain-reference`.
 - Spec-editing skills live in `.claude/skills/`.
 - Templates go in `template/`, but import paths omit the `template/` prefix. Resources go in `resources/`.
 - Generated code lands in `plain_modules/` (read-only, never edit). Test scripts live in `test_scripts/`.
