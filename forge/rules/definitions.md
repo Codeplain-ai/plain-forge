@@ -42,14 +42,20 @@ When writing or editing a `***definitions***` section in a `.plain` file, always
 Bad — circular:
 
 ```plain
+***definitions***
+
 - :Customer: is a user who has placed at least one :Order:.
+
 - :Order: is placed by :Customer: and contains :OrderItem: entries.
 ```
 
 `:Order:` references `:Customer:`, and `:Customer:` references `:Order:`. Fix by removing the back-reference:
 
 ```plain
+***definitions***
+
 - :Customer: is a user of the system.
+
 - :Order: is placed by :Customer: and contains :OrderItem: entries.
 ```
 
@@ -69,13 +75,21 @@ Bad — circular:
 Example of defining technical components alongside their behavior:
 
 ```plain
+***definitions***
+
 - :CsvToJsonConverter: bidirectionally converts csv and json strings.
+
 - :CsvToJson: of :CsvToJsonConverter: converts a list of csv strings (e.g., "value1,value2,value3") to a list of json strings (e.g., "{\"key1\":\"value1\"}").
+
 - :JsonToCsv: of :CsvToJsonConverter: converts a list of json strings (e.g., "{\"key1\":\"value1\"}") to a list of csv strings (e.g., "value1,value2").
 
 - :StorageService: is an abstraction for a remote blob storage backend.
+
 - :CsvFileWriter: writes CSV rows to local files, automatically rotates to new files when size limits are reached, and flushes completed files to :StorageService:.
+
 - :CsvFileReader: reads CSV rows in a batched manner.
+
+
 - :CsvJoiner: joins csvs and uses :CsvFileWriter: to create the merged CSV.
 ```
 
@@ -83,6 +97,7 @@ Example of defining technical components alongside their behavior:
 
 ```plain
 ***definitions***
+
 - :ConceptName: is a description of what it represents.
   - Attribute one (required)
   - Attribute two (optional)
