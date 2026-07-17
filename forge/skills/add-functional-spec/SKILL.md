@@ -59,32 +59,6 @@ Each functional spec must be unambiguous — the renderer should have only one r
   - All :Participant: members of the :Conversation: can see the new :Message:.
 ```
 
-### Line syntax (hard rule)
-
-**Every line inside `***functional specs***` must be its own list item starting with `- `.** ***plain has no concept of bare continuation lines — indented prose without a leading `- ` is **invalid syntax** and the renderer will reject it.
-
-- Hard limit: 120 characters per line. If a sentence is too long, **split it at a natural clause boundary into nested `- ` bullets** — never wrap onto an unprefixed line.
-- Nested clarifications are also `- ` items, indented under the parent. The indentation alone is not enough; the leading `- ` is required.
-
-BAD — bare continuation lines (invalid ***plain syntax, will not render):
-
-```plain
-***functional specs***
-
-- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle(),
-  which returns a list of :EventEnvelope: dicts conforming to the gateway's
-  contract.
-```
-
-GOOD — every line starts with `- `:
-
-```plain
-***functional specs***
-
-- :GatewayWebhook: hands off :StripeRequest: to :StripeIntegration:.handle().
-  - The method returns a list of :EventEnvelope: dicts.
-  - The dicts must conform to the gateway's :EventEnvelope: contract.
-```
 
 ### Deterministic Interface
 
