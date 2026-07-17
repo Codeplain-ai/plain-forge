@@ -18,13 +18,22 @@ A box is met only when its source confirms it. Return `APPROVED` only when every
 - [ ] **[both]** Any answer that contradicted an earlier snippet was fixed in place before the next question — no stale spec left on disk.
 - [ ] **[both]** Stayed within the current phase — no drafting of later-phase content on disk, no multi-question detours into later-phase topics.
 
-## Phase 0 — Setup
+## Phase 0 — Intent
 
 - [ ] **[record]** Invoked `load-plain-reference` first (unless already loaded this session).
+- [ ] **[record]** Read `references/phase-0-intent.md` and asked its five core questions one at a time.
+- [ ] **[record]** Asked no more than one focused follow-up for an answer too vague to summarize.
+- [ ] **[record]** Kept features, entities, technology, architecture, and testing for later phases.
+- [ ] **[disk]** Wrote no project or specification files during Phase 0.
+- [ ] **[record]** Summarized the problem, primary user, desired outcome, observable success
+  criterion, and initial boundary with explicit exclusions; got explicit confirmation.
 
 ## Phase 1 — What are we building?
 
-- [ ] **[record]** Read `references/phase-1-product.md` and walked its topics in order (app, users, scope, entities, features, flows, constraints, UI if any, anything else) — skipped topics called out explicitly.
+- [ ] **[record]** Carried the confirmed Phase 0 intent brief into
+  `references/phase-1-product.md`; refined it without restarting intent discovery.
+- [ ] **[record]** Walked Phase 1 topics in order (description, users/product shape, scope, entities,
+  features, flows, constraints, UI if any, anything else).
 - [ ] **[disk]** `.plain` module structure created with YAML frontmatter; template (if any) has no `***functional specs***`.
 - [ ] **[both]** Every concept authored in `***definitions***` via `add-concept`, defined before use.
 - [ ] **[both]** Every feature authored as functional specs via `add-functional-spec(s)`, each ≤200 LOC, in chronological build order.
