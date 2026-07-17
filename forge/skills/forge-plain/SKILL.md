@@ -1,8 +1,8 @@
 ---
 name: forge-plain
 description: >-
-  End-to-end `***plain` spec authoring workflow: a gated, one-question-at-a-time
-  interview (product, tech stack, testing) that writes complete .plain
+  End-to-end `***plain` spec authoring workflow: a short intent interview followed by a gated,
+  one-question-at-a-time interview (product, tech stack, testing) that writes complete .plain
   specification files to disk incrementally, reviews each addition, and
   validates the specs with a dry-run before handoff. Use when the user starts a
   new project or wants to build something new from scratch. Not for adding a
@@ -20,13 +20,16 @@ Act as a `***plain` spec writer. The only output is `.plain` specification files
 
 ## Agent orchestration
 
-`forge-plain` runs the interview **itself** — it owns the user conversation from start to finish, asks every `AskUserQuestion`, and authors every snippet inline via the edit skills. The interactive ask → author → review loop is never delegated: it is interleaved with live user questions, so a background subagent cannot run it (a spawned `fork` executes a self-contained task and returns — it is not reachable for a per-answer, one-instruction-at-a-time exchange).
+`forge-plain` runs the interview **itself** — it owns the user conversation from start to finish, asks every `AskUserQuestion`, and authors every snippet inline via the edit skills after Phase 0. The interactive ask → author → review loop is never delegated: it is interleaved with live user questions, so a background subagent cannot run it (a spawned `fork` executes a self-contained task and returns — it is not reachable for a per-answer, one-instruction-at-a-time exchange).
 
-The one thing that **is** delegated is validation at each phase gate:
+The one thing that **is** delegated is validation at each authoring-phase gate:
 
-- **Review agent** — spawned fresh at each phase gate via the `Agent` tool as a new `general-purpose` agent (a fresh agent, **not** a fork — it audits with an independent eye). Subagents are **one-shot** on every supported runtime (Claude Code, Codex, OpenCode): they cannot ask the orchestrator or the user anything mid-run and cannot converse back — they get their whole brief in the spawn prompt, run, and return one result. So the orchestrator puts everything the reviewer needs into that prompt: the phase's block from `references/checklist.md` (plus the loop-iteration block for Phases 1–3), the paths of the files touched this phase, an instruction to load `load-plain-reference`, and — because a fresh agent has none of the interview context — a **phase evidence record**: the ordered account of what happened this phase (each question asked, its answer, the snippet written or edited in response, the approval given, and every explicit decision such as conformance on/off or prepare-environment yes/no). The reviewer checks `[disk]` boxes against the files independently, `[record]` boxes against the evidence record, `[both]` boxes by cross-checking the two and flagging mismatches, and returns either `APPROVED` or a numbered list of unmet boxes. Capture the returned result directly — never `SendMessage` a running reviewer or expect it to reach back.
+- **Review agent** — spawned fresh at each Phase 1–4 gate via the `Agent` tool as a new `general-purpose` agent (a fresh agent, **not** a fork — it audits with an independent eye). Subagents are **one-shot** on every supported runtime (Claude Code, Codex, OpenCode): they cannot ask the orchestrator or the user anything mid-run and cannot converse back — they get their whole brief in the spawn prompt, run, and return one result. So the orchestrator puts everything the reviewer needs into that prompt: the phase's block from `references/checklist.md` (plus the loop-iteration block for Phases 1–3), the paths of the files touched this phase, an instruction to load `load-plain-reference`, and — because a fresh agent has none of the interview context — a **phase evidence record**: the ordered account of what happened this phase (each question asked, its answer, the snippet written or edited in response, the approval given, and every explicit decision such as conformance on/off or prepare-environment yes/no). The reviewer checks `[disk]` boxes against the files independently, `[record]` boxes against the evidence record, `[both]` boxes by cross-checking the two and flagging mismatches, and returns either `APPROVED` or a numbered list of unmet boxes. Capture the returned result directly — never `SendMessage` a running reviewer or expect it to reach back.
 
 ### Per-phase loop
+
+This loop applies to authoring Phases 1–3. Phase 0 uses its short intent-only loop, and Phase 4 runs
+the validation and handoff procedure in its reference.
 
 1. Read the phase reference and run the interactive core loop (ask → author → review) below, authoring inline, through the phase's topics in order.
 2. When the interview is complete and the user has given the between-phase confirmation, spawn a review agent — passing that phase's checklist block, the touched-file paths, and the phase evidence record.
@@ -37,7 +40,7 @@ The phase gate is met **only** when a review agent approves; the orchestrator ne
 
 ## Core loop: one question → one answer → write to disk
 
-Every phase runs the same tight loop. Each iteration is a single question followed by an immediate write:
+Phases 1–3 run this tight loop. Each iteration is a single question followed by an immediate write:
 
 1. **Ask** one focused question via `AskUserQuestion` — never bundle two. Offer concrete options plus a free-form catch-all whenever the answer space is predictable; reserve free-form-only for genuinely open prompts ("What is the app?"). Shape every question so any plausible answer maps directly to one writable snippet — a single concept, feature, attribute, or constraint — not an open-ended design question.
 2. **Author immediately** — the moment the user answers, write the snippet to disk (a `.plain` section, a script, or a `config.yaml` entry) using the right edit skill. Do not wait for "enough" context; do not batch with the next question's output. Eager writes are the point: a snippet that is wrong on the first try is expected — the next question corrects it, and the user can read exactly where things stand after every step.
@@ -61,20 +64,36 @@ Offer options such as "Approve as written", "Extend with …", "Clarify …", pl
 
 ## Phase sequencing
 
-The workflow is four gated phases. **Finish each phase — its specs on disk *and* explicitly approved — before starting the next.** Do not draft, or even *ask about*, later-phase content while a phase is open: if an answer drifts ahead (e.g. picking a framework while still on functional specs), acknowledge it briefly, note it for later, and steer back. Do not branch into a multi-question detour about later-phase topics. Talk is not output; the `.plain` files are.
+The workflow begins with a short Phase 0 intent interview, followed by four gated authoring phases.
+
+Phase 0 is conversational only: read `references/phase-0-intent.md`, ask its five questions one at a
+time, write nothing to disk, summarize the resulting intent brief, and get explicit confirmation.
+Before advancing, check the Phase 0 checklist block inline. Do not spawn a review agent for Phase 0.
+Carry the confirmed brief into every later phase.
+
+For Phases 1–4, **finish each phase — its artifacts on disk *and* explicitly approved — before
+starting the next.** Do not draft, or even ask about, later-phase content while a phase is open: if
+an answer drifts ahead, acknowledge it briefly, note it for later, and steer back. Do not branch
+into a multi-question detour about later-phase topics. Talk is not output after Phase 0; the `.plain`
+files are.
 
 When entering a phase, read its reference file and walk its topics **in order** using the core loop and review loop above. Skip a topic only if it genuinely does not apply, and say so explicitly.
 
 | Phase | Reference | Finished when |
 |---|---|---|
+| 0 — What is the intent? | `references/phase-0-intent.md` | a concise intent brief covering the problem, primary user and outcome, and initial boundary is explicitly confirmed; nothing is written to disk |
 | 1 — What are we building? | `references/phase-1-product.md` | the new `***definitions***` and `***functional specs***` are on disk and approved |
 | 2 — What tech should it use? | `references/phase-2-tech.md` | the new `***implementation reqs***` are on disk and approved |
 | 3 — How is testing done? | `references/phase-3-testing.md` | the `***test reqs***` (and `***acceptance tests***` if conformance is on) are on disk, the `test_scripts/` and `config.yaml`(s) exist, and `check-plain-env` passed or each gap was acknowledged |
 | 4 — Validate and hand off | `references/phase-4-validate-handoff.md` | the agent ran `codeplain <module>.plain --dry-run` successfully against the render target, and the user has the render command plus every side-channel command |
 
-Between phases, summarize what was built and get an explicit overall confirmation before continuing — the full feature list and module/concept layout after Phase 1; the tech stack and architecture after Phase 2; the testing strategy (config files, scripts, framework, test types, conformance/prepare-environment decisions) after Phase 3.
+Between phases, summarize and get explicit overall confirmation before continuing — the intent brief
+after Phase 0; the full feature list and module/concept layout after Phase 1; the tech stack and
+architecture after Phase 2; the testing strategy after Phase 3.
 
-Before advancing out of any phase, spawn a **review agent** to run that phase's block of the **Self-check checklist** (`references/checklist.md`) and loop (fix → re-review) until it returns `APPROVED` — see *Agent orchestration*. Do not advance on an unmet box, and never self-certify the gate.
+Before advancing out of Phases 1–4, spawn a **review agent** to run that phase's block of the
+**Self-check checklist** (`references/checklist.md`) and loop until it returns `APPROVED`. Phase 0
+ends with the user's confirmation and does not use a review agent.
 
 ## Adding features later
 
