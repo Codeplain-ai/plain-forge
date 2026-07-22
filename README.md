@@ -4,7 +4,7 @@
 
 # plain-forge
 
-A toolkit for working with [***plain](https://plainlang.org) projects from inside your AI coding agent of choice — Claude Code, Codex, ForgeCode, OpenCode, and any other agent that reads from a standard skills directory. plain-forge ships skills, rules, and docs that turn a conversation into complete `.plain` spec files, then keeps maintaining them across the lifetime of the project. The specs are rendered into production-ready code by the [codeplain](https://codeplain.ai) renderer.
+A toolkit for working with [∗∗∗plain](https://plainlang.org) projects from inside your AI coding agent of choice — Claude Code, Codex, ForgeCode, OpenCode, and any other agent that reads from a standard skills directory. plain-forge ships skills, rules, and docs that turn a conversation into complete `.plain` spec files, then keeps maintaining them across the lifetime of the project. The specs are rendered into production-ready code by the [codeplain](https://codeplain.ai) renderer.
 
 ## What plain-forge does
 
