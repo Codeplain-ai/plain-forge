@@ -60,8 +60,8 @@ Bad — circular:
 ```
 
 ## Exported concepts are not transitive
-- If module A exports a concept and module B `requires` A, module C `requires` B does **not** gain access to A's exports
-- Shared concepts belong in a common import module
+- If module A exports a concept and module B `requires` A, a module C with `requires: [B]` does **not** gain access to A's exports
+- To use an ancestor's exports, list that ancestor in `requires` as well; concepts shared more broadly belong in a common import module
 
 ## Description quality
 - Descriptions must be clear, concise, and language-agnostic

@@ -46,5 +46,5 @@ import:
 ## Combining import with requires
 - A module can use both `import` and `requires` together
 - `import` brings in shared definitions and reqs
-- `requires` brings in the build dependency chain and functional specs
+- `requires` attaches the module to the build chain — accumulated generated code and previous functional specs
 - An import module itself must **not** use `requires`

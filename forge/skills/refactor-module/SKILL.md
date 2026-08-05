@@ -125,7 +125,7 @@ For each subsequent module in the chain:
 
 After all new modules are created:
 - If the original module is being fully replaced (all specs moved out), delete it or rename it to avoid confusion.
-- If the original module was required by other modules, update those modules to `require` the last module in the new chain instead (since it transitively includes all prior modules' specs and generated code).
+- If the original module was required by other modules, update those modules to `require` the last module in the new chain instead — its accumulated code and previous functional specs cover the whole chain. Exported concepts are **not** transitive, though: if a downstream module references a concept now exported by an earlier module in the new chain, it must list that earlier module in its `requires` as well.
 
 ## Phase 4 — Verify
 
@@ -145,7 +145,7 @@ Verify that the chronological order of all functional specs — when read across
 ### 4c. Concept availability check
 
 For each module, verify:
-- [ ] Every `:Concept:` referenced in its specs is either defined locally, available via `import`, or available via `exported_concepts` from the `requires` chain
+- [ ] Every `:Concept:` referenced in its specs is either defined locally, available via `import`, or available via `exported_concepts` from a module listed in `requires`
 - [ ] `exported_concepts` includes every concept that downstream modules need
 - [ ] No concept name collisions between modules
 
@@ -193,5 +193,5 @@ Acceptance tests are nested under their parent functional spec. When moving a sp
 - [ ] Each module has at least one functional spec and one implementation req
 - [ ] `requires` chain is correctly ordered (base → leaf)
 - [ ] Original module removed or updated
-- [ ] Downstream modules (if any) updated to require the correct module
+- [ ] Downstream modules (if any) updated to require the chain tip, plus any earlier chain modules whose exported concepts they reference
 - [ ] User approved the final result

@@ -36,7 +36,7 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 - CamelCase, starting with an uppercase letter
 - Valid characters: letters, digits, `+`, `-`, `.`, `_`
 - Must be globally unique across the spec and all its imports
-- Exported concepts from `requires` modules are **not transitive** — if a concept needs to be shared across multiple `requires` modules, define it in a common import module instead
+- Exported concepts from `requires` modules are **not transitive** — to reference an ancestor's export, list that ancestor in `requires`; if a concept is shared across branches, define it in a common import module instead
 
 ## Definition Format
 

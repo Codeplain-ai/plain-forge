@@ -10,6 +10,7 @@ When adding or editing `exported_concepts` in a `.plain` file's frontmatter, alw
 - `exported_concepts` declares which concepts from this module are visible to modules that `require` it
 - Concepts not listed in `exported_concepts` are internal to the module and invisible to downstream modules
 - Only modules that use `requires` receive exported concepts — `import` gives access to all definitions, not just exports
+- An exported concept is visible with its full definition text
 
 ## When to use it
 - Use `exported_concepts` on any module that other modules will `require`
@@ -21,8 +22,8 @@ When adding or editing `exported_concepts` in a `.plain` file's frontmatter, alw
 - Do not export concepts that are not defined in the module
 
 ## Exports are not transitive
-- If module A exports `:Foo:` and module B `requires` A, module C `requires` B does **not** gain access to `:Foo:`
-- If module C also needs `:Foo:`, it must either `require` A directly or get it through a common import module
+- If module A exports `:Foo:` and module B `requires` A, a module C with `requires: [B]` does **not** gain access to `:Foo:`
+- If module C also needs `:Foo:`, it should list A in its `requires` as well (`requires: [A, B]`) or get `:Foo:` through a common import module
 
 ## Format
 
