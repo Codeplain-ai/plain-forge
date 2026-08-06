@@ -58,8 +58,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      contents: write      # push the version tag, create the release
-      id-token: write      # OIDC token for trusted publishing
+      contents: write        # push the release branch and the version tag
+      pull-requests: write   # open the release PR and enable auto-merge
+      id-token: write        # OIDC token for trusted publishing
 
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -114,7 +115,57 @@ jobs:
         run: |
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"*plain-forge*: release of \`v${{ steps.pkg.outputs.version }}\` started by *${{ github.actor }}* — publishing to npm...\"}"
+            --data "{\"text\":\"*plain-forge*: release of \`v${{ steps.pkg.outputs.version }}\` started by *${{ github.actor }}* — waiting for CI, then publishing to npm...\"}"
+
+      # main is protected and nothing here bypasses it: the bump goes up as a
+      # release branch, CI runs on it, and auto-merge lands it once green.
+      - name: Push the version bump as a release branch
+        env:
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release/v$VERSION"
+          git add package.json package-lock.json
+          git commit -m "release: v$VERSION"
+          git push origin "release/v$VERSION"
+
+      - name: Open the release PR and let it merge itself
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          gh pr create \
+            --base main --head "release/v$VERSION" \
+            --title "release: v$VERSION" \
+            --body "Automated version bump for the v$VERSION release. Merges itself once CI is green."
+          gh pr merge "release/v$VERSION" --auto --squash --delete-branch
+
+      - name: Wait for the release PR to land on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          for i in $(seq 1 40); do
+            STATE=$(gh pr view "release/v$VERSION" --json state --jq .state)
+            if [ "$STATE" = "MERGED" ]; then echo "merged"; exit 0; fi
+            if [ "$STATE" = "CLOSED" ]; then echo "::error::release PR was closed without merging"; exit 1; fi
+            echo "waiting for checks... ($i)"
+            sleep 30
+          done
+          echo "::error::release PR did not merge within 20 minutes"
+          exit 1
+
+      - name: Publish from the merged main
+        run: |
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          ON_MAIN=$(node -p "require('./package.json').version")
+          if [ "$ON_MAIN" != "${{ steps.pkg.outputs.version }}" ]; then
+            echo "::error::main is at $ON_MAIN, expected ${{ steps.pkg.outputs.version }}"
+            exit 1
+          fi
 
       # No NODE_AUTH_TOKEN: npm exchanges the GitHub OIDC token for a
       # short-lived npm token. Provenance is attached automatically.
