@@ -4,10 +4,7 @@ name: ci
 on:
   pull_request:
   push:
-    # release/** matters: a PR opened by GITHUB_TOKEN does not trigger
-    # pull_request workflows, so the required checks have to come from the
-    # push event on the release branch instead.
-    branches: [main, 'release/**']
+    branches: [main]
 
 permissions: {}
 
