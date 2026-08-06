@@ -11,13 +11,24 @@ on:
     branches: [main]
     paths: ['package.json']
 
+# Least privilege by default: jobs get no GITHUB_TOKEN scopes unless they
+# opt in below.
+permissions: {}
+
 concurrency:
   group: publish
   cancel-in-progress: false
 
 jobs:
   test:
+    name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,12 +38,24 @@ jobs:
       - run: npm ci
       - run: npm test
 
+      - name: Notify Slack (tests failed)
+        if: ${{ failure() && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: tests FAILED :x: on \`main\`. Nothing was published to npm. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+
   publish:
+    name: Publish to npm
     needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write      # push the version tag, create the release
       id-token: write      # OIDC token for trusted publishing
+
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +85,13 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Notify Slack (start)
+        if: ${{ steps.check.outputs.publish == 'true' && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: \`v${{ steps.pkg.outputs.version }}\` merged by *${{ github.actor }}* — publishing to npm...\"}"
+
       # No NODE_AUTH_TOKEN: npm exchanges the GitHub OIDC token for a
       # short-lived npm token. Provenance is attached automatically.
       - name: Publish
@@ -82,3 +112,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.pkg.outputs.version }}
         run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes
+
+      - name: Notify Slack (success)
+        if: ${{ success() && steps.check.outputs.publish == 'true' && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: \`v${{ steps.pkg.outputs.version }}\` published to npm :white_check_mark:. Install with \`npx plain-forge@latest update\`.\"}"
+
+      - name: Notify Slack (failure)
+        if: ${{ failure() && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: publishing \`v${{ steps.pkg.outputs.version }}\` to npm FAILED :x:. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
