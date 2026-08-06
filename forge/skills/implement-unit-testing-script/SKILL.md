@@ -47,7 +47,7 @@ The source build folder passed in as `$1` is **input only**. The script must nev
 - run the test command from inside it (every test command runs from inside `<temp>/<lang>_<basename>` after the `cd` in step 5),
 - create logs, caches, build outputs, or temp files inside it.
 
-The build folder is shared with the renderer (`plain_modules/...` by default) and downstream tooling. Writing into it corrupts the renderer's view of "what was generated" and breaks subsequent renders. Every write must go into `<temp>/<lang>_<basename>` — the whole point of staging into the system temp directory is so the source build folder stays a clean, reproducible artifact of the render and no build debris is left inside the user's project.
+The build folder is shared with the renderer (`plain_modules/<module>/code` by default) and downstream tooling. Writing into it corrupts the renderer's view of "what was generated" and breaks subsequent renders. Every write must go into `<temp>/<lang>_<basename>` — the whole point of staging into the system temp directory is so the source build folder stays a clean, reproducible artifact of the render and no build debris is left inside the user's project.
 
 If you find yourself about to issue any command whose `cwd` is the source folder, or whose target path starts with `$1/`, **stop**. Either move the operation into `<temp>/<lang>_<basename>`, or you're doing something the script must not do.
 

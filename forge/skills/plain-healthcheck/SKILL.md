@@ -90,7 +90,7 @@ Treat the dry-run as a hard gate: the healthcheck **only passes** when every top
 Iterate until it passes:
 
 1. Read the error output. If the first run was not verbose, immediately re-run with `--verbose`. Identify the offending `.plain` file, the line (if reported), and the kind of issue: missing concept, syntax error, cyclic definition, complexity violation (`Functional spec too complex!`), conflicting reqs, missing template, broken `import`/`requires`, missing config field, etc.
-2. Fix only the `.plain` files (or the relevant `config.yaml` / template) using the appropriate edit skill — `add-concept`, `add-functional-spec`, `add-functional-specs`, `add-implementation-requirement`, `resolve-spec-conflict`, `break-down-func-spec`, `consolidate-concepts`, or an inline edit. **Never** modify generated code under `plain_modules/` or `conformance_tests/`.
+2. Fix only the `.plain` files (or the relevant `config.yaml` / template) using the appropriate edit skill — `add-concept`, `add-functional-spec`, `add-functional-specs`, `add-implementation-requirement`, `resolve-spec-conflict`, `break-down-func-spec`, `consolidate-concepts`, or an inline edit. **Never** modify generated code under `plain_modules/<module>/code/` or `plain_modules/<module>/tests/`.
 3. If you are uncertain about ***plain syntax for the failing construct, re-load `load-plain-reference` before fixing.
 4. Re-run the same `codeplain <top_module>.plain --dry-run …` command with the same flags. Repeat until it exits successfully.
 

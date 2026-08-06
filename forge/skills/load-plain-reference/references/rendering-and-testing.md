@@ -18,7 +18,7 @@ and debugging skills rather than editing generated output.
 
 ## Generated artifacts are read-only
 
-Everything under `plain_modules/` and `conformance_tests/` is generated. It may be read, executed,
+Everything under `plain_modules/` is generated — both `<module>/code/` and `<module>/tests/`. It may be read, executed,
 and debugged, but never edited directly. Apply fixes as follows:
 
 - Behavior or implementation/unit-test guidance: edit definitions, functional specs, or
@@ -37,7 +37,7 @@ Test scripts are renderer entry points as well as developer utilities:
 - `prepare_environment_<lang>` optionally prepares a reusable system-temporary environment for
   conformance testing once per render.
 - `run_conformance_tests_<lang>` receives the generated build folder and one functionality's
-  conformance-test folder. It may run repeatedly during a render.
+  conformance-test folder (`plain_modules/<module_name>/tests/<functionality>`). It may run repeatedly during a render.
 
 Invoke the corresponding `implement-*-script` skill when creating or changing a test script. Those
 skills own exact staging, cleanup, dependency-installation, shell, and exit-code contracts.
@@ -47,10 +47,10 @@ skills own exact staging, cleanup, dependency-installation, shell, and exit-code
 Run project scripts from the repository root, using the filenames configured for that project:
 
 ```bash
-./test_scripts/run_unittests.sh plain_modules/<module_name>
-./test_scripts/prepare_environment.sh plain_modules/<module_name>
+./test_scripts/run_unittests.sh plain_modules/<module_name>/code
+./test_scripts/prepare_environment.sh plain_modules/<module_name>/code
 ./test_scripts/run_conformance_tests.sh \
-  plain_modules/<module_name> conformance_tests/<module_name>/<functionality>
+  plain_modules/<module_name>/code plain_modules/<module_name>/tests/<functionality>
 ```
 
 The renderer resolves script arguments to absolute paths. Test scripts must treat input directories

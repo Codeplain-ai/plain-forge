@@ -15,8 +15,9 @@ those specifications.
 *.plain                  # Root specification modules
 template/*.plain         # Reusable import modules
 resources/               # Linked text artifacts such as schemas and fixtures
-plain_modules/           # Generated implementation and unit tests
-conformance_tests/       # Generated conformance tests, grouped by module and functionality
+plain_modules/           # Generated output, one directory per module
+  <module>/code/         #   implementation and unit tests
+  <module>/tests/        #   conformance tests, one folder per functional spec
 test_scripts/            # Unit, environment-preparation, and conformance runners
 config.yaml              # codeplain CLI configuration
 ```

@@ -13,7 +13,7 @@ description: >-
 
 # CODEPLAIN_CLI_REFERENCE.md
 
-`codeplain` is the CLI that renders `***plain` specification files into production-ready code. It reads a `.plain` module (and everything it `import`s / `requires`), calls the codeplain API, and writes generated code under `plain_modules/` and conformance tests under `conformance_tests/`. The `.plain` specs are the source of truth; the generated code is a read-only artifact.
+`codeplain` is the CLI that renders `***plain` specification files into production-ready code. It reads a `.plain` module (and everything it `import`s / `requires`), calls the codeplain API, and writes generated code under `plain_modules/<module>/code/` and conformance tests under `plain_modules/<module>/tests/`. The `.plain` specs are the source of truth; the generated code is a read-only artifact.
 
 This reference covers the CLI surface only. For the `***plain` language itself use `load-plain-reference`; to supervise a live render use `run-codeplain`; to assemble or validate `config.yaml` use `init-config-file` / `plain-healthcheck`.
 
@@ -75,7 +75,7 @@ A path's meaning depends on **where it was written**:
 ### Folders
 
 - **`--base-folder BASE_FOLDER`** — base folder for the build files.
-- **`--build-folder BUILD_FOLDER`** — folder for build files (generated code lands under here, per module: `plain_modules/<module>/`).
+- **`--build-folder BUILD_FOLDER`** — folder for build files (generated code lands under here, per module: `plain_modules/<module>/code/` and `plain_modules/<module>/tests/`).
 - **`--template-dir TEMPLATE_DIR`** — path to a custom template directory. Templates are searched in this order: 1) the directory containing the `.plain` file, 2) this custom template directory, 3) the built-in `standard_template_library` directory. In `config.yaml` the equivalent key is `template_dir` — set it whenever the project has import modules or templates.
 
 ### Test-script wiring
@@ -126,8 +126,8 @@ A path's meaning depends on **where it was written**:
 
 Generated artifacts (gitignored, read-only — never edit):
 
-- `plain_modules/<module>/` — the generated project for each `.plain` spec (implementation + unit tests).
-- `conformance_tests/<module>/<functionality>/` — generated conformance tests, one subfolder per functionality.
+- `plain_modules/<module>/code/` — the generated project for each `.plain` spec (implementation + unit tests).
+- `plain_modules/<module>/tests/<functionality>/` — generated conformance tests, one subfolder per functionality.
 - `codeplain.log` — the per-run log (overwritten each run).
 
 When a run ends, `codeplain` writes a result banner (to the log, and to the terminal outside headless mode):

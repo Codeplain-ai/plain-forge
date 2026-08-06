@@ -195,7 +195,7 @@ Hit a bug in the rendered app, a failing test, or behavior that doesn't match wh
 2. plain-forge applies the fix in the `.plain` file(s) only and summarizes what changed.
 3. Re-render to regenerate the code (see [Rendering specs](#rendering-specs)).
 
-> **Important:** Never edit generated code under `plain_modules/` or `conformance_tests/` directly — your changes will be overwritten on the next render. Always fix the spec and re-render.
+> **Important:** Never edit generated output under `plain_modules/` directly — neither the code in `plain_modules/<module>/code/` nor the conformance tests in `plain_modules/<module>/tests/`. Your changes will be overwritten on the next render. Always fix the spec and re-render.
 
 
 ## Repository Structure

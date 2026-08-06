@@ -43,7 +43,7 @@ Everything else — toolchain check, build staging, dependency isolation, exit c
 
 ### Why this split exists
 
-The conformance runner is invoked **once per functional spec** by the renderer. Each functional spec in a module has its own `conformance_tests/<module>/<spec>/` folder, and after the renderer finishes generating code for a new spec, it runs the conformance tests of **every previous spec** in the same module to detect regressions. For a module with N functional specs, this script is called **on the order of N times per render** — not once per render.
+The conformance runner is invoked **once per functional spec** by the renderer. Each functional spec in a module has its own `plain_modules/<module>/tests/<spec>/` folder, and after the renderer finishes generating code for a new spec, it runs the conformance tests of **every previous spec** in the same module to detect regressions. For a module with N functional specs, this script is called **on the order of N times per render** — not once per render.
 
 That per-spec invocation pattern is what makes the install step expensive. A naive runner that does `pip install` / `npm ci` / `mvn install -DskipTests` / `cargo build` on every invocation pays the install cost N times per render. For anything beyond a toy project, that cost dominates wall-clock time.
 
@@ -123,7 +123,7 @@ A conformance script has **two** read-only inputs: the source build folder (`$1`
 
 Why each input is read-only:
 
-- **`$1` (build folder)** is shared with the renderer (`plain_modules/...` by default) and downstream tooling. Writing into it corrupts the renderer's view of "what was generated" and breaks subsequent renders. The whole point of staging into the system temp directory is so the source folder stays a clean, reproducible artifact of the render.
+- **`$1` (build folder)** is shared with the renderer (`plain_modules/<module>/code` by default) and downstream tooling. Writing into it corrupts the renderer's view of "what was generated" and breaks subsequent renders. The whole point of staging into the system temp directory is so the source folder stays a clean, reproducible artifact of the render.
 - **`$2` (conformance tests folder)** is the user's authored test source — typically checked into version control. Writing into it pollutes the working tree, churns git status, and (with frameworks that auto-discover) can make subsequent runs pick up generated files as if they were tests.
 
 If you find yourself about to issue any command whose `cwd` is `$1` or `$2`, or whose target path starts with `$1/` or `$2/`, **stop**. Either move the operation into `<temp>/<lang>_<basename>`, or you're doing something the script must not do.

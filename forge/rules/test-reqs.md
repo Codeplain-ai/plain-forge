@@ -14,7 +14,7 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 
 ## `:ConformanceTests:` lives here (hard rule)
 - **Everything** about `:ConformanceTests:` goes in `***test reqs***` — paths, approach, packages, framework, execution command, mocking / network policy, fixtures, pass criteria, environment prerequisites
-- `:ConformanceTests:` live outside the generated codebase (typically in a separate project under `conformance_tests/<module>/`), so requirements that shape them belong in test reqs by definition
+- `:ConformanceTests:` live outside the generated codebase, in their own tree under `plain_modules/<module>/tests/` (one folder per functional spec), so requirements that shape them belong in test reqs by definition
 - The conformance-test generator reads **only** `***test reqs***` — anything about `:ConformanceTests:` placed elsewhere (e.g. `***implementation reqs***`) is silently ignored
 - Author each `:ConformanceTests:` requirement via `add-test-requirement` and phrase it in terms of `:ConformanceTests:` so the partition stays visible at a glance
 - Conformance testing run scripts should be linked here as a linked resource

@@ -8,7 +8,7 @@ When creating or editing a `.plain` file that uses `requires`, always follow the
 
 ## What requires does
 - `requires` establishes a **build ordering** — the required module is built before the current one
-- The required module's generated code (`plain_modules/<required_module>`) is copied as the starting point
+- The required module's generated code (`plain_modules/<required_module>/code`) is copied as the starting point
 - The required module's `***functional specs***` become visible as **previous functional specs** — this property **is transitive**
 - Only `exported_concepts` from the required module are available — not its full definitions — and this property **is not transitive**
 

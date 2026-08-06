@@ -75,7 +75,7 @@ mvn test -Dtest='<:UnitTests: package>.**.*Test' checkstyle:check
 
 These reqs feed `run_conformance_tests_<lang>`. At minimum, declare:
 
-1. **`:ConformanceTests:` source location** — where the conformance suite lives in the project (typically a sibling folder, e.g. `conformance_tests/<module>/`); the renderer passes the resolved path as `$2`
+1. **`:ConformanceTests:` source location** — the generated suite lives under `plain_modules/<module>/tests/`, one folder per functional spec; the renderer passes the resolved path of the folder under test as `$2`
 2. **`:ConformanceTests:` framework and execution command** — `mvn test --no-transfer-progress`, `pytest`, `npm test`, `go test ./...`, etc., with any flags / profiles the project requires
 3. **Fully qualified `:ConformanceTests:` package** (or path / pattern) used to scope discovery, if the runner needs one
 4. **`:ConformanceTests:` network and secrets policy** — by default the suite runs against the **live provider** (see [`integrations.md`](integrations.md) → *`:ConformanceTests:` always run against the live integration*). Declare the env-var names the script reads (e.g. `<PROVIDER>_API_KEY`), whether the script loads a `.env` file before running, and any specific endpoints that are mocked because they can't be exercised live safely (429, forced 5xx)
@@ -85,7 +85,7 @@ These reqs feed `run_conformance_tests_<lang>`. At minimum, declare:
 Author the conformance facts as one or more entries, phrased in terms of `:ConformanceTests:`:
 
 ```plain
-- :ConformanceTests: of :Implementation: live in `conformance_tests/foo/` and are implemented with JUnit 5 + Maven.
+- :ConformanceTests: of :Implementation: live in `plain_modules/foo/tests/` and are implemented with JUnit 5 + Maven.
   - The fully qualified package used for :ConformanceTests: discovery is `com.example.integrations.foo.conformance`.
   - :ConformanceTests: are run via `mvn test --no-transfer-progress`; the host's Surefire plugin must be installed.
   - :ConformanceTests: run against the live :ProviderName: sandbox — no mocking of provider calls.
@@ -139,7 +139,7 @@ All three scripts are invoked by the `codeplain` renderer with positional argume
 
 ## 1. `prepare_environment_<lang>` — copy into the host, then compile
 
-Receives one positional argument: the renderer's build output folder (e.g. `plain_modules/<module>/`).
+Receives one positional argument: the renderer's build output folder (e.g. `plain_modules/<module>/code/`).
 
 Purpose: stage the generated code **into the host codebase at the module's package path**, then run the host's install / build so that downstream test projects (specifically the conformance suite) can depend on it from the local dependency cache.
 

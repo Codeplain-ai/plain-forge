@@ -69,7 +69,7 @@ A `.plain` file is a module: YAML frontmatter (`description`, `import:`, `requir
 | `***test reqs***` | **everything about `:ConformanceTests:`** (framework, run command, mocking/network policy) |
 | `***acceptance tests***` | nested under a functional spec (not top-level); full end-to-end workflows |
 
-Other constraints the rules enforce (see `forge/rules/`): functional specs are mandatorily routed through `add-functional-spec(s)` (never hand-authored), checked for the 200-LOC limit (`analyze-if-func-spec-too-complex` → `break-down-func-spec`) and for conflicts (`analyze-func-specs` → `resolve-spec-conflict`); external artifacts (JSON Schema, OpenAPI, payloads) are **linked** as single local text files under `resources/`, never transcribed and never folders/URLs/binaries; generated code under `plain_modules/`/`conformance_tests/` is read-only — fixes go back into the spec and re-render.
+Other constraints the rules enforce (see `forge/rules/`): functional specs are mandatorily routed through `add-functional-spec(s)` (never hand-authored), checked for the 200-LOC limit (`analyze-if-func-spec-too-complex` → `break-down-func-spec`) and for conflicts (`analyze-func-specs` → `resolve-spec-conflict`); external artifacts (JSON Schema, OpenAPI, payloads) are **linked** as single local text files under `resources/`, never transcribed and never folders/URLs/binaries; generated output under `plain_modules/<module>/code/` (implementation + unit tests) and `plain_modules/<module>/tests/` (conformance tests) is read-only — fixes go back into the spec and re-render.
 
 ### The skill lifecycle (orchestration)
 
@@ -77,4 +77,4 @@ Other constraints the rules enforce (see `forge/rules/`): functional specs are m
 
 ## Memory / persistent context
 
-- Generated artifacts and project scratch (`plain_modules/`, `conformance_tests/`, `test_scripts/`, `*.yaml`, `codeplain.log`, env files) are gitignored.
+- Generated artifacts and project scratch (`plain_modules/`, `test_scripts/`, `*.yaml`, `codeplain.log`, env files) are gitignored. The renderer writes everything it generates under `plain_modules/<module>/`: `code/` for implementation and unit tests, `tests/` for conformance tests (one folder per functional spec).
