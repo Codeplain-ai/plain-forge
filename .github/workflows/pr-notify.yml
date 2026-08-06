@@ -13,7 +13,12 @@ jobs:
   notify:
     name: Notify Slack
     runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.merged }}
+    # Release PRs are bookkeeping for the publish workflow, which posts its
+    # own messages — staying quiet here keeps the channel to human changes.
+    if: >-
+      ${{ github.event.pull_request.merged
+          && !startsWith(github.event.pull_request.head.ref, 'release/')
+          && github.event.pull_request.user.login != 'github-actions[bot]' }}
 
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
