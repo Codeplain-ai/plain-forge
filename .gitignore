@@ -15,3 +15,6 @@ conformance_tests
 .env.production.local
 codeplain.log
 *.tgz
+
+# local release credentials (slack webhook)
+.env.release
