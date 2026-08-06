@@ -1,13 +1,23 @@
 name: publish
 
-# Manual release. Bump the version in package.json first, merge it, then run
-# this workflow from the Actions tab against main.
+# Manual release. Choose the semantic-version bump in the Actions tab and run
+# this workflow against main. The workflow commits the new version itself.
 #
 # Auth is OIDC (npm trusted publishing) — no NPM_TOKEN secret. The trusted
 # publisher must be configured once on npmjs.com for this repo and this exact
 # workflow filename (publish.yml).
 on:
   workflow_dispatch:
+    inputs:
+      version_bump:
+        description: Version bump
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 # Least privilege by default: jobs get no GITHUB_TOKEN scopes unless they
 # opt in below.
@@ -75,6 +85,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Bump version
+        run: npm version "${{ inputs.version_bump }}" --no-git-tag-version
+
       - name: Read version
         id: pkg
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
@@ -85,6 +98,16 @@ jobs:
             echo "::error::plain-forge@${{ steps.pkg.outputs.version }} is already published — bump the version in package.json first"
             exit 1
           fi
+
+      - name: Commit version bump
+        env:
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "release: v$VERSION"
+          git push origin HEAD:main
 
       - name: Notify Slack (start)
         if: ${{ env.SLACK_WEBHOOK_URL != '' }}
