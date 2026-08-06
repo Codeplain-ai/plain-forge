@@ -1,23 +1,15 @@
 name: publish
 
-# Manual release. Choose the semantic-version bump in the Actions tab and run
-# this workflow against main. The workflow commits the new version itself.
+# Publishing is driven by GitHub Releases: cut a release tagged `vX.Y.Z` and
+# this workflow ships that version to npm. The tag is the source of truth for
+# the version — nothing is committed back to the repository.
 #
 # Auth is OIDC (npm trusted publishing) — no NPM_TOKEN secret. The trusted
 # publisher must be configured once on npmjs.com for this repo and this exact
 # workflow filename (publish.yml).
 on:
-  workflow_dispatch:
-    inputs:
-      version_bump:
-        description: Version bump
-        required: true
-        default: patch
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+  release:
+    types: [published]
 
 # Least privilege by default: jobs get no GITHUB_TOKEN scopes unless they
 # opt in below.
@@ -39,6 +31,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -51,28 +45,23 @@ jobs:
         run: |
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"*plain-forge*: release halted — tests FAILED :x:. Nothing was published to npm. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+            --data "{\"text\":\"*plain-forge*: release \`${{ github.event.release.tag_name }}\` halted — tests FAILED :x:. Nothing was published to npm. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
 
   publish:
     name: Publish to npm
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # push the release branch and the version tag
-      pull-requests: write   # open the release PR and enable auto-merge
-      id-token: write        # OIDC token for trusted publishing
+      contents: read       # read the tagged tree
+      id-token: write      # OIDC token for trusted publishing
 
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
-      - name: Refuse to publish from anywhere but main
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "::error::releases are cut from main, not ${{ github.ref_name }}"
-          exit 1
-
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - uses: actions/setup-node@v4
         with:
@@ -86,104 +75,47 @@ jobs:
 
       - run: npm ci
 
-      - name: Bump version
-        run: npm version "${{ inputs.version_bump }}" --no-git-tag-version
-
-      - name: Read version
+      - name: Read the version from the release tag
         id: pkg
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG#v}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::tag '$TAG' is not a semver release tag (expected vX.Y.Z)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Refuse if this version is already on npm
         run: |
           if npm view "plain-forge@${{ steps.pkg.outputs.version }}" version >/dev/null 2>&1; then
-            echo "::error::plain-forge@${{ steps.pkg.outputs.version }} is already published — bump the version in package.json first"
+            echo "::error::plain-forge@${{ steps.pkg.outputs.version }} is already published — tag a new version"
             exit 1
           fi
 
-      - name: Commit version bump
-        env:
-          VERSION: ${{ steps.pkg.outputs.version }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "release: v$VERSION"
-          git push origin HEAD:main
+      # The tag decides the version, so it is applied here in the runner only
+      # and never committed back to the repository.
+      - name: Set the package version to match the tag
+        run: npm version "${{ steps.pkg.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Notify Slack (start)
         if: ${{ env.SLACK_WEBHOOK_URL != '' }}
         run: |
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"*plain-forge*: release of \`v${{ steps.pkg.outputs.version }}\` started by *${{ github.actor }}* — waiting for CI, then publishing to npm...\"}"
-
-      # main is protected and nothing here bypasses it: the bump goes up as a
-      # release branch, CI runs on it, and auto-merge lands it once green.
-      - name: Push the version bump as a release branch
-        env:
-          VERSION: ${{ steps.pkg.outputs.version }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "release/v$VERSION"
-          git add package.json package-lock.json
-          git commit -m "release: v$VERSION"
-          git push origin "release/v$VERSION"
-
-      - name: Open the release PR and let it merge itself
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.pkg.outputs.version }}
-        run: |
-          gh pr create \
-            --base main --head "release/v$VERSION" \
-            --title "release: v$VERSION" \
-            --body "Automated version bump for the v$VERSION release. Merges itself once CI is green."
-          gh pr merge "release/v$VERSION" --auto --squash --delete-branch
-
-      - name: Wait for the release PR to land on main
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.pkg.outputs.version }}
-        run: |
-          for i in $(seq 1 40); do
-            STATE=$(gh pr view "release/v$VERSION" --json state --jq .state)
-            if [ "$STATE" = "MERGED" ]; then echo "merged"; exit 0; fi
-            if [ "$STATE" = "CLOSED" ]; then echo "::error::release PR was closed without merging"; exit 1; fi
-            echo "waiting for checks... ($i)"
-            sleep 30
-          done
-          echo "::error::release PR did not merge within 20 minutes"
-          exit 1
-
-      - name: Publish from the merged main
-        run: |
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
-          ON_MAIN=$(node -p "require('./package.json').version")
-          if [ "$ON_MAIN" != "${{ steps.pkg.outputs.version }}" ]; then
-            echo "::error::main is at $ON_MAIN, expected ${{ steps.pkg.outputs.version }}"
-            exit 1
-          fi
+            --data "{\"text\":\"*plain-forge*: release \`v${{ steps.pkg.outputs.version }}\` published by *${{ github.actor }}* — shipping to npm...\"}"
 
       # No NODE_AUTH_TOKEN: npm exchanges the GitHub OIDC token for a
       # short-lived npm token. Provenance is attached automatically.
+      # Pre-releases go out under the `next` dist-tag so `latest` stays stable.
       - name: Publish
-        run: npm publish --access public
-
-      - name: Tag the release
-        env:
-          VERSION: ${{ steps.pkg.outputs.version }}
         run: |
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-
-      - name: Create the GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.pkg.outputs.version }}
-        run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes
+          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+            npm publish --access public --tag next
+          else
+            npm publish --access public
+          fi
 
       - name: Notify Slack (success)
         if: ${{ success() && env.SLACK_WEBHOOK_URL != '' }}
@@ -197,4 +129,4 @@ jobs:
         run: |
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"*plain-forge*: publishing \`v${{ steps.pkg.outputs.version }}\` to npm FAILED :x:. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+            --data "{\"text\":\"*plain-forge*: publishing \`${{ github.event.release.tag_name }}\` to npm FAILED :x:. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
