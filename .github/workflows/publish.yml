@@ -2,11 +2,14 @@ name: publish
 
 # Publishes to npm when the version in package.json changes on main.
 # Bump the version in a PR; merging it ships the release.
+#
+# Auth is OIDC (npm trusted publishing) — no NPM_TOKEN secret. The trusted
+# publisher must be configured once on npmjs.com for this repo and this exact
+# workflow filename (publish.yml).
 on:
   push:
     branches: [main]
     paths: ['package.json']
-  workflow_dispatch:
 
 concurrency:
   group: publish
@@ -28,16 +31,20 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      contents: write      # push the version tag
-      id-token: write      # npm provenance
+      contents: write      # push the version tag, create the release
+      id-token: write      # OIDC token for trusted publishing
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22      # trusted publishing needs >= 22.14
           cache: npm
-          registry-url: https://registry.npmjs.org
+
+      - name: Use an npm that supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
 
       - run: npm ci
 
@@ -55,11 +62,11 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # No NODE_AUTH_TOKEN: npm exchanges the GitHub OIDC token for a
+      # short-lived npm token. Provenance is attached automatically.
       - name: Publish
         if: steps.check.outputs.publish == 'true'
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
       - name: Tag the release
         if: steps.check.outputs.publish == 'true'
