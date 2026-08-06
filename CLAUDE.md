@@ -16,8 +16,8 @@ So a change here is almost always one of: (a) editing the installer CLI, or (b) 
 ## Commands
 
 ```bash
-npm test                                                   # full suite: node --test "test/**/*.test.mjs"
-node --test --test-name-pattern="<regex>" "test/**/*.test.mjs"   # run a single test by name
+npm test                                                   # full suite: node --test test/*.test.mjs
+node --test --test-name-pattern="<regex>" test/*.test.mjs  # run a single test by name
 node --test test/cli.test.mjs                              # run a single test file
 ```
 
