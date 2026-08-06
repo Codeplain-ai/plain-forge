@@ -16,7 +16,7 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 `requires` establishes a build ordering between modules. The required module is built **before** the current one. This does not necessarily mean the current module extends or depends on the required module's code — it may be completely independent. The `requires` relationship simply ensures the build order is correct.
 
 When this module is rendered:
-- The required module's generated code (`plain_modules/<required_module>`) is copied as the starting point.
+- The required module's generated code (`plain_modules/<required_module>/code`) is copied as the starting point.
 - The required module's `***functional specs***` become visible as **previous functional specs**.
 - Only `exported_concepts` from the required module are available (not its full definitions).
 

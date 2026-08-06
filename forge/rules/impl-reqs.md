@@ -13,7 +13,7 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 
 ## `:UnitTests:` lives here (hard rule)
 - **Everything** about `:UnitTests:` goes in `***implementation reqs***` — paths, approach, packages, framework, conventions, fixtures, mocking policy, file layout, naming, lint / static-analysis gates
-- `:UnitTests:` are part of the generated codebase (they sit inside `plain_modules/<module>/` alongside the implementation), so requirements that shape them are implementation reqs by definition
+- `:UnitTests:` are part of the generated codebase (they sit inside `plain_modules/<module>/code/` alongside the implementation), so requirements that shape them are implementation reqs by definition
 - The unit-test generator reads **only** `***implementation reqs***` — anything about `:UnitTests:` placed elsewhere (e.g. `***test reqs***`) is silently ignored
 - Author each `:UnitTests:` requirement via `add-implementation-requirement` and phrase it in terms of `:UnitTests:` so the partition stays visible at a glance
 

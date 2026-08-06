@@ -59,8 +59,7 @@ These keys reflect choices made in Phase 3 of `forge-plain` and are the bread an
 | `test-script-timeout` | int (seconds) | `120` | Include only when the user explicitly raised/lowered the default. |
 | `template-dir` | path (string) | — | Include whenever the project has an `import` module or a custom template directory (e.g. `template/`). Required for projects with shared templates. |
 | `logging-config-path` | path (string) | `logging_config.yaml` | Points at a **separate** YAML file consumed by Python's `logging.config.dictConfig`. This is the only knob that lets the user actually change log **levels** for the renderer and its dependencies. See [Logging configuration](#logging-configuration) below. Include the key explicitly whenever the project ships a non-default logging config; leave it out only when the user is happy with the renderer's defaults (`INFO` root, `WARNING` for `git`, `ERROR` for `transitions`). |
-| `conformance-tests-folder` | string | `conformance_tests` | Include only when the user picked a non-default folder name. |
-| `build-folder` | string | `plain_modules` | Include only when the user picked a non-default folder name. Must differ from `build-dest`. |
+| `build-folder` | string | `plain_modules` | Include only when the user picked a non-default folder name. Must differ from `build-dest`. The renderer writes `<build-folder>/<module>/code` (implementation + unit tests) and `<build-folder>/<module>/tests` (conformance tests, one folder per functional spec). |
 | `build-dest` | string | `dist` | **Always include with the value `dist`.** This skill pins the copy destination explicitly so every project's `config.yaml` has the same, predictable target folder for the post-render copy. Even though `dist` matches the renderer's default, we still write it out so the choice is visible in the file and protected against future default changes. Must differ from `build-folder`. |
 | `base-folder` | string | — | Include when the user wants build output rooted somewhere other than the project root. |
 
@@ -72,7 +71,7 @@ These are useful but the defaults are almost always fine. Only include them when
 |---|---|---|---|
 | `copy-build` | bool | `true` | The renderer copies the rendered code to `build-dest` after a successful render. Set to `false` only when the user doesn't want this. |
 | `copy-conformance-tests` | bool | `false` | Requires `conformance-tests-script` to also be set. |
-| `conformance-tests-dest` | string | `dist_conformance_tests` | Target folder for the conformance-test copy. Must differ from `conformance-tests-folder`. |
+| `conformance-tests-dest` | string | `dist_conformance_tests` | Target folder for the post-render copy of `plain_modules/<module>/tests`. Must differ from `build-folder`. |
 | `log-to-file` | bool | `true` | Disable only when the user explicitly does not want a log file. Controls whether logs are mirrored to disk — it does **not** set the log level (that's `logging-config-path`'s job). |
 | `log-file-name` | string | `codeplain.log` | If `log-to-file` is `false`, this key must be left out. A relative value set here resolves against the config file's directory; when the key is left out entirely, the default resolves against the `.plain` file's directory. |
 | `render-machine-graph` | bool | `false` | Include only when the user wants the state-machine graph rendered. |

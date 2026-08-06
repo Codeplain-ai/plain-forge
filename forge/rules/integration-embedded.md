@@ -30,6 +30,9 @@ The embedded integration's `.plain` specs (and the rest of the ***plain project 
 │   ├── resources/
 │   ├── test_scripts/
 │   ├── plain_modules/     # generated; gitignored
+│   │   └── <module>/
+│   │       ├── code/      #   implementation + unit tests
+│   │       └── tests/     #   conformance tests, per functional spec
 │   └── config.yaml
 └── src/            # host source tree (Java, Python, etc.)
 ```
@@ -117,7 +120,7 @@ The renderer reads the directives from the spec and the shapes from the linked s
 
 ## Test-script wiring — copy into the host, run tests there
 
-Embedded integrations are tested **inside the host codebase itself**. The prepare and unit-test scripts copy the renderer's output (`$1`, i.e. `plain_modules/<module>/`) into the host's source tree at the module's package path, then compile / test the host project in place. Only the conformance script uses a scratch folder in the system temp directory (`/tmp/<lang>_conformance/`), because the conformance suite is a separate project that consumes the host build as a dependency.
+Embedded integrations are tested **inside the host codebase itself**. The prepare and unit-test scripts copy the renderer's output (`$1`, i.e. `plain_modules/<module>/code/`) into the host's source tree at the module's package path, then compile / test the host project in place. Only the conformance script uses a scratch folder in the system temp directory (`/tmp/<lang>_conformance/`), because the conformance suite is a separate project that consumes the host build as a dependency.
 
 This matters because the integration's generated code references host symbols by their full import path (e.g. `from host_project.integrations.base import IntegrationContract`). Those imports only resolve cleanly when the test process is rooted in the host's package layout — anything else creates path edge cases that bite later in conformance failures.
 

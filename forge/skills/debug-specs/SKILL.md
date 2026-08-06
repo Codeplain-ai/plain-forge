@@ -20,11 +20,11 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 
 ## Guiding Principle
 
-Generated code in `plain_modules/` and `conformance_tests/` is **read-only** — it exists solely as evidence for diagnosis. All fixes are applied exclusively to the `.plain` spec files. The workflow is: observe → read generated code → trace to spec → fix the spec.
+Generated code in `plain_modules/<module>/code/` and `plain_modules/<module>/tests/` is **read-only** — it exists solely as evidence for diagnosis. All fixes are applied exclusively to the `.plain` spec files. The workflow is: observe → read generated code → trace to spec → fix the spec.
 
 ## Input
 
-1. **The module name** — identifies the `plain_modules/<module_name>/` directory and the corresponding `.plain` file(s).
+1. **The module name** — identifies the `plain_modules/<module_name>/` directory (`code/` and `tests/`) and the corresponding `.plain` file(s).
 2. **The user's observation** — what is wrong? This can be a bug description, a screenshot, a test failure, an error message, or a general "this doesn't work right."
 3. **Optional: a specific functional spec** — if the user suspects a particular spec, start there. Otherwise, investigate broadly.
 
@@ -38,7 +38,7 @@ Generated code in `plain_modules/` and `conformance_tests/` is **read-only** —
 
 ## Phase 2 — Investigate the Generated Code
 
-Read files in `plain_modules/<module_name>/` to understand what the renderer produced. **Do not modify any generated files.**
+Read files in `plain_modules/<module_name>/code/` to understand what the renderer produced. **Do not modify any generated files.**
 
 ### 2a. Narrow the search
 
@@ -60,7 +60,7 @@ For each relevant file:
 ### 2c. Check conformance tests and unit tests (if relevant)
 
 If the bug manifests as a test failure:
-1. Read the failing test in `conformance_tests/<module_name>/` or `plain_modules/<module_name>/test/`.
+1. Read the failing test — conformance tests in `plain_modules/<module_name>/tests/<functionality>/`, unit tests inside `plain_modules/<module_name>/code/`.
 2. Understand what the test expects vs. what the implementation does.
 3. Determine whether the test expectation is correct (matches the spec) or incorrect (doesn't match the spec).
 
@@ -164,7 +164,7 @@ revise the new spec
 ## Common Pitfalls
 
 ### Fixing the code instead of the spec
-Never modify files in `plain_modules/` or `conformance_tests/`. Even if the fix is obvious in the code, the change must be made in the `.plain` file so it persists across re-renders.
+Never modify files in `plain_modules/<module>/code/` or `plain_modules/<module>/tests/`. Even if the fix is obvious in the code, the change must be made in the `.plain` file so it persists across re-renders.
 
 ### Treating symptoms instead of root causes
 If the user says "the button is in the wrong place," don't just add positioning detail. Investigate why the renderer placed it there — the root cause might be a missing layout spec, an ambiguous screen description, or a conflict with another spec.

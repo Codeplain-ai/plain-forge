@@ -21,7 +21,7 @@ A **supervisor** around a live `codeplain` render. The renderer itself is the co
 1. Launches `codeplain <module>.plain` (or attaches to an in-flight run).
 2. Watches three signal sources in a tight loop, in priority order:
    - **`codeplain.log`** — the primary signal. Everything the renderer is doing, deciding, retrying, or failing at gets written here. This is the file you stare at.
-   - the generated **code outputs** under `plain_modules/<module>/` and `conformance_tests/<module>/` — a secondary signal, used to corroborate or contradict what the log says.
+   - the generated **code outputs** under `plain_modules/<module>/` and `plain_modules/<module>/tests/` — a secondary signal, used to corroborate or contradict what the log says.
    - the **process / TUI** itself (alive? exited? exit code?) — a tertiary signal, used only to know whether to keep monitoring.
 3. Surfaces what is happening to the user in plain English, in near-real-time.
 4. On pathology, stops the renderer (with user approval), hands off to the right edit skill, and resumes from the last completed functionality.
@@ -76,7 +76,7 @@ Before launching anything:
    - **What "pass" means**, exit-code-wise. Some scripts combine multiple checks (e.g. `unit_testing_typescript.sh` here runs `tsc --noEmit` *and* `vitest`, and its final exit code is the worst of the two — so a type error alone fails the unit-test gate).
    - **What "fail" means**, including any failures that the script deliberately downgrades to warnings (e.g. `prepare_environment_typescript.sh` here treats a failed `npm run build` as a non-fatal warning). Failures the script swallows are failures the renderer will **never see**, so a spec defect that depends on them will silently slip through.
    - **Where the scripts materialize their working environment** (current-convention scripts stage into the system temp directory, e.g. `/tmp/typescript_<build_folder_basename>/`; older scripts used project-local folders like `.tmp/typescript_<build_folder>/`, `build/`, `target/`). This is where the renderer's iteration actually runs; if you need to look at what is breaking, this is the directory — not `plain_modules/<module>/` directly.
-   - **How conformance tests are discovered and staged** (glob, naming convention, alias setup, etc.). Some scripts stage tests into the source tree (this repo flattens `conformance_tests/<module>/<fname>/` into `src/<module>/`); some run them in place; some require a specific file extension. This tells you exactly which conformance test file is in play for a given functionality.
+   - **How conformance tests are discovered and staged** (glob, naming convention, alias setup, etc.). Some scripts stage tests into the source tree (this repo flattens `plain_modules/<module>/tests/<fname>/` into `src/<module>/`); some run them in place; some require a specific file extension. This tells you exactly which conformance test file is in play for a given functionality.
    - **Toolchain prerequisites** the script asserts (Node version, Python version, specific binaries). If any are missing on the user's machine, stop now and tell them — the renderer will burn credits on phantom failures otherwise.
 
    Keep this synthesis short (5–10 bullets, project-specific). It is the single most important reference for the classifier in [Spec-deviation classification](#spec-deviation-classification). The healthcheck only checks that the scripts *exist* and are *referenced correctly*; this step is the only place that reads what they actually *do*.
@@ -132,7 +132,7 @@ All patterns below are taken from the actual codeplain runtime. Treat them as th
 | `Implementing conformance tests...` / `Implementing test requirements:` | Conformance phase starting for the current functionality. | Routine. |
 | `Running testing environment preparation script .* for build folder` | `prepare-environment-script` is running. | Routine. |
 | `\[#79FC96\]All Testing Environment Preparation scripts have passed successfully.\[/#79FC96\]` | Env prep green. | Routine. |
-| `Running conformance tests script .* for conformance_tests/<m>/<fname> \(functionality <N> in module <m>\)` | Conformance tests starting for functionality `<N>`. | Note `<fname>` — that is the on-disk folder where the latest conformance test lives. |
+| `Running conformance tests script .* for plain_modules/<m>/tests/<fname> \(functionality <N> in module <m>\)` | Conformance tests starting for functionality `<N>`. | Note `<fname>` — that is the on-disk folder where the latest conformance test lives. |
 | `Running conformance tests attempt <N>.` | Conformance retry loop. **Watch `<N>` carefully.** | Increment `ATTEMPT_COUNTER = <N>`. At `>=5`, trigger Pathology A. |
 | `Fixing conformance test for functionality <N> in module <m>.` | Renderer is patching its own conformance test between attempts. | On its own, routine. Combined with climbing `<N>`, smoking gun for Pathology A. |
 | `Functional spec too complex!` | Single spec implies >200 LOC. Renderer aborts. | Pathology B. |
@@ -199,7 +199,7 @@ What to extract from the framework output — stay framework-agnostic, look for 
 - **Individual test names that failed**: lines beginning with `×`, `FAIL`, `✗`, `× should ...`, `FAIL src/.../foo.test.ts > <name>`. The *same* test failing across attempts is the smoking gun for an under-specified spec.
 - **Assertion bodies**: `expected X, got Y`. The values reveal exactly what the test expects vs what the implementation produced — the cleanest input to the classifier below.
 - **Compile / type errors** (when the script wraps a type-checker): `error TS<NNNN>`, `cannot find module`, `is not assignable to`. A unit-test gate that keeps re-failing on the same type error means the implementation req or the type-level spec is wrong, not the code.
-- **Stack traces**: which file under the prepared working folder threw, and at which line. Map the file back to `plain_modules/<module>/src/...` to find the code the spec is supposed to be governing.
+- **Stack traces**: which file under the prepared working folder threw, and at which line. Map the file back to `plain_modules/<module>/code/...` to find the code the spec is supposed to be governing.
 - **"No test files found" / "No tests collected"**: the script ran but discovered nothing. Almost always a path/glob mismatch in the staged working folder, not a spec problem. Treat as Pathology F.
 
 Always set the logs to be verbose in `config.yaml`. 
@@ -232,8 +232,8 @@ The inputs to the classifier are:
 1. The **spec** that governs the failing functionality — the functional spec and its acceptance test(s) in the `.plain` file.
 2. The **test-script output** for the most recent attempt, from `codeplain.log` per the section above.
 3. The renderer's own **`.memory/conformance_test_memory/<id>.json`** for this functionality (when present).
-4. The newest **conformance test file** the renderer just edited under `conformance_tests/<module>/<fname>/`.
-5. The newest **implementation file(s)** the renderer just edited under `plain_modules/<module>/`.
+4. The newest **conformance test file** the renderer just edited under `plain_modules/<module>/tests/<fname>/`.
+5. The newest **implementation file(s)** the renderer just edited under `plain_modules/<module>/code/`.
 
 With these in hand, place the current iteration into one of four buckets:
 
@@ -320,15 +320,15 @@ If the process is gone but you haven't yet seen a `✓` or `✗` banner in the l
 
 This is a secondary signal — it confirms what the log already said. Don't go on a fishing trip here.
 
-For the current module, the renderer drops generated code into `plain_modules/<module>/` and conformance tests into `conformance_tests/<module>/<functionality_name>/`. Each pass, inspect what is new:
+For the current module, the renderer drops generated code into `plain_modules/<module>/` and conformance tests into `plain_modules/<module>/tests/<functionality_name>/`. Each pass, inspect what is new:
 
-- New files under `plain_modules/<module>/src/` confirm the functionality is being implemented.
-- New folders under `conformance_tests/<module>/` confirm the functionality has reached the conformance phase.
+- New files under `plain_modules/<module>/code/` confirm the functionality is being implemented.
+- New folders under `plain_modules/<module>/tests/` confirm the functionality has reached the conformance phase.
 - Files that were rewritten between passes are the renderer's "fix" attempts — diffing them across iterations is what reveals whether the renderer is converging or thrashing.
 
 Read **only the newest** file(s) (the ones that changed since last pass), and read them to understand *what the renderer chose to do*, not just *that* it did something. This is the first line of defense against "the spec is ambiguous and the renderer guessed wrong" — you can often spot the wrong guess in the generated code long before tests fail.
 
-Generated code under `plain_modules/` and `conformance_tests/` is **read-only**. Never edit it. Edits go in the `.plain` files.
+Generated code under `plain_modules/<module>/code/` and `plain_modules/<module>/tests/` is **read-only**. Never edit it. Edits go in the `.plain` files.
 
 ### 1d. Cadence
 
@@ -384,7 +384,7 @@ Symptom: log shows the unit-test or conformance-test **script** itself failing (
 
 ```
 ImportError: Start directory is not importable
-/Users/x/project//Users/x/project/conformance_tests/module/spec
+/Users/x/project//Users/x/project/plain_modules/module/tests/spec
 ```
 
 The render then gets stuck "fixing" tests that can never pass. The fix is never a spec edit: stop the render and regenerate the affected scripts via the matching `implement-*-testing-script` skill (current convention: system-temp working folder from `basename "$1"`, `$2` resolved to absolute before any `cd`).
@@ -434,7 +434,7 @@ If the fix required regenerating a module's earlier output (e.g. a definition ch
 When the renderer exits successfully:
 
 1. Read the success banner from the log: render id, generated code folder, functionalities count, used credits, render time. Report it to the user verbatim — these are the numbers they actually care about.
-2. List the top-level files/folders that appeared (or changed) under `plain_modules/<module>/` and `conformance_tests/<module>/` so the user knows where to look.
+2. List the top-level files/folders that appeared (or changed) under `plain_modules/<module>/` and `plain_modules/<module>/tests/` so the user knows where to look.
 3. Remind the user of the **side-channel commands** they may want to run themselves, based on the config:
    - `./test_scripts/<unittests-script>` for unit tests,
    - `./test_scripts/<prepare-environment-script>` to set up the test env,
@@ -446,7 +446,7 @@ When the renderer exits with a failure that wasn't intercepted by Phase 2 (e.g. 
 
 ## Anti-patterns
 
-- **Editing generated code to "fix" a render.** Never. Generated files under `plain_modules/` and `conformance_tests/` exist as evidence only; they are overwritten every render. All fixes go in `.plain` files.
+- **Editing generated code to "fix" a render.** Never. Generated files under `plain_modules/<module>/code/` and `plain_modules/<module>/tests/` exist as evidence only; they are overwritten every render. All fixes go in `.plain` files.
 - **Reading the test scripts' source code to understand what's failing.** Don't. The scripts run real frameworks (vitest, pytest, etc.) and the *output* of those frameworks — captured in `codeplain.log` and in `.memory/conformance_test_memory/*.json` — is what tells you what is failing and why. Reading the script source tells you nothing the log doesn't already say.
 - **Treating every conformance loop as under-specification.** Run the classifier. The renderer sometimes drifts (Bucket 3) by silently weakening its own tests; that is the opposite problem and the fix is different.
 - **Re-reading the whole log on every pass.** It grows. Track the byte offset and read only what was appended since the last pass. Full reads are reserved for "I just saw an error and need backstory."
@@ -480,4 +480,4 @@ When the renderer exits with a failure that wasn't intercepted by Phase 2 (e.g. 
 - [ ] Spec fixes were delegated to the right edit skill, not done inside this skill
 - [ ] Resumes use `--render-from <N+1>` (or `--render-range`) — `--force-render` only with user approval
 - [ ] On success, final render id / credits / time were reported and side-channel test commands were surfaced
-- [ ] No generated code under `plain_modules/` or `conformance_tests/` was modified
+- [ ] No generated code under `plain_modules/<module>/code/` or `plain_modules/<module>/tests/` was modified

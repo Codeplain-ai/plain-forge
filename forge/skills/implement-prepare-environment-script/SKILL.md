@@ -27,7 +27,7 @@ When this script exists for a project, the corresponding conformance script's ow
 
 ### Why this script exists at all (the structural reason)
 
-The conformance test runner is invoked **once per functional spec** by the renderer — not once per render. Each functional spec in a module has its own `conformance_tests/<module>/<spec>/` folder, and after the renderer finishes generating code for a new spec, it runs the conformance tests of **every previous spec** in the same module to detect regressions. For a module with N functional specs, the conformance script is invoked roughly N times on every render.
+The conformance test runner is invoked **once per functional spec** by the renderer — not once per render. Each functional spec in a module has its own `plain_modules/<module>/tests/<spec>/` folder, and after the renderer finishes generating code for a new spec, it runs the conformance tests of **every previous spec** in the same module to detect regressions. For a module with N functional specs, the conformance script is invoked roughly N times on every render.
 
 Without a prepare script, every one of those N invocations does the full dependency install (Python venv + `pip install`, full Maven dependency tree, `npm ci`, `cargo build`, ...) from scratch. That cost — paid N times per render — dominates the wall-clock time of rendering a non-trivial project.
 
@@ -103,7 +103,7 @@ The source build folder passed in as `$1` is **input only**. Prepare reads from 
 - pre-build into it (every compile output — `target/`, `build/`, `dist/`, native binaries, generated sources — lives inside `<temp>/<lang>_<basename>`),
 - create logs, caches, or temp files inside it.
 
-The build folder is shared with the renderer (`plain_modules/...` by default) and with the conformance script, which staging-checks the working folder via `if [ ! -d "/tmp/<lang>_$(basename "$1")" ]` and expects `$1` itself to look the same as it did right after rendering. Writing into `$1` corrupts the renderer's view of "what was generated", churns git status if the project commits `$1`, and (if the conformance script ever does an `rm -rf $1` during its own setup) silently destroys work prepare did.
+The build folder is shared with the renderer (`plain_modules/<module>/code` by default) and with the conformance script, which staging-checks the working folder via `if [ ! -d "/tmp/<lang>_$(basename "$1")" ]` and expects `$1` itself to look the same as it did right after rendering. Writing into `$1` corrupts the renderer's view of "what was generated", churns git status if the project commits `$1`, and (if the conformance script ever does an `rm -rf $1` during its own setup) silently destroys work prepare did.
 
 The whole point of staging into `<temp>/<lang>_<basename>` is so the source build folder stays a clean, reproducible artifact of the render and no build debris lands inside the user's project. Every dependency, every compiled class, every binary, every cache must land inside the working folder — because that is exactly what the conformance script's activate-only variant attaches to.
 
