@@ -51,6 +51,11 @@ jobs:
     name: Publish to npm
     needs: test
     runs-on: ubuntu-latest
+    # Records the release under Deployments → npm, the same way scripts/deploy.sh
+    # does when publishing from a workstation.
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/plain-forge
     permissions:
       contents: read       # read the tagged tree
       id-token: write      # OIDC token for trusted publishing
