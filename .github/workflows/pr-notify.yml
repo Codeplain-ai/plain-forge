@@ -28,5 +28,5 @@ jobs:
         run: |
           TEXT=$(jq -n \
             --arg t "$PR_TITLE" --arg u "$PR_URL" --arg n "$PR_NUMBER" --arg a "$PR_AUTHOR" \
-            '{text: ("*plain-forge*: <" + $u + "|#" + $n + " " + $t + "> merged to `main` :white_check_mark: — by *" + $a + "*.")}')
+            '{text: ("*plain-forge*: <" + $u + "|#" + $n + " " + $t + "> merged to `main` — by *" + $a + "*.")}')
           curl -s -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' --data "$TEXT"
