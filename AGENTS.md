@@ -23,6 +23,7 @@ node --test test/cli.test.mjs                              # run a single test f
 
 - Test runner is **Node's built-in `node:test`** (`node:assert/strict`) — not jest/vitest, no test framework dependency. Requires Node ≥18.
 - `test/cli.test.mjs` mixes unit tests (importing named exports from `bin/cli.mjs`) with black-box integration tests that `spawnSync` the real CLI into isolated temp `HOME`/cwd dirs.
+- Releases are cut by publishing a GitHub Release tagged `vX.Y.Z`, which publishes to npm via OIDC — see [RELEASING.md](RELEASING.md). The version lives in the tag, so `package.json` on `main` is intentionally stale.
 - **There is no working build or lint step.** `package.json` declares `build`/`clean` scripts (`tsx bin/forge-build.ts`) and `tsconfig.json` references `bin/**/*.ts` + `runtimes/**/*.ts`, but **those files do not exist** — `npm run build`/`npm run clean` error out. The TS toolchain (tsx/typescript) is vestigial; the CLI is plain `.mjs` run directly by Node. Don't try to build.
 
 ## The installer CLI (`bin/cli.mjs`)
