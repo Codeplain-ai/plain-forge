@@ -36,7 +36,7 @@ The skill is a **detect → fix → re-run** loop. It does not stop at the first
 
 ### Step 1 — Inventory the project
 
-1. List every `.plain` file in the repo root (and any subdirectories that contain `.plain` files). Build the module graph from each file's YAML frontmatter (`requires`, `import`).
+1. List every `.plain` file in the repo root (and any subdirectories that contain `.plain` files). Build the module graph from each file's YAML frontmatter (`requires`, `import`). Verify the `requires` graph forms a tree: every module's multiple `requires` entries must lie on one root-to-tip ancestor path.
 2. Identify **top modules** — every module that is not `requires`-ed by any other module. A single-stack project has one top module; a multi-part project (e.g. backend + frontend) has one top module per part.
 3. List every `config.yaml` in the repo (root and per-part directories such as `backend/`, `frontend/`).
 4. List every script under `test_scripts/`.

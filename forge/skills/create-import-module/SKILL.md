@@ -89,9 +89,9 @@ import:
 | Pulls in definitions | Yes | No (only `exported_concepts`) |
 | Pulls in implementation reqs | Yes | No |
 | Pulls in test reqs | Yes | No |
-| Pulls in functional specs | No | Yes (as previous requirements) |
-| Copies generated code | No | Yes |
-| Typical use | Templates, shared definitions | Build dependency chain |
+| Pulls in functional specs | No | Yes (as previous requirements, transitively) |
+| Copies generated code | No | Yes (accumulated ancestor chain) |
+| Typical use | Templates, shared definitions | Attaching a module to the build chain |
 
 ## Validation Checklist
 

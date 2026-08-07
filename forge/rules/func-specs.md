@@ -57,7 +57,7 @@ GOOD — statements of fact with concrete subjects:
 - Specs are rendered incrementally, top to bottom
 - The renderer has **no knowledge of future specs** — only previously rendered specs are in context
 - A new spec can reference behavior from earlier specs but cannot assume anything about specs that come after it
-- Functional specs from `requires` modules are treated as previous requirements
+- Functional specs from `requires` modules are treated as previous requirements — transitively, across the whole ancestor chain
 
 ## No conflicts
 - The new spec must not contradict any existing functional spec
