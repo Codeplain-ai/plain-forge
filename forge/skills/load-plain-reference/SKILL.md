@@ -27,6 +27,7 @@ All paths are relative to this `SKILL.md`.
 
 | Task or content | Rule files |
 |---|---|
+| New module, file skeleton, section placement, or comments | `../../rules/module-structure.md` |
 | Definitions or concept usage | `../../rules/definitions.md` |
 | Functional specs or acceptance tests | `../../rules/func-specs.md` |
 | Implementation requirements or unit tests | `../../rules/impl-reqs.md` |
@@ -61,7 +62,7 @@ Authoring rules remain authoritative if a reference appears to conflict with the
 
 | Need | Reference |
 |---|---|
-| Project layout, source-of-truth model, templates, or comments | `references/project-model.md` |
+| Project layout, source-of-truth model, or template inclusion | `references/project-model.md` |
 | Rendering order, generated artifacts, conformance workflow, or test scripts | `references/rendering-and-testing.md` |
 | `codeplain` path resolution or CLI options | Invoke `load-codeplain-reference` |
 
