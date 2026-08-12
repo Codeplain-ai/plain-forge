@@ -15,12 +15,13 @@ A linked resource **must not** be any of the following:
 3. **A binary file.** PNG, JPG, GIF, PDF, DOCX, XLSX, ZIP, MP3, MP4, compiled binaries (`.exe`, `.so`, `.class`, `.wasm`), and anything else that isn't human-readable text in its raw form. Binary content cannot be meaningfully consumed by the renderer — transcribe it into a text-based form first (a UI screenshot becomes a Markdown description, a PDF spec becomes a Markdown extract or the underlying JSON Schema / OpenAPI, an architecture diagram becomes a Mermaid block).
 4. **Another `.plain` file.** `[Auth Module](auth.plain)` is invalid. To reference another module, use the `require` or `import` frontmatter directives. Do not link it as a markdown resource; the `plain-dry-run` will flag this as a syntax error.
 
-
-## URLs and folder paths must not appear *anywhere* in `.plain` content
-- The constraint is not only about markdown links — URLs and folder paths must not appear **anywhere** in `.plain` content (concept body prose, functional-spec text, implementation reqs, test reqs)
-- The renderer cannot follow URLs or open folders; a URL in prose is a *ghost dependency* — it looks meaningful to a human reader but contributes nothing to code generation, and the spec silently drifts from reality
-- **The only exception** is for URLs and paths that are *values the produced software itself uses at runtime* — the base URL an integration calls, a database connection path, a CLI argument default. Those are configuration values, not external references
-- Litmus test: "Would the renderer benefit from reading the bytes at this URL / folder?" If yes, save it to a file and link the file. If no (it's a runtime value the code carries forward), it can stay as plain text
+## Never use a URL or folder path as a *reference* in prose
+- The hard constraint above is enforced only on markdown links. A bare URL or folder path in prose (concept body, functional-spec text, implementation reqs, test reqs) passes validation and is fed to the renderer verbatim as part of the spec text
+- That is exactly why it is dangerous as a *reference*: the renderer cannot fetch the URL or open the folder, so the model sees only the address, not the content behind it. To a human reader the line looks grounded in a source; to the renderer it is a *ghost dependency*, and the spec silently drifts from whatever the URL actually says
+- A URL or path in prose is fine when the *text itself* is the complete fact:
+  - **Runtime values** the produced software uses — the base URL an integration calls, a database connection path, a CLI argument default, an output directory layout
+  - **Provenance notes** for a snapshotted resource — recording the canonical documentation URL a `resources/docs/…` snapshot was fetched from (as the integration rules require)
+- Litmus test: "Would the renderer benefit from reading the bytes at this URL / folder?" If yes, save it to a file and link the file. If no (the address itself is the fact), it can stay as plain text
 
 ## Structured protocol artifacts must be linked, never transcribed
 - JSON Schema, OpenAPI / Swagger, GraphQL SDL, Protobuf `.proto`, Avro / Thrift schemas, XML XSDs, AsyncAPI specs, JSON-RPC method definitions, wire-protocol descriptions, payload examples — anything with a formal machine-readable shape — belongs in a file under `resources/` (or another directory within the project)
