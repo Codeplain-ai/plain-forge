@@ -35,14 +35,3 @@ In addition to frontmatter `import`, ***plain supports parameterized template in
 
 Parameters are key-value pairs. Templates access them with `{{ variable_name }}`. Only variable
 substitution is supported; conditionals, loops, and other Liquid features are not available.
-
-## Comments
-
-Lines beginning with `>` are ignored during rendering:
-
-```plain
-> This is a comment in ***plain.
-```
-
-Comments explain the specification to human authors. Do not use comments to carry requirements the
-renderer must implement.

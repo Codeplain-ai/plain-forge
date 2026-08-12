@@ -89,7 +89,6 @@ Example of defining technical components alongside their behavior:
 
 - :CsvFileReader: reads CSV rows in a batched manner.
 
-
 - :CsvJoiner: joins csvs and uses :CsvFileWriter: to create the merged CSV.
 ```
 
