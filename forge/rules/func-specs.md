@@ -38,7 +38,9 @@ GOOD — statements of fact with concrete subjects:
 ```
 
 ## Complexity limit
-- Each functional spec must imply a **maximum of 200 changed lines of code**
+- The complexity limit is about breaking software into small, independently understandable behavior slices that people and AI can reason about, implement, and test reliably
+- The current mechanism for enforcing the complexity limit is that each functional spec must imply a **maximum of 200 changed lines of code**.
+- Smaller slices produce focused test failures, reduce hidden coupling and regression surface, and make review and incremental rendering more predictable
 - If a spec is too large, use `break-down-func-spec` to split it into multiple smaller, independent specs
 - Use `analyze-if-func-spec-too-complex` to verify before inserting
 - Use `analyze-func-specs` to check a spec (or a batch of specs) against all relevant existing specs in a single batched call; use `resolve-spec-conflict` for each conflicting pair it reports
