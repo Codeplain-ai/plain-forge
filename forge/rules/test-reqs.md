@@ -28,11 +28,11 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 
 ## Test type reference
 
-| Test type | Where to specify | Purpose |
-|-----------|-----------------|---------|
-| Unit tests | `***implementation reqs***` | Test individual functionalities in isolation |
-| Conformance tests | `***test reqs***` | Verify implementation conforms to the full spec |
-| Acceptance tests | `***acceptance tests***` under a functional spec | Verify a specific functional spec |
+| Test type | Where to specify | Generated | Purpose |
+|-----------|-----------------|-----------|---------|
+| Unit tests | `***implementation reqs***` | Automatically | Test individual functionalities in isolation |
+| Conformance tests | `***test reqs***` | Automatically | Verify each functionality's implementation against its functional spec |
+| Acceptance tests | `***acceptance tests***` under a functional spec | Manually | Verify implementation of a functional spec through a specific end-to-end scenario |
 
 ## No duplication
 - Do not duplicate guidance already present in the file or its imports
