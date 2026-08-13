@@ -46,7 +46,7 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 
 ## No duplication
 - Do not duplicate guidance already present in the file or its imports
-- Check imported templates before adding a new req
+- Check imported modules before adding a new req
 
 ## Concept references
 - Reference defined `:Concepts:` where they add clarity

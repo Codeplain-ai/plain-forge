@@ -10,18 +10,16 @@ When creating or editing a `.plain` file that uses `import` or is intended to be
 - An import module contains **only** `***definitions***`, `***implementation reqs***`, and/or `***test reqs***`
 - It must **not** contain `***functional specs***`
 - It must **not** use `requires` in its frontmatter
-- It must live in the **`template/`** directory
-- It may optionally `import` other modules or templates for layered reuse
+- It may optionally `import` other import modules for layered reuse
 
 ## What import does
 - `import` pulls in `***definitions***`, `***implementation reqs***`, and `***test reqs***` from the target module
 - It does **not** pull in `***functional specs***`
-- The default import directory is `template/` — the `template/` prefix is not needed in import paths
 - Import paths omit the `.plain` extension
 
 ## Concept visibility
-- All concepts defined in the imported module become available in the importing module
-- Check for concept name collisions between imports and local definitions before adding
+- All concepts defined in the imported module become available in the importing module — including concepts the imported module itself imports (layered imports are transitive)
+- Check for concept name collisions between imports and local definitions before adding — a collision is rejected as a syntax error ("Concepts were defined multiple times")
 
 ## Format
 

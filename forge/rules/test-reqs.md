@@ -36,7 +36,7 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 
 ## No duplication
 - Do not duplicate guidance already present in the file or its imports
-- Check imported templates before adding a new test req
+- Check imported modules before adding a new test req
 
 ## Concept references
 - Reference predefined concepts like `:ConformanceTests:` where appropriate
