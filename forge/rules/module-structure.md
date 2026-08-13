@@ -16,7 +16,7 @@ When creating a new `.plain` file or reviewing the structure of a whole file, al
 | Field | Purpose | Rule file |
 |---|---|---|
 | `description` | One-line summary of the module; recommended on every module | — |
-| `import` | Pull definitions, implementation reqs, and test reqs from template modules | `import-modules.md` |
+| `import` | Pull definitions, implementation reqs, and test reqs from import modules | `import-modules.md` |
 | `requires` | Attach the module to the build chain of another root module | `requires-modules.md` |
 | `exported_concepts` | Declare which of this module's concepts are visible to modules that `require` it | `exported-concepts.md` |
 | `required_concepts` | Declare concepts an import module expects the importing module to define | `required-concepts.md` |
@@ -30,9 +30,10 @@ When creating a new `.plain` file or reviewing the structure of a whole file, al
   - Functional specs come last because they are rendered incrementally and their nested acceptance tests close the file
 
 ## Module kinds
-- A **root module** lives at the repository root and carries behavior: it contains `***functional specs***` and may use `requires`
-- To be renderable, a root module needs at least one functional spec plus the implementation reqs to build it — its own or from an `import`ed template. A frontmatter-only file is a valid scaffold, but it cannot be rendered until a functional spec is added
-- An **import module** lives in `template/` and contains only `***definitions***`, `***implementation reqs***`, and/or `***test reqs***` — never `***functional specs***`, never `requires` (see `import-modules.md`)
+- A **root module** lives at the repository root and carries behavior: it contains `***functional specs***`
+- To be renderable, a root module needs at least one functional spec plus the implementation reqs to build it — its own or from an `import`ed module (implementation reqs are not inherited through `requires`). A frontmatter-only file is a valid scaffold, but it cannot be rendered until a functional spec is added
+- A **requires module** is a root module that is used by another root module via `requires` directive (see `requires-modules.md`)
+- An **import module** provides shared content that other modules pull in via `import`: it contains only `***definitions***`, `***implementation reqs***`, and/or `***test reqs***` — never `***functional specs***`, never `requires` (see `import-modules.md`)
 
 ## Section ownership (where a fact lives)
 - The renderer reads each kind of fact **only from its owning section** — a fact placed in the wrong section is silently ignored, not flagged

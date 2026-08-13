@@ -13,7 +13,7 @@ When writing or editing a `***definitions***` section in a `.plain` file, always
 
 ## Uniqueness
 - Concept names must be globally unique across the spec and all its imports
-- Check for collisions with imported templates, `import` and `requires` modules before adding
+- Check for collisions with concepts coming from `import` and `requires` modules before adding
 
 ## Predefined concepts (do not redefine)
 - ***plain ships several predefined concepts that are available in every module without being defined

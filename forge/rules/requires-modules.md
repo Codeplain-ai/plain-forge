@@ -4,7 +4,7 @@ description: Rules for creating and using requires modules in .plain files
 
 # Rules for requires modules
 
-When creating or editing a `.plain` file that uses `requires`, always follow these rules:
+When creating or editing a `.plain` file that uses `requires`, or one that is referenced in another `.plain` file's `requires` directive, always follow these rules:
 
 ## What requires does
 
@@ -27,7 +27,7 @@ When creating or editing a `.plain` file that uses `requires`, always follow the
 - Because the required module's generated code is copied as the starting point and the renderer continues building on top of it with a single toolchain, two modules can only be linked with `requires` when they target the **same language, framework, and runtime**
 - A runtime / network dependency between systems is **not** a reason to use `requires`
 - Example of the mistake: a React frontend that talks to a Python/FastAPI backend over HTTP must **not** `requires: [backend]` — the stacks differ
-- Model that pair as two independent root modules (each with its own `config.yaml` and test scripts) and express the contract through a shared API schema in `resources/` or shared concepts in an `import`ed template — never through `requires`
+- Model that pair as two independent root modules (each with its own `config.yaml` and test scripts) and express the contract through a shared API schema in `resources/` or shared concepts in an `import`ed module — never through `requires`
 
 ## Building upon but not necessarily extension
 
@@ -53,8 +53,7 @@ When creating or editing a `.plain` file that uses `requires`, always follow the
 
 - Modules that use `requires` live at the **repository root** — they are functional modules with specs
 - `requires` paths point to other root-level modules (e.g., `auth`, `messaging`)
-- The default import directory is `template/` — the `template/` prefix is not needed in import paths (e.g., `airplain`)
-- Never `require` a template — templates are for `import` only
+- Never `require` an import module — import modules are for `import` only
 
 ## Format
 
