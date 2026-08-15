@@ -51,7 +51,6 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 ## Concept references
 - Reference defined `:Concepts:` where they add clarity
 - All referenced concepts must already be defined in `***definitions***`
-- Implementation reqs in non-leaf sections apply to all subsections
 
 ## Format
 
