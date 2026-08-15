@@ -56,6 +56,21 @@ When creating a new `.plain` file or reviewing the structure of a whole file, al
 
 - Comments explain the specification to human authors — never use a comment to carry a requirement the renderer must implement
 
+## Liquid templates
+- `.plain` files are processed with [Liquid](https://shopify.github.io/liquid/) before parsing — the full Liquid syntax (variables, filters, conditionals, loops) is available in any section
+- Expansion is **textual** and happens before the specification is interpreted — unlike `import`, which includes another module semantically (see `import-modules.md`)
+
+```plain
+{% assign max_tags = 3 %}
+
+***functional specs***
+
+- A :Widget: can be created with up to {{ max_tags }} tags.
+{% if max_tags > 1 %}
+- A :Widget: can have its tags listed.
+{% endif %}
+```
+
 ## Format
 
 ```plain
