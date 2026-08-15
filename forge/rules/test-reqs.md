@@ -50,6 +50,6 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 - :ConformanceTests: will be run using "pytest" command.
 - :ConformanceTests: must be implemented and executed - do not skip tests.
 - :ConformanceTests: should mock all external HTTP calls.
-- :ConformanceTests: are preapred via the preapre script [test_scripts/prepare_environment_python.sh](test_scripts/prepare_environment_python.sh).
+- :ConformanceTests: are prepared via the prepare script [test_scripts/prepare_environment_python.sh](test_scripts/prepare_environment_python.sh).
 - :ConformanceTests: are executed via the run script [test_scripts/run_conformance_tests_python.sh](test_scripts/run_conformance_tests_python.sh).
 ```
