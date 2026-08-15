@@ -94,7 +94,7 @@ GOOD — statements of fact with concrete subjects:
 
 ## Encapsulation
 - Functionality must be self-contained in the spec text
-- `requires` modules only receive functional specs — do not rely on implementation reqs to convey behavior
+- `requires` modules only pass on functional specs and `exported_concepts` — never implementation reqs, so do not rely on implementation reqs to convey behavior
 - Behavior that downstream modules need must be expressed in functional specs, not elsewhere
 
 ## Acceptance tests
