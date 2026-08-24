@@ -201,5 +201,6 @@ If the original spec had acceptance tests, redistribute them to the most appropr
 - [ ] All `:Concepts:` referenced in replacement specs are defined
 - [ ] Any extracted technical component is defined as a concept, built by its own earlier spec, and only **referenced** (not re-described) by the original
 - [ ] Replacement specs are language-agnostic
+- [ ] Replacement specs trimmed per `concise-specs.md` — a split is not a licence to re-add prose
 - [ ] All external interfaces remain explicit
 - [ ] Acceptance tests (if any) have been redistributed or rewritten

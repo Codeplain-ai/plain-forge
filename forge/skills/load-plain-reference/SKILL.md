@@ -37,7 +37,7 @@ All paths are relative to this `SKILL.md`.
 | `required_concepts` | `../../rules/required-concepts.md` |
 | `exported_concepts` | `../../rules/exported-concepts.md` |
 | Linked files or `resources/` | `../../rules/linked-resources.md` |
-| Any `.plain` text or example | `../../rules/bullet-continuation.md` |
+| Any `.plain` text or example | `../../rules/bullet-continuation.md`, `../../rules/concise-specs.md` |
 
 For a whole-file review or a task spanning several sections, load the union of the applicable rule
 files. Do not load every rule by default.

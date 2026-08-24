@@ -10,6 +10,7 @@ When creating a new `.plain` file or reviewing the structure of a whole file, al
 - A `.plain` file is one **module**: optional YAML frontmatter between `---` markers, followed by sections marked with `***section name***` headers
 - The frontmatter, when present, must be the first thing in the file
 - Every content line inside a section must be a `- ` list item — see `bullet-continuation.md`
+- Every line must be as short and plain as its content allows — see `concise-specs.md`
 
 ## Frontmatter fields
 

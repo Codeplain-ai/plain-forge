@@ -28,7 +28,7 @@ This skill is `add-functional-spec` applied **one spec at a time, in order**, wi
 
 1. **Identify the target `.plain` file.** If ambiguous, ask the user.
 2. **Read the entire file** to understand existing definitions, implementation reqs, and all current functional specs (including those reachable via `import` / `requires`).
-3. **Draft all the specs you intend to add**, in the chronological order they should appear. Keep the drafts in a working list — nothing is inserted yet.
+3. **Draft all the specs you intend to add**, in the chronological order they should appear. Keep the drafts in a working list — nothing is inserted yet. Run the review pass in `concise-specs.md` over every draft before continuing; trim each to the shortest wording that keeps every fact.
 4. **For each drafted spec, in order:**
    1. **Analyze complexity.** Run `analyze-if-func-spec-too-complex` on the spec. If the verdict is `TOO COMPLEX`, run `break-down-func-spec`, replace the entry in the working list with the resulting smaller specs (preserving order), and restart this step on the first of the replacements.
    2. **Check for conflicts.** Run `analyze-func-specs` **once** with this single input set:
@@ -114,5 +114,6 @@ If any of the newly added functional specs need verification, use the `add-accep
 - [ ] All external interfaces explicit (endpoint paths, methods, CLI args, formats, etc.)
 - [ ] All referenced `:Concepts:` are defined in `***definitions***`
 - [ ] Sentences are short, clear, and unambiguous
+- [ ] Every spec trimmed per `concise-specs.md`: nothing obvious, no rationale, no uncheckable adjectives or hedges, plain words throughout
 - [ ] No redundancy with existing specs or within the batch
 - [ ] Specs placed in correct chronological positions

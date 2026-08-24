@@ -90,6 +90,7 @@ Before adding a new spec, run through this quick conflict check:
 - [ ] Root cause diagnosed (implementation / tests / true conflict)
 - [ ] Resolution strategy chosen and applied
 - [ ] Revised specs are language-agnostic
+- [ ] Revised specs trimmed per `concise-specs.md` — added disambiguation stays as short as it can be
 - [ ] Revised specs each imply ≤ 200 LOC
 - [ ] No new conflicts introduced by the fix
 - [ ] Chronological ordering preserved

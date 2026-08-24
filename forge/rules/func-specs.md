@@ -37,6 +37,11 @@ GOOD — statements of fact with concrete subjects:
 - A :User: can add a :Task:. Only valid :Task: items are added.
 ```
 
+## Conciseness
+- A functional spec that a human will not read is not reviewed, so every spec must be as short as its content allows — see `concise-specs.md`
+- Cut anything obvious, any rationale, and every uncheckable adjective; keep every interface detail, boundary case, and disambiguation
+- Shorten the wording, never the facts: the rules below always win over brevity
+
 ## Complexity limit
 - The complexity limit is about breaking software into small, independently understandable behavior slices that people and AI can reason about, implement, and test reliably
 - The current mechanism for enforcing the complexity limit is that each functional spec must imply a **maximum of 200 changed lines of code**.

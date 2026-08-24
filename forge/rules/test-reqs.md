@@ -42,6 +42,10 @@ When writing or editing a `***test reqs***` section in a `.plain` file, always f
 - Reference predefined concepts like `:ConformanceTests:` where appropriate
 - All other referenced `:Concepts:` must be defined in `***definitions***`
 
+## Conciseness
+- State each req in the fewest plain words that stay exact — see `concise-specs.md`
+- Do not restate the default behavior of the test framework this section already names
+
 ## Format
 
 ```plain
