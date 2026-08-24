@@ -82,7 +82,6 @@ This rule applies to **host source code only**. Other artifacts still live under
 
 - **Contract schemas authored by the integration** — `resources/contract/<entry-point>.schema.json`
 - **Configuration schema** — `resources/config.schema.json`
-- **Captured probe responses** (from the live-API cross-check) — `resources/fixtures/<endpoint>.<case>.json`
 - **Static lookup tables** the integration owns — `resources/error-map.yaml`, `resources/retry-policy.yaml`, etc.
 
 The rule of thumb: if the host wrote it and ships it, link it where the host put it. If the integration is authoring it for the first time, it goes under `resources/`.

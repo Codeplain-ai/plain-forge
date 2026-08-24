@@ -28,7 +28,6 @@ Pick the right format per artifact:
 | Error code → category mapping | YAML enum | `resources/error-map.yaml` |
 | Rate-limit header inventory | YAML enum | `resources/rate-limit-headers.yaml` |
 | Retry policy parameters | YAML enum | `resources/retry-policy.yaml` |
-| Captured probe responses | Raw JSON | `resources/fixtures/<endpoint>.<case>.json` |
 
 Rules that flow from this:
 
@@ -47,13 +46,11 @@ Documentation lies — it goes stale, omits undocumented fields, describes a dif
   - If the environment has **no web-search tool** (only URL-based `fetch` is available), say so explicitly, construct the URL from the provider's well-known documentation root and crawl outward by `fetch`-ing that root and following its links, and ask the user for the canonical URL whenever you cannot reach the right page that way. Never substitute memory for the search-then-fetch step.
 - **Always `fetch` the provider's documentation — even if you already "know" the API.** The only acceptable source of truth for what the API looks like *today* is the provider's own live documentation, retrieved with `fetch` at spec-authoring time. This applies without exception — there is no API well-known enough to skip this step, and a spec authored from memory is a spec authored against the wrong contract. Concretely:
   - Before authoring **any** endpoint, auth, error, pagination, or webhook concept, **web-search to locate the relevant documentation page(s), then `fetch` each one** and quote concrete details (status codes, field names, header names, error formats) directly from the fetched content into the resources under `resources/`. Never paraphrase from memory.
-  - Save the fetched documentation snapshot under `resources/docs/<provider>/<page>.md` (or `.html` if structure matters) so the spec has a stable doc artifact the renderer and reviewers can consult, independent of the live URL changing or going behind auth.
   - If a documentation page is unreachable (paywall, login wall, JS-only render that `fetch` can't see), say so explicitly and ask the user for the canonical content rather than filling the gap from memory.
   - **The fetched documentation is then cross-checked against the live API** — see the rest of this section.
 - **Validate credentials against the live API** before authoring downstream specs. A 2xx on a low-risk read-only endpoint (`/v1/me`, `/account`, `/whoami`, `/health`) is the gate. On 401/403, stop and resolve before continuing. The credentials should be validated against the live API before any downstream specs are authored.
 - **Issue the minimum cross-check coverage** with `fetch`: one discovery / schema endpoint if available, one list endpoint per primary entity in scope, one single-object retrieval per primary entity, one empty/boundary response, one 404, one 400/422, and one deliberate 401.
-- **Save every probe response under `resources/fixtures/`** with credentials redacted. The fixtures become the seed for `resources/<provider>.openapi.yaml` and feed conformance tests later.
-- **Every discrepancy is recorded, not smoothed over.** Each finding goes into the relevant resource (the OpenAPI file, the error envelope schema, `rate-limit-headers.yaml`, …) as the source of truth, with a short note in the corresponding concept saying "docs claim X, live API returns Y; we follow the live API".
+- **Where the docs and the live API disagree, the live API wins** — the resource records what the API actually returns, and nothing records the disagreement itself.
 - **Only `GET` / `HEAD` / `OPTIONS` on the cross-check.** Mutating calls (`POST`, `PATCH`, `PUT`, `DELETE`) require explicit per-call user confirmation and must target a sandbox account.
 - **Credentials are never written to `.plain` files or summaries.** Reference them by env-var name only.
 
@@ -61,7 +58,7 @@ Documentation lies — it goes stale, omits undocumented fields, describes a dif
 
 Integrations exist to talk to a real third-party (or internal) API. Their `:ConformanceTests:` therefore **always run against the live integration** — no VCR cassettes, no recorded fixtures, no `nock` / `WireMock` / `MSW` mocks for the calls under test. A "green" conformance run that never touched the provider proves nothing about the integration.
 
-- The integration's `:ConformanceTests:` **must** make real network calls to the provider (typically a sandbox / staging environment, occasionally production for read-only paths). Fixtures under `resources/fixtures/` exist for unit tests and for grounding the schemas in the OpenAPI file — they are **not** a substitute for live conformance
+- The integration's `:ConformanceTests:` **must** make real network calls to the provider (typically a sandbox / staging environment, occasionally production for read-only paths). Recorded responses may back unit tests, but they are **not** a substitute for live conformance
 - The only exceptions are paths that **cannot** be exercised live safely:
   - **Rate-limit (429) tests** — must not exhaust the live quota; use a local mock for that specific endpoint
   - **Deliberately destructive failure modes** (forced 5xx) the provider doesn't let you trigger — same; mock the specific endpoint
@@ -128,11 +125,11 @@ A production-ready integration spec captures every corner case the API can throw
 ## Anti-patterns (do not do these)
 
 - **Restating an OpenAPI / JSON Schema field list in a concept or functional spec.** The schema lives in `resources/`; the spec links to it
-- **Pasting a webhook payload, error envelope, or list-endpoint response inline.** Save it as a fixture under `resources/fixtures/` and link the fixture
+- **Pasting a webhook payload, error envelope, or list-endpoint response inline.** Describe its shape in the applicable schema under `resources/` and link that schema
 - **Inlining a host base class body into the contract spec.** Add the host file as a linked resource under `resources/host/` and reference it by FQN
 - **Embedding credentials, tokens, or signing keys in a `.plain` file or in a summary** — credentials are referenced by env-var name only
 - **Authoring against unverified credentials.** Validate first; if the user has no credentials yet, flag it in the module's frontmatter description and re-validate once credentials arrive
 - **`requires`-ing a separate-stack module** (a Python backend `requires`-ing a React frontend, or vice versa) — see [`requires-modules.md`](requires-modules.md). Use a shared API schema in `resources/` instead
 - **Authoring Phase 1 specs from the docs first and "reconciling" with the live API later.** Probe the API as you reach each topic; the live response is the source of truth from the moment it's captured
-- **Writing any integration spec from memory of the provider's API instead of web-searching for its documentation and `fetch`-ing every relevant page first.** No matter how well-known the API (Stripe, GitHub, Slack, Salesforce, AWS, OpenAI, …), the canonical pages must be located with web search and then retrieved with `fetch` at spec-authoring time and saved under `resources/docs/<provider>/` — see *Live API must be cross-checked against the documentation*. Authoring from memory bakes in whatever version of the API was current during training, which is always older than the version the integration will actually call
+- **Writing any integration spec from memory of the provider's API instead of web-searching for its documentation and `fetch`-ing every relevant page first.** No matter how well-known the API (Stripe, GitHub, Slack, Salesforce, AWS, OpenAI, …), the canonical pages must be located with web search and then retrieved with `fetch` at spec-authoring time — see *Live API must be cross-checked against the documentation*. Authoring from memory bakes in whatever version of the API was current during training, which is always older than the version the integration will actually call
 - **Guessing a documentation URL from memory and `fetch`-ing it without searching first.** A remembered URL may 404, redirect to a stale version, or miss the page that actually documents the topic. Search to find the authoritative, current links, then fetch the full set
