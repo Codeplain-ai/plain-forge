@@ -4,7 +4,7 @@
   "description": "Conversational spec-writing tool for ***plain specification language",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "repository": {
     "type": "git",

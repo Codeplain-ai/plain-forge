@@ -162,7 +162,7 @@ at the repo root — gitignored, and the only place a webhook should live locall
 | Trusted publisher | npmjs.com → `plain-forge` → Settings → Trusted Publisher | GitHub Actions, `plainlang/plain-forge`, workflow `publish.yml` |
 | `SLACK_WEBHOOK_URL` | repo secret | notifications are skipped without it |
 | `LINEAR_ACCESS_KEY` | repo secret | records the release in Linear; the job is currently commented out in `publish.yml` |
-| Branch protection | `main` | `Test (node 18 / 20 / 22)` required, no force pushes, no deletion |
+| Branch protection | `main` | `Test (node 22 / 24)` required, no force pushes, no deletion |
 
 **The workflow filename is part of the trust contract.** Renaming `publish.yml` breaks
 publishing until the trusted publisher entry on npmjs.com is updated to match.
