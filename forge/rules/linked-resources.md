@@ -20,7 +20,7 @@ A linked resource **must not** be any of the following:
 - That is exactly why it is dangerous as a *reference*: the renderer cannot fetch the URL or open the folder, so the model sees only the address, not the content behind it. To a human reader the line looks grounded in a source; to the renderer it is a *ghost dependency*, and the spec silently drifts from whatever the URL actually says
 - A URL or path in prose is fine when the *text itself* is the complete fact:
   - **Runtime values** the produced software uses — the base URL an integration calls, a database connection path, a CLI argument default, an output directory layout
-  - **Provenance notes** for a snapshotted resource — recording the canonical documentation URL a `resources/docs/…` snapshot was fetched from (as the integration rules require)
+  - **Provenance notes** for a snapshotted resource — recording the canonical URL a file saved under `resources/` was fetched from
 - Litmus test: "Would the renderer benefit from reading the bytes at this URL / folder?" If yes, save it to a file and link the file. If no (the address itself is the fact), it can stay as plain text
 
 ## Structured protocol artifacts must be linked, never transcribed
