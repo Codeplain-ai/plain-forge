@@ -46,7 +46,7 @@ jobs:
           ref: ${{ github.event.release.tag_name || github.sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 22      # the engines floor
           cache: npm
       - run: npm ci
       - run: npm test
@@ -82,7 +82,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22      # trusted publishing needs >= 22.14
+          node-version: 24      # LTS; npm trusted publishing needs >= 22.14
           cache: npm
 
       - name: Use an npm that supports trusted publishing
