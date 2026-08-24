@@ -69,5 +69,6 @@ Reference predefined concepts like `:ConformanceTests:` and any defined `:Concep
 - [ ] Describes conformance testing concerns, not unit tests or behavior
 - [ ] All referenced `:Concepts:` are defined (or are predefined like `:ConformanceTests:`)
 - [ ] Does not duplicate guidance already present in the file or its imports
+- [ ] Trimmed per `concise-specs.md`: plain words, no rationale, no default framework behavior
 - [ ] Placed inside a `***test reqs***` section
 - [ ] No behavioral requirements that should be in `***functional specs***`

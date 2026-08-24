@@ -19,7 +19,7 @@ Always use the skill `load-plain-reference` to retrieve the ***plain syntax rule
 
 1. **Identify the target `.plain` file.** If ambiguous, ask the user.
 2. **Read the entire file** to understand existing definitions, implementation reqs, and all current functional specs (including those in `requires` modules).
-3. **Draft the functional spec** following the rules below.
+3. **Draft the functional spec** following the rules below, then run the review pass in `concise-specs.md` over the draft — trim it to the shortest wording that keeps every fact before any other check.
 4. **Analyze complexity** — use the `analyze-if-func-spec-too-complex` skill to verify the drafted spec implies ≤ 200 LOC. If too complex, use the `break-down-func-spec` skill to split it, then repeat from step 3 for each resulting spec.
 5. **Check for conflicts** with every existing functional spec — this is critical. Run `analyze-func-specs` **once** with the new spec plus all existing specs (in the file and in any `requires` chain) as a single batch. The batched analyzer returns every conflicting pair in one call — do **not** invoke a pair-by-pair analyzer. For each conflicting pair it reports, run `resolve-spec-conflict` on that pair; re-run `analyze-func-specs` over the touched set after each resolution until the verdict is `COMPATIBLE`.
 6. **Append the spec** to the end of the `***functional specs***` section (specs are chronological; new ones go last).
@@ -80,5 +80,6 @@ If the functional spec needs verification, use the `add-acceptance-test` skill t
 - [ ] All external interfaces are explicit (endpoint paths, methods, CLI args, formats, etc.)
 - [ ] All referenced `:Concepts:` are defined in `***definitions***`
 - [ ] Sentences are short, clear, and unambiguous
+- [ ] Trimmed per `concise-specs.md`: nothing obvious, no rationale, no uncheckable adjectives or hedges, plain words throughout
 - [ ] No redundancy with existing specs
 - [ ] Placed in correct chronological position (usually at the end)

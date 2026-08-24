@@ -82,5 +82,6 @@ Reference defined `:Concepts:` where they add clarity. Implementation reqs in no
 - [ ] Describes HOW to build, not WHAT to build
 - [ ] All referenced `:Concepts:` are defined in `***definitions***`
 - [ ] Does not duplicate guidance already present in the file or its imports
+- [ ] Trimmed per `concise-specs.md`: plain words, no rationale, no standard behavior of a technology already named
 - [ ] Placed inside a `***implementation reqs***` section
 - [ ] No behavioral requirements that should be in `***functional specs***`

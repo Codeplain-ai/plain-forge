@@ -44,6 +44,10 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 - `requires` modules only pass on functional specs and `exported_concepts` — never implementation reqs
 - If downstream modules need certain behavior to be visible, express it in functional specs, not here
 
+## Conciseness
+- State each req in the fewest plain words that stay exact — see `concise-specs.md`
+- Do not restate the standard behavior of a technology this section already names
+
 ## No duplication
 - Do not duplicate guidance already present in the file or its imports
 - Check imported modules before adding a new req

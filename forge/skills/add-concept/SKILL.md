@@ -68,4 +68,5 @@ Attributes and constraints are nested sub-bullets:
 - [ ] All referenced concepts (`:OtherConcept:`) are already defined above
 - [ ] No circular references between concepts
 - [ ] Description is clear, concise, and language-agnostic
+- [ ] Trimmed per `concise-specs.md`: one plain sentence, no restatement of the name, no rationale
 - [ ] Placed inside a `***definitions***` section

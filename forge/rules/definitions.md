@@ -31,6 +31,10 @@ When writing or editing a `***definitions***` section in a `.plain` file, always
 | `:ConformanceTests:` | Auto-generated tests verifying conformance to the spec |
 | `:AcceptanceTest:` / `:AcceptanceTests:` | Tests validating specific aspects of the implementation |
 
+## Conciseness
+- A definition is one plain sentence plus, where needed, its attributes — see `concise-specs.md`
+- Never restate the concept name as its own definition, and never explain why the concept exists
+
 ## Define before use
 - A concept must be defined before it is referenced in any section (definitions, implementation reqs, functional specs, test reqs)
 - Sources of definitions: the module's own `***definitions***`, an `import`ed module's definitions, or a `require`d module's `exported_concepts`

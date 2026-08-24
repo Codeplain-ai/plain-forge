@@ -95,6 +95,7 @@ Acceptance tests extend conformance tests and are implemented according to the `
 - [ ] Nested under the correct functional spec
 - [ ] Indentation is correct (`***acceptance tests***` indented under the spec)
 - [ ] Each test describes a concrete, verifiable outcome
+- [ ] Trimmed per `concise-specs.md`: plain words, no obvious steps, no restatement of the parent spec
 - [ ] Tests are scoped to the parent functional spec only
 - [ ] Written in language-agnostic terms
 - [ ] No duplication with existing acceptance tests on the same spec

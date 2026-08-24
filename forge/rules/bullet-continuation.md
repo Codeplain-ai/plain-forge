@@ -11,6 +11,7 @@ These rules apply to every section and to concept explanations.
 - `.plain` does not impose a maximum number of characters per line
 - Do not split a valid line merely to satisfy an arbitrary formatting width
 - Prefer clear, precise wording; concision must never remove required detail
+- Length is bounded by content, not by width: say everything required, in the fewest plain words that stay exact (see `concise-specs.md`)
 
 ## One statement per line
 
