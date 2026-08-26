@@ -1,6 +1,6 @@
 # Phase 2 — What technologies should it use?
 
-Gather the technical stack **and** the project's structure/architecture. This phase affects only `***implementation reqs***` — testing concerns come later. Run the core loop (ask → author → review) from `SKILL.md` for each topic below, in order. When the user has no preference, propose a sensible default that fits earlier answers and ask them to confirm.
+Gather the technical stack **and** the project's structure/architecture. This phase affects only `***implementation reqs***` — testing concerns come later. Phase 1 may already have left technology-free policy reqs there (retries, error handling, data formats); read them before topic 1, and revisit one only where the chosen stack contradicts it or supplies it natively. Run the core loop (ask → author → review) from `SKILL.md` for each topic below, in order. When the user has no preference, propose a sensible default that fits earlier answers and ask them to confirm.
 
 ## Author target for this phase
 

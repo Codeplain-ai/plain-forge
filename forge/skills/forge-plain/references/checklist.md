@@ -37,7 +37,8 @@ A box is met only when its source confirms it. Return `APPROVED` only when every
 - [ ] **[disk]** `.plain` module structure created with YAML frontmatter; template (if any) has no `***functional specs***`.
 - [ ] **[both]** Every concept authored in `***definitions***` via `add-concept`, defined before use.
 - [ ] **[both]** Every feature authored as functional specs via `add-functional-spec(s)`, each ≤200 LOC, in chronological build order.
-- [ ] **[disk]** No `***implementation reqs***`, `***test reqs***`, or `***acceptance tests***` written in this phase.
+- [ ] **[disk]** No `***test reqs***` or `***acceptance tests***` written in this phase.
+- [ ] **[disk]** Every `***implementation reqs***` bullet written this phase is technology-free policy — none names a language, framework, library, storage engine, or deployment target.
 - [ ] **[record]** Summarized the full feature list and module/concept layout; got explicit overall confirmation.
 
 ## Phase 2 — What tech should it use?

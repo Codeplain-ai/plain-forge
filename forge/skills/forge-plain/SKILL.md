@@ -82,7 +82,7 @@ When entering a phase, read its reference file and walk its topics **in order** 
 | Phase | Reference | Finished when |
 |---|---|---|
 | 0 — What is the intent? | `references/phase-0-intent.md` | a concise intent brief covering the problem, primary user and outcome, and initial boundary is explicitly confirmed; nothing is written to disk |
-| 1 — What are we building? | `references/phase-1-product.md` | the new `***definitions***` and `***functional specs***` are on disk and approved |
+| 1 — What are we building? | `references/phase-1-product.md` | the new `***definitions***` and `***functional specs***`, plus any technology-free `***implementation reqs***`, are on disk and approved |
 | 2 — What tech should it use? | `references/phase-2-tech.md` | the new `***implementation reqs***` are on disk and approved |
 | 3 — How is testing done? | `references/phase-3-testing.md` | the `***test reqs***` (and `***acceptance tests***` if conformance is on) are on disk, the `test_scripts/` and `config.yaml`(s) exist, and `check-plain-env` passed or each gap was acknowledged |
 | 4 — Validate and hand off | `references/phase-4-validate-handoff.md` | the agent ran `codeplain <module>.plain --dry-run` successfully against the render target, and the user has the render command plus every side-channel command |
