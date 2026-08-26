@@ -66,7 +66,7 @@ Implementation reqs are bullet points in the `***implementation reqs***` section
 
 - :Implementation: should use pip for dependency management.
 
-- When writing CSV files, :Implementation: should use streaming writes to avoid holding large datasets in memory.
+- :ReportExporter: writes a :CsvFile: with streaming writes, never holding the full dataset in memory.
 
 ```
 

@@ -55,6 +55,7 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 ## Concept references
 - Reference defined `:Concepts:` where they add clarity
 - All referenced concepts must already be defined in `***definitions***`
+- Make the component a req constrains its subject; `:Implementation:` is the whole codebase, so use it only for a fact that holds everywhere — language, dependency manager, stack-wide convention
 
 ## Format
 
@@ -62,6 +63,6 @@ When writing or editing an `***implementation reqs***` section in a `.plain` fil
 ***implementation reqs***
 - :Implementation: should be in Python 3.12.
 - :Implementation: should use pip for dependency management.
-- When writing CSV files, :Implementation: should use streaming writes to avoid holding large datasets in memory.
+- :ReportExporter: writes a :CsvFile: with streaming writes, never holding the full dataset in memory.
 - :UnitTests: are executed via the run script [test_scripts/run_unittests_python.sh](test_scripts/run_unittests_python.sh).
 ```
