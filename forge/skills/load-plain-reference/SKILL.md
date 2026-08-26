@@ -28,6 +28,7 @@ All paths are relative to this `SKILL.md`.
 | Task or content | Rule files |
 |---|---|
 | New module, file skeleton, section placement, or comments | `../../rules/module-structure.md` |
+| Moving facts between sections (see `resolve-section-ownership`) | `../../rules/module-structure.md`, plus the rule file of each section involved |
 | Definitions or concept usage | `../../rules/definitions.md` |
 | Functional specs or acceptance tests | `../../rules/func-specs.md` |
 | Implementation requirements or unit tests | `../../rules/impl-reqs.md` |

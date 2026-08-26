@@ -262,6 +262,7 @@ On `install`, the CLI reads `forge/skills` and `forge/rules` and writes them int
 | `analyze-func-specs` | Check a batch of specs (2+) against each other in one call and return every conflicting pair |
 | `analyze-2-func-specs` | Legacy: check exactly two specs for conflicts (prefer `analyze-func-specs`) |
 | `break-down-func-spec` | Split an overly complex spec into smaller specs (each ≤ 200 LOC) |
+| `resolve-section-ownership` | Move each fact to the section that owns it — splits a bullet carrying several kinds of fact, and relocates a misplaced one the renderer is silently ignoring |
 | `resolve-spec-conflict` | Resolve a conflict between two functional specs |
 
 ### Debugging and Testing
