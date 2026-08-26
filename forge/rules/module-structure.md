@@ -39,6 +39,7 @@ When creating a new `.plain` file or reviewing the structure of a whole file, al
 ## Section ownership (where a fact lives)
 - The renderer reads each kind of fact **only from its owning section** — a fact placed in the wrong section is silently ignored, not flagged
 - Before writing any requirement, place it by content:
+- To move facts that are already misplaced, or to split a bullet carrying several kinds of fact, use the `resolve-section-ownership` skill
 
 | Content | Owning section | Rule file |
 |---|---|---|
