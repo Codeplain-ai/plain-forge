@@ -28,9 +28,11 @@ Pick the right format per artifact:
 | Error code → category mapping | YAML enum | `resources/error-map.yaml` |
 | Rate-limit header inventory | YAML enum | `resources/rate-limit-headers.yaml` |
 | Retry policy parameters | YAML enum | `resources/retry-policy.yaml` |
+| Provider behavior with no machine-readable home | Markdown | `resources/<provider>-notes.md` |
 
 Rules that flow from this:
 
+- **Provider behavior is recorded, not specified.** How the provider itself works — its quota accounting, consistency guarantees, documented quirks, and any place the live API diverges from its docs — is true and worth capturing, but it is not a requirement on the software being built. Whatever has a machine-readable home in the table above goes there; the rest goes in `resources/<provider>-notes.md`. A functional spec never states provider behavior; it states what the integration does in the face of it.
 - **Concepts carry references, not data.** An endpoint concept names the endpoint and points at its OpenAPI `paths.<path>.<method>` entry; it does not duplicate the request/response shape in concept attributes. Same for webhook concepts, error-model concepts, pagination concepts, etc.
 - **Functional specs consume linked resources.** A spec describes **behavior** ("call endpoint X, parse the response, classify errors, retry on 5xx") and links to the resource that supplies the **shape**. Field names, types, and validation rules live in the resource file.
 - **Schemas are versioned by file path.** When the provider releases a new API version, copy the new OpenAPI file to a new path (e.g. `resources/<provider>.v2.openapi.yaml`); never mutate the v1 file in place.
