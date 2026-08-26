@@ -66,7 +66,7 @@ Ask one writable question per `AskUserQuestion` call, targeting exactly one of:
 - **A concept** — a new concept, or one single attribute of an existing one.
 - **A single edge case** — one invalid input, empty state, or boundary value.
 - **A single constraint** — one business rule, permission, ordering, or size limit.
-- **Implementation guidance** — only when the functionality needs technology / a library / a pattern not already in the file or its imports.
+- **Implementation guidance** — a policy that shapes how the functionality is built (retry, error handling, data format), or technology / a library / a pattern not already in the file or its imports.
 - **Verification** — only when the *Conformance gate* below is satisfied: one concrete outcome that proves this functionality works.
 
 Never bundle a second question into the prompt; never ask a question whose answer doesn't translate into a writable snippet on its own.
@@ -77,7 +77,7 @@ Route each answer to the right edit skill — never hand-author a `***plain` sec
 
 - **New concept** → `add-concept` (into `***definitions***`; define before any reference).
 - **New functional spec** → `add-functional-spec`. It runs `analyze-if-func-spec-too-complex` and `analyze-func-specs` for you — let it. **Never hand-author functional specs.** If it reports the spec is too complex, ask the user a follow-up question to split it (the next loop iteration) — do not break it down alone.
-- **New implementation req** → `add-implementation-requirement`. Only when the answer introduces technology / a library / a data format / an architectural pattern not already present.
+- **New implementation req** → `add-implementation-requirement`. When the answer states HOW the functionality is built — a retry or error-handling policy, a data format, a library, an architectural pattern — and it is not already in the file or its imports.
 - **New acceptance test** → `add-acceptance-test`, under the relevant functional spec. Only when the *Conformance gate* is satisfied and the answer describes a concrete verification.
 - **New test req** → `add-test-requirement`. Only when conformance testing is configured and the answer changes how conformance tests are run.
 
