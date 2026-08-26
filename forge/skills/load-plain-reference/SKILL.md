@@ -39,6 +39,7 @@ All paths are relative to this `SKILL.md`.
 | `exported_concepts` | `../../rules/exported-concepts.md` |
 | Linked files or `resources/` | `../../rules/linked-resources.md` |
 | Any `.plain` text or example | `../../rules/bullet-continuation.md`, `../../rules/concise-specs.md` |
+| Drafting or trimming spec wording, or reviewing a spec for verbosity | `../../rules/concise-specs-examples.md` |
 
 For a whole-file review or a task spanning several sections, load the union of the applicable rule
 files. Do not load every rule by default.
@@ -54,6 +55,9 @@ Then read the rule matching the integration shape:
 - Embedded integration: `../../rules/integration-embedded.md`
 - Standalone integration: `../../rules/integration-standalone.md`
 - Embedded integration test scripts: `../../rules/integration-embedded-testing.md`
+
+When drafting or trimming the wording of an integration spec, also read
+`../../rules/concise-specs-integration-examples.md`.
 
 Do not load integration rules for ordinary non-integration specs.
 
