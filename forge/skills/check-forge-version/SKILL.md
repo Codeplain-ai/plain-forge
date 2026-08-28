@@ -95,16 +95,27 @@ is one found in the current working directory, and `global` is one under the hom
 Relay the verdict to the user, then act on it:
 
 - **`PASS`** — state the installed version and that it is current. Stop. Do not suggest an update.
-- **`FAIL`** or **`WARN`** — name each affected install by agent, scope, and path; give the installed
-  version and the latest version; then **prompt the user to run**:
+- **`FAIL`** or **`WARN`** — do not report this as a passing aside. Lead with the recommendation,
+  name each affected install by agent, scope, and path, give the installed version and the latest
+  version, and **ask the user directly to update before continuing**:
 
   ```
   npx plain-forge update
   ```
 
-  Say that `update` auto-detects every install across both scopes, so a single run covers all of
-  them, and that it prunes files that no longer ship while never touching the user's own or
-  third-party files. Then **stop and wait** — do not run it.
+  State plainly that **continuing on an outdated plain-forge is not recommended** — its skills and
+  rules have been superseded, specs authored against them may not match what the current `codeplain`
+  renderer expects, and fixes released since the installed version are not in effect. On `WARN`,
+  where the version could not be confirmed, say the install should be treated as outdated until
+  proven otherwise.
+
+  Add that a single `update` run covers every install across both scopes, prunes files that no longer
+  ship, and never touches the user's own or third-party skills — so the fix is one command and
+  carries no risk to their content.
+
+  Then **stop and wait for the user** — do not run the update. If the user chooses to continue
+  without updating, proceed with the task, but say once that the stale rules are a likely source of
+  any surprising behaviour that follows.
 - **`NONE`** — report that plain-forge is not installed here and surface `npx plain-forge install`,
   noting that the script's output lists every directory that was checked.
 - **`ERROR`** — report that the installed versions could not be compared against anything, give the
