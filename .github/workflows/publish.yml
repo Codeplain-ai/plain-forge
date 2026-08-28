@@ -246,8 +246,22 @@ jobs:
             echo "Try it: \`npx plain-forge@next install\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Failure only. A success ping on every merge would be noise; the run
-      # summary above is the record.
+      - name: Notify Slack (published)
+        if: ${{ steps.guard.outputs.skip == 'false' && success() && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: prerelease \`${{ steps.pre.outputs.version }}\` published to npm :package:. Try it with \`npx plain-forge@next install\`. \`latest\` is untouched at \`${{ steps.pre.outputs.base }}\`. From <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${GITHUB_SHA:0:7}> by *${{ github.actor }}*.\"}"
+
+      # A re-run of an already-published commit is a no-op, not a publish, so it
+      # gets its own quiet line rather than claiming something shipped.
+      - name: Notify Slack (nothing to publish)
+        if: ${{ steps.guard.outputs.skip == 'true' && success() && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: prerelease \`${{ steps.pre.outputs.version }}\` was already on npm — nothing published. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+
       - name: Notify Slack (failure)
         if: ${{ failure() && env.SLACK_WEBHOOK_URL != '' }}
         run: |

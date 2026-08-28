@@ -106,8 +106,9 @@ Two consequences worth knowing:
 - **Re-running a merge's workflow is a no-op**, not a failure. The version is derived from
   the sha, so the job detects the version is already on npm and skips.
 
-Failures ping Slack; successes don't — a ping per merge would be noise. The run summary
-records what was published.
+Slack gets a line either way: the version published and how to try it, or the failure with
+`latest` confirmed unaffected. A re-run that had nothing to publish says so rather than
+claiming something shipped. The run summary records the same thing.
 
 ## Release notes
 
