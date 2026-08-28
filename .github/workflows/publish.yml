@@ -1,15 +1,24 @@
 name: publish
 
-# Publishing is driven by GitHub Releases: cut a release tagged `vX.Y.Z` and
-# this workflow ships that version to npm. The tag is the source of truth for
-# the version — nothing is committed back to the repository.
+# This workflow owns both paths onto npm:
+#
+#   * A published GitHub Release tagged `vX.Y.Z` ships that version to the
+#     `latest` dist-tag. The tag is the source of truth for the version —
+#     nothing is committed back to the repository.
+#   * A merge into main ships a prerelease to the `next` dist-tag, versioned
+#     from the current `latest` plus the commit sha. `latest` is never touched
+#     by this path, so ordinary `npx plain-forge` users never see a prerelease.
 #
 # Auth is OIDC (npm trusted publishing) — no NPM_TOKEN secret. The trusted
-# publisher must be configured once on npmjs.com for this repo and this exact
-# workflow filename (publish.yml).
+# publisher is configured on npmjs.com against this repo and this exact
+# workflow filename (publish.yml), which is why the prerelease job lives here
+# rather than in a file of its own: a new filename would not be trusted and
+# would need a second publisher entry on npmjs.com.
 on:
   release:
     types: [published]
+  push:
+    branches: [main]
 
 # Least privilege by default: jobs get no GITHUB_TOKEN scopes unless they
 # opt in below.
@@ -28,11 +37,13 @@ jobs:
 
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # A release builds from its tag; a merge builds from the merge commit.
+      REF: ${{ github.event.release.tag_name || github.sha }}
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -45,11 +56,12 @@ jobs:
         run: |
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"*plain-forge*: release \`${{ github.event.release.tag_name }}\` halted — tests FAILED :x:. Nothing was published to npm. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+            --data "{\"text\":\"*plain-forge*: \`$REF\` halted — tests FAILED :x:. Nothing was published to npm. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
 
   publish:
     name: Publish to npm
     needs: test
+    if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     # Records the release under Deployments → npm, the same way scripts/deploy.sh
     # does when publishing from a workstation.
@@ -135,3 +147,110 @@ jobs:
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
             --data "{\"text\":\"*plain-forge*: publishing \`${{ github.event.release.tag_name }}\` to npm FAILED :x:. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+
+  # ---------------------------------------------------------------------------
+  # Merge into main -> prerelease on the `next` dist-tag.
+  #
+  # Runs in this file, not a file of its own, because npm's trusted publisher is
+  # bound to this exact filename. See the header comment.
+  prerelease:
+    name: Publish prerelease to npm
+    needs: test
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    # The same environment the release path uses, so OIDC sees identical claims
+    # whether or not the trusted publisher pins an environment. It carries no
+    # protection rules, so this never waits for an approval.
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/plain-forge/v/next
+    permissions:
+      contents: read
+      id-token: write      # OIDC token for trusted publishing
+
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22      # trusted publishing needs >= 22.14
+          cache: npm
+
+      - name: Use an npm that supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - run: npm ci
+
+      # package.json on main is stale by design, so the published `latest` is
+      # the only reliable base. Bump its patch and append the commit sha: the
+      # prerelease therefore sits below the release it anticipates, and names
+      # the commit it was built from.
+      - name: Derive the prerelease version
+        id: pre
+        run: |
+          BASE="$(npm view plain-forge version)"
+          if ! echo "$BASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::latest on npm is '$BASE', which is not a plain X.Y.Z release — refusing to guess the next version"
+            exit 1
+          fi
+          MAJOR="${BASE%%.*}"
+          REST="${BASE#*.}"
+          MINOR="${REST%%.*}"
+          PATCH="${REST##*.}"
+          VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))-next.${GITHUB_SHA:0:7}"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "latest is $BASE — publishing $VERSION"
+
+      # A re-run of the same commit derives the same version, and npm refuses to
+      # overwrite. Detect that and no-op instead of failing the run red.
+      - name: Skip if this commit was already published
+        id: guard
+        run: |
+          if npm view "plain-forge@${{ steps.pre.outputs.version }}" version >/dev/null 2>&1; then
+            echo "::notice::plain-forge@${{ steps.pre.outputs.version }} is already on npm — nothing to do"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Applied in the runner only, never committed back — same as the release
+      # path.
+      - name: Set the package version
+        if: ${{ steps.guard.outputs.skip == 'false' }}
+        run: npm version "${{ steps.pre.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      # `--tag next` is what keeps `latest` stable: without it npm would point
+      # `latest` at this prerelease and every `npx plain-forge` would get it.
+      - name: Publish under the `next` dist-tag
+        if: ${{ steps.guard.outputs.skip == 'false' }}
+        run: npm publish --access public --tag next
+
+      - name: Summarize
+        if: ${{ steps.guard.outputs.skip == 'false' }}
+        run: |
+          {
+            echo "### Prerelease published"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| version | \`${{ steps.pre.outputs.version }}\` |"
+            echo "| dist-tag | \`next\` |"
+            echo "| \`latest\` still | \`${{ steps.pre.outputs.base }}\` |"
+            echo
+            echo "Try it: \`npx plain-forge@next install\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Failure only. A success ping on every merge would be noise; the run
+      # summary above is the record.
+      - name: Notify Slack (failure)
+        if: ${{ failure() && env.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"*plain-forge*: prerelease of \`${GITHUB_SHA:0:7}\` FAILED :x:. \`latest\` is unaffected. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
