@@ -14,10 +14,15 @@ the source of truth for `.plain` syntax and authoring constraints. Do not restat
 
 **First, confirm the rules about to be loaded are current.** On the first invocation of this skill in
 a session, invoke `check-forge-version` before loading any rule file. A stale plain-forge ships stale
-rules, so every routing decision below inherits its verdict. If that skill reports a stale install,
-relay its `npx plain-forge update` prompt to the user, then continue with the rules on disk — the
-check informs the user, it does not block authoring. Skip the check on later invocations in the same
-session, and skip it when the network is unavailable.
+rules, so every routing decision below inherits its verdict.
+
+If that skill reports a stale or unconfirmed install, tell the user clearly that **authoring on an
+outdated plain-forge is not recommended** and ask them to run `npx plain-forge update` before
+continuing — the rules routed to below may not match what the current `codeplain` renderer expects.
+Give them the choice rather than blocking: if they decline, continue with the rules on disk and treat
+the stale install as the first suspect for anything that later behaves unexpectedly.
+
+Skip the check on later invocations in the same session, and skip it when the network is unavailable.
 
 ## 1. Account for rules already loaded
 

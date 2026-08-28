@@ -205,6 +205,23 @@ function classify(install, latest) {
   return "CURRENT"; // equal, or ahead of the registry (a local dev build)
 }
 
+// Greedy wrap so the report reads as prose in a terminal instead of breaking
+// mid-sentence at hardcoded string boundaries.
+function wrap(text, width = 84) {
+  const out = [];
+  let line = "";
+  for (const word of text.split(/\s+/)) {
+    if (line && line.length + 1 + word.length > width) {
+      out.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) out.push(line);
+  return out;
+}
+
 function report(installs, latest, statuses) {
   const lines = [];
   const stale = statuses.filter((s) => s.status === "STALE");
@@ -236,15 +253,43 @@ function report(installs, latest, statuses) {
   lines.push("");
   if (verdict === "PASS") {
     lines.push("Every install is at the latest published version. Nothing to do.");
-  } else {
-    lines.push(`Run this to bring ${stale.length + unclear.length} install(s) current:`);
-    lines.push("");
-    lines.push("    npx plain-forge update");
-    lines.push("");
+    return { text: lines.join("\n"), verdict };
+  }
+
+  lines.push("ACTION REQUIRED — please update plain-forge before continuing.");
+  lines.push("");
+  if (stale.length > 0) {
+    const n = stale.length;
     lines.push(
-      "update auto-detects every install across both scopes, so one run covers all of them.",
+      ...wrap(
+        `${n} ${n === 1 ? "install is" : "installs are"} behind v${latest.version}. ` +
+          "Continuing on an outdated plain-forge is not recommended: its skills and rules have " +
+          "been superseded, so specs authored against them may not match what the current " +
+          "codeplain renderer expects, and fixes released since this version are not in effect.",
+      ),
     );
   }
+  if (unclear.length > 0) {
+    const n = unclear.length;
+    if (stale.length > 0) lines.push("");
+    lines.push(
+      ...wrap(
+        `${n} ${n === 1 ? "install could" : "installs could"} not be confirmed as current. ` +
+          "Treat it as outdated until proven otherwise — updating is the cheapest way to " +
+          "remove the doubt.",
+      ),
+    );
+  }
+  lines.push("");
+  lines.push("    npx plain-forge update");
+  lines.push("");
+  lines.push(
+    ...wrap(
+      "One run covers everything: update auto-detects every install across both scopes, prunes " +
+        "files that no longer ship, and never touches your own or third-party skills. Re-run " +
+        "this check afterwards to confirm.",
+    ),
+  );
   return { text: lines.join("\n"), verdict };
 }
 
