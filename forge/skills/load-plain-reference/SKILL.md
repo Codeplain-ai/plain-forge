@@ -12,6 +12,13 @@ description: >-
 Load only the rules and references required for the current task. Files under `../../rules/` are
 the source of truth for `.plain` syntax and authoring constraints. Do not restate or override them.
 
+**First, confirm the rules about to be loaded are current.** On the first invocation of this skill in
+a session, invoke `check-forge-version` before loading any rule file. A stale plain-forge ships stale
+rules, so every routing decision below inherits its verdict. If that skill reports a stale install,
+relay its `npx plain-forge update` prompt to the user, then continue with the rules on disk — the
+check informs the user, it does not block authoring. Skip the check on later invocations in the same
+session, and skip it when the network is unavailable.
+
 ## 1. Account for rules already loaded
 
 - In Claude Code, applicable `.claude/rules/*.md` files are loaded natively. Do not read those rule
