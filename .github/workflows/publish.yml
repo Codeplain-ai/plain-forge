@@ -269,42 +269,45 @@ jobs:
             -H 'Content-type: application/json' \
             --data "{\"text\":\"*plain-forge*: prerelease of \`${GITHUB_SHA:0:7}\` FAILED :x:. \`latest\` is unaffected. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
 
-  # Its own job: the publish job holds id-token: write for trusted publishing, and
-  # recording a release needs none of it.
-  linear-release:
-    name: Record release in Linear
-    needs: publish
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    env:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.release.tag_name }}
-          # The scan needs full history.
-          fetch-depth: 0
-
-      # Non-fatal: the package is already on npm.
-      - name: Record release in Linear
-        id: linear
-        continue-on-error: true
-        uses: linear/linear-release-action@0a25abab892a91062ebf42260dbb2ce6277aa205 # v0.16.0
-        with:
-          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
-          version: ${{ github.event.release.tag_name }}
-          # Pin the CLI the action downloads, not just the action.
-          cli_version: v0.16.0
-
-      # continue-on-error keeps the job green, so this checks the step's own
-      # outcome — `failure()` would never fire.
-      - name: Notify Slack (release not recorded)
-        if: ${{ steps.linear.outcome == 'failure' && env.SLACK_WEBHOOK_URL != '' }}
-        run: |
-          curl -s -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-type: application/json' \
-            --data "{\"text\":\"*plain-forge*: \`${{ github.event.release.tag_name }}\` is on npm, but recording it in Linear FAILED :warning:. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
+  # Release pipelines to be turned on only after the rest of the infrastructure
+  # is ready.
+  #
+  # # Its own job: the publish job holds id-token: write for trusted publishing, and
+  # # recording a release needs none of it.
+  # linear-release:
+  #   name: Record release in Linear
+  #   needs: publish
+  #   runs-on: ubuntu-latest
+  #
+  #   permissions:
+  #     contents: read
+  #
+  #   env:
+  #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #
+  #   steps:
+  #     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  #       with:
+  #         ref: ${{ github.event.release.tag_name }}
+  #         # The scan needs full history.
+  #         fetch-depth: 0
+  #
+  #     # Non-fatal: the package is already on npm.
+  #     - name: Record release in Linear
+  #       id: linear
+  #       continue-on-error: true
+  #       uses: linear/linear-release-action@0a25abab892a91062ebf42260dbb2ce6277aa205 # v0.16.0
+  #       with:
+  #         access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+  #         version: ${{ github.event.release.tag_name }}
+  #         # Pin the CLI the action downloads, not just the action.
+  #         cli_version: v0.16.0
+  #
+  #     # continue-on-error keeps the job green, so this checks the step's own
+  #     # outcome — `failure()` would never fire.
+  #     - name: Notify Slack (release not recorded)
+  #       if: ${{ steps.linear.outcome == 'failure' && env.SLACK_WEBHOOK_URL != '' }}
+  #       run: |
+  #         curl -s -X POST "$SLACK_WEBHOOK_URL" \
+  #           -H 'Content-type: application/json' \
+  #           --data "{\"text\":\"*plain-forge*: \`${{ github.event.release.tag_name }}\` is on npm, but recording it in Linear FAILED :warning:. See <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|the run log>.\"}"
