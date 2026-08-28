@@ -1010,7 +1010,7 @@ function printNextSteps(agent) {
     `prerequisite: install the ${codeplain("codeplain")} CLI to render your specs into code — ${link("https://www.codeplain.ai/")}`,
   );
   console.log(
-    `usage guide: ${link("https://github.com/Codeplain-ai/plain-forge#usage")}`,
+    `usage guide: ${link("https://github.com/plainlang/plain-forge#usage")}`,
   );
   console.log();
 }
