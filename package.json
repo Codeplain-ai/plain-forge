@@ -8,11 +8,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Codeplain-ai/plain-forge.git"
+    "url": "git+https://github.com/plainlang/plain-forge.git"
   },
-  "homepage": "https://github.com/Codeplain-ai/plain-forge",
+  "homepage": "https://github.com/plainlang/plain-forge",
   "bugs": {
-    "url": "https://github.com/Codeplain-ai/plain-forge/issues"
+    "url": "https://github.com/plainlang/plain-forge/issues"
   },
   "license": "MIT",
   "keywords": [

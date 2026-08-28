@@ -23,7 +23,7 @@ set -euo pipefail
 
 PKG="plain-forge"
 ENVIRONMENT="npm"
-REPO="Codeplain-ai/plain-forge"
+REPO="plainlang/plain-forge"
 
 TAG=""
 DRY_RUN=false

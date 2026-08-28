@@ -84,7 +84,7 @@ with the changelog link last:
 
 - Refactors, CI, dependencies — things that don't change behaviour for users.
 
-**Full Changelog**: https://github.com/Codeplain-ai/plain-forge/compare/v1.0.20...v1.0.21
+**Full Changelog**: https://github.com/plainlang/plain-forge/compare/v1.0.20...v1.0.21
 ```
 
 Editing a release afterwards fires `release: edited`, not `published`, so fixing typos
@@ -114,7 +114,7 @@ at the repo root — gitignored, and the only place a webhook should live locall
 
 | what | where | note |
 |---|---|---|
-| Trusted publisher | npmjs.com → `plain-forge` → Settings → Trusted Publisher | GitHub Actions, `Codeplain-ai/plain-forge`, workflow `publish.yml` |
+| Trusted publisher | npmjs.com → `plain-forge` → Settings → Trusted Publisher | GitHub Actions, `plainlang/plain-forge`, workflow `publish.yml` |
 | `SLACK_WEBHOOK_URL` | repo secret | the only secret this repo has; notifications are skipped without it |
 | Branch protection | `main` | `Test (node 18 / 20 / 22)` required, no force pushes, no deletion |
 
